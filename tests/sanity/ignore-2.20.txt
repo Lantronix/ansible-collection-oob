@@ -1,0 +1,5 @@
+plugins/module_utils/common.py shebang
+plugins/module_utils/percepxion_client.py shebang
+plugins/module_utils/slc9_client.py shebang
+plugins/module_utils/percepxion_client.py import-3.12
+plugins/module_utils/slc9_client.py import-3.12
