@@ -1,3 +1,5 @@
+plugins/httpapi/percepxion.py shebang
+plugins/httpapi/percepxion.py validate-modules:missing-gplv3-license
 plugins/httpapi/slc9.py shebang
 plugins/httpapi/slc9.py validate-modules:missing-gplv3-license
 plugins/module_utils/common.py shebang
