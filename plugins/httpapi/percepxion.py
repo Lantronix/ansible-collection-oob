@@ -56,15 +56,7 @@ class HttpApi(HttpApiBase):
         }
 
     def logout(self):
-        try:
-            self.connection.send(
-                "/v2/user/logout",
-                None,
-                method="POST",
-                headers=self.connection._auth or {},
-            )
-        except Exception:
-            pass
+        # Percepxion 6.12 has no logout endpoint; clear local auth state only.
         self.connection._auth = None
 
     def get_token(self):
@@ -80,7 +72,8 @@ class HttpApi(HttpApiBase):
             raise ConnectionError("Percepxion: authentication error (401). Check credentials.")
         if exc.code == 403:
             raise ConnectionError(
-                "Percepxion: forbidden (403). CSRF token may have expired — re-run the play."
+                "Percepxion: forbidden (403). Check that the user has the required role, "
+                "or re-authenticate if the session has expired."
             )
         if exc.code == 404:
             raise ConnectionError(
