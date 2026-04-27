@@ -1,0 +1,14 @@
+name: Sanity Tests
+on: [push, pull_request]
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/lantronix/oob
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ansible-core ansible.netcommon
+      - run: cd ansible_collections/lantronix/oob && ansible-test sanity --python 3.11

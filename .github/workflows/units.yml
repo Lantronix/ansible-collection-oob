@@ -1,0 +1,14 @@
+name: Unit Tests
+on: [push, pull_request]
+jobs:
+  units:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/lantronix/oob
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ansible-core ansible.netcommon pytest pytest-cov
+      - run: cd ansible_collections/lantronix/oob && ansible-test units --python 3.11 --coverage
