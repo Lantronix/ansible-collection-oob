@@ -17,5 +17,7 @@ tags:
   - lantronix
   - percepxion
   - console-server
+  - slc9000
+  - serial-console
 dependencies:
   ansible.netcommon: ">=5.0.0"
