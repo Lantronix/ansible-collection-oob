@@ -1,3 +1,5 @@
+plugins/httpapi/slc9.py shebang
+plugins/httpapi/slc9.py validate-modules:missing-gplv3-license
 plugins/module_utils/common.py shebang
 plugins/module_utils/percepxion_client.py shebang
 plugins/module_utils/slc9_client.py shebang
