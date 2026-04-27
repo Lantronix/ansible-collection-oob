@@ -23,16 +23,18 @@ class HttpApi(HttpApiBase):
 
     def login(self, username, password):
         data = json.dumps({"username": username, "password": password})
-        response, response_data = self.connection.send(
-            "/api/v2/user/login",
-            data,
-            method="POST",
-            headers={"Content-Type": "application/json"},
-        )
         try:
+            response, response_data = self.connection.send(
+                "/api/v2/user/login",
+                data,
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
             body = json.loads(response_data.read())
-        except Exception:
-            raise ConnectionError("Failed to parse SLC 9000 login response")
+        except ConnectionError:
+            raise
+        except Exception as exc:
+            raise ConnectionError("SLC 9000 login failed: {0}".format(str(exc)))
 
         token = body.get("token")
         if not token:
@@ -41,30 +43,39 @@ class HttpApi(HttpApiBase):
         self.connection._auth = {"x-user-token": token}
 
     def logout(self):
-        self.connection.send(
-            "/api/v2/user/login",
-            None,
-            method="DELETE",
-            headers=self.connection._auth or {},
-        )
-        self.connection._auth = {}
+        try:
+            self.connection.send(
+                "/api/v2/user/login",
+                None,
+                method="DELETE",
+                headers=self.connection._auth or {},
+            )
+        except Exception:
+            pass
+        self.connection._auth = None
 
     def get_token(self):
         return (self.connection._auth or {}).get("x-user-token")
 
     def handle_httperror(self, exc):
+        if not hasattr(exc, "code"):
+            return False
         if exc.code == 401:
             raise ConnectionError("SLC 9000: authentication error (401). Check credentials.")
         if exc.code == 403:
             raise ConnectionError("SLC 9000: forbidden (403). User lacks rights for this endpoint.")
+        if exc.code == 404:
+            raise ConnectionError(
+                "SLC 9000: endpoint not found (404). Verify firmware supports API v2 (requires R7+)."
+            )
         return False
 
     def send_request(self, data, **message_kwargs):
         """Send an authenticated API request.
 
-        ``data`` is the URL path (str). Pass ``body``, ``method``, and
-        ``headers`` as keyword arguments via ``message_kwargs`` so this
-        override stays compatible with HttpApiBase.send_request.
+        ``data`` is the URL path (str), named ``data`` to match the
+        HttpApiBase.send_request signature. Pass ``body``, ``method``, and
+        ``headers`` as keyword arguments via ``message_kwargs``.
         """
         path = data
         method = message_kwargs.get("method", "GET")
@@ -77,9 +88,13 @@ class HttpApi(HttpApiBase):
             req_headers.update(extra_headers)
 
         response, response_data = self.connection.send(
-            path, json.dumps(body) if body else None, method=method, headers=req_headers
+            path, json.dumps(body) if body is not None else None, method=method, headers=req_headers
         )
+        raw = response_data.read()
         try:
-            return json.loads(response_data.read())
+            return json.loads(raw)
         except Exception:
-            return {}
+            raw_text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+            raise ConnectionError(
+                "SLC 9000: unexpected non-JSON response from {0}: {1}".format(path, raw_text[:200])
+            )
