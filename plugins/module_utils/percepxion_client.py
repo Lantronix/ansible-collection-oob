@@ -10,7 +10,7 @@ class PercepxionClient:
 
     Auth uses two tokens returned from POST /v2/user/login:
       - token       -> x-mystq-token header (all requests)
-      - csrf_token  -> x-csrf-token header (POST/PUT/DELETE only)
+      - csrf_token  -> x-csrf-token header (all requests; server ignores on GETs)
 
     project_tag and tenant_id scope device operations to a project.
     Pass tenant_id only when authenticating as a Project Admin.
@@ -52,7 +52,8 @@ class PercepxionClient:
 
     def _post(self, path, data=None):
         try:
-            resp = self.session.post(self._url(path), json=data or {})
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.post(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:
@@ -60,7 +61,8 @@ class PercepxionClient:
 
     def _put(self, path, data=None):
         try:
-            resp = self.session.put(self._url(path), json=data or {})
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.put(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:
@@ -68,7 +70,8 @@ class PercepxionClient:
 
     def _delete(self, path, data=None):
         try:
-            resp = self.session.delete(self._url(path), json=data or {})
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.delete(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:

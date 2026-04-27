@@ -36,7 +36,8 @@ class SLC9Client:
 
     def _post(self, path, data=None):
         try:
-            resp = self.session.post(self._url(path), json=data or {})
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.post(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:

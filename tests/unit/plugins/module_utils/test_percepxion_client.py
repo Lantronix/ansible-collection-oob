@@ -45,3 +45,14 @@ def test_search_devices_without_project_tag():
         client.search_devices()
         call_json = mock_post.call_args[1]["json"]
         assert "project_tag" not in call_json
+
+
+def test_post_raises_ansible_lantronix_error_on_http_error():
+    from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
+    import requests as req
+    client = make_client()
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = req.HTTPError(response=MagicMock(json=MagicMock(return_value={"error": "forbidden"})))
+    with patch.object(client.session, "post", return_value=mock_response):
+        with pytest.raises(AnsibleLantronixError, match="forbidden"):
+            client.search_devices()

@@ -38,3 +38,23 @@ def test_get_system_status_returns_dict():
     with patch.object(client.session, "get", return_value=mock_response):
         result = client.get_system_status()
         assert result["uptime"] == 34060479
+
+
+def test_get_raises_ansible_lantronix_error_on_http_error():
+    from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
+    import requests as req
+    client = make_client()
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = req.HTTPError(response=MagicMock(json=MagicMock(return_value={"message": "not found"})))
+    with patch.object(client.session, "get", return_value=mock_response):
+        with pytest.raises(AnsibleLantronixError, match="not found"):
+            client.get_system_version()
+
+
+def test_api_error_message_with_none_response():
+    from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message
+    import requests as req
+    exc = req.HTTPError("connection failed")
+    exc.response = None
+    result = api_error_message(exc)
+    assert "connection failed" in result
