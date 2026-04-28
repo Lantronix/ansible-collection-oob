@@ -1,0 +1,19 @@
+---
+- name: Set device hostname
+  lantronix.oob.slc_system:
+    hostname: "{{ oob_baseline_hostname }}"
+  when: oob_baseline_hostname | length > 0
+
+- name: Apply baseline config via batch commands
+  lantronix.oob.slc_config:
+    action: batch
+    commands: >-
+      {{
+        (['set ntp server ' + item for item in oob_baseline_ntp_servers]) +
+        (['set logging host ' + oob_baseline_syslog_host] if oob_baseline_syslog_host else [])
+      }}
+  when: oob_baseline_ntp_servers | length > 0 or oob_baseline_syslog_host | length > 0
+
+- name: Save configuration
+  lantronix.oob.slc_config:
+    action: save
