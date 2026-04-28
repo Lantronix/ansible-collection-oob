@@ -194,3 +194,36 @@ class PercepxionClient:
             "start_time": start_time,
             "end_time": end_time,
         }))
+
+    # --- Users (endpoint paths TBD — confirm with Katie against production API) ---
+
+    def search_users(self, search_string=None):
+        payload = self._scope()
+        if search_string:
+            payload["search_string"] = search_string
+        return self._post("/v3/user/search", payload)
+
+    def create_user(self, username, role, password=None):
+        payload = self._scope({"username": username, "role": role})
+        if password:
+            payload["password"] = password
+        return self._post("/v3/user/create", payload)
+
+    def delete_user(self, username):
+        return self._post("/v3/user/delete", self._scope({"username": username}))
+
+    # --- Device registration ---
+
+    def register_device(self, payload):
+        """POST /v1/device/register — register a new device by serial/MAC."""
+        return self._post("/v1/device/register", self._scope(payload))
+
+    # --- AOOB sessions (endpoint paths TBD — confirm with Katie against production API) ---
+
+    def initiate_session(self, device_id):
+        """POST /v3/device/connect — initiate an OOB terminal session."""
+        return self._post("/v3/device/connect", self._scope({"device_id": device_id}))
+
+    def terminate_session(self, session_id):
+        """POST /v3/device/disconnect — terminate an active OOB session."""
+        return self._post("/v3/device/disconnect", self._scope({"session_id": session_id}))
