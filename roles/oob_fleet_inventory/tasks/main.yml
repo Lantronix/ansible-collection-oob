@@ -1,0 +1,20 @@
+---
+- name: Query Percepxion device inventory
+  lantronix.oob.percepxion_devices:
+    search_string: "{{ oob_inventory_search_string | default(omit) }}"
+    limit: "{{ oob_inventory_limit }}"
+  register: _percepxion_inventory
+
+- name: Write dynamic inventory file
+  copy:
+    dest: "{{ oob_inventory_output_path }}"
+    content: |
+      all:
+        children:
+          oob_devices:
+            hosts:
+      {% for device in _percepxion_inventory.devices %}
+              {{ device.device_name }}:
+                ansible_host: "{{ device.ip_address | default('') }}"
+                percepxion_device_id: "{{ device.device_id }}"
+      {% endfor %}

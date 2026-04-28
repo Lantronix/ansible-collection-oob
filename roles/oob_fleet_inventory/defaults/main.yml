@@ -1,0 +1,4 @@
+---
+oob_inventory_output_path: "/tmp/oob-inventory.yml"
+oob_inventory_search_string: ""
+oob_inventory_limit: 500
