@@ -19,3 +19,7 @@ plugins/modules/slc_users.py shebang
 plugins/modules/slc_users.py validate-modules:missing-gplv3-license
 plugins/modules/slc_users.py validate-modules:import-error
 plugins/modules/slc_users.py import-3.12
+plugins/modules/slc_network.py shebang
+plugins/modules/slc_network.py validate-modules:missing-gplv3-license
+plugins/modules/slc_network.py validate-modules:import-error
+plugins/modules/slc_network.py import-3.12
