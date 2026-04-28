@@ -7,3 +7,7 @@ plugins/module_utils/percepxion_client.py shebang
 plugins/module_utils/slc9_client.py shebang
 plugins/module_utils/percepxion_client.py import-3.12
 plugins/module_utils/slc9_client.py import-3.12
+plugins/modules/slc_facts.py shebang
+plugins/modules/slc_facts.py validate-modules:missing-gplv3-license
+plugins/modules/slc_facts.py validate-modules:import-error
+plugins/modules/slc_facts.py import-3.12
