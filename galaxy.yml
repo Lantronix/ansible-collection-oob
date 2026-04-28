@@ -7,10 +7,10 @@ license:
   - Apache-2.0
 authors:
   - Lantronix Product Team <ansible@lantronix.com>
-repository: https://github.com/lantronix/ansible-collection-oob
-documentation: https://github.com/lantronix/ansible-collection-oob/tree/main/docs
+repository: https://github.com/What-Is-Phase-Two/ansible-collection-oob
+documentation: https://github.com/What-Is-Phase-Two/ansible-collection-oob/tree/main/docs
 homepage: https://www.lantronix.com
-issues: https://github.com/lantronix/ansible-collection-oob/issues
+issues: https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues
 tags:
   - networking
   - oob
