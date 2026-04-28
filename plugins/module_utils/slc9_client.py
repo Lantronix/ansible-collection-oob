@@ -140,3 +140,13 @@ class SLC9Client:
     def factory_reset(self):
         """POST /config/factory_reset -- reset device to factory defaults."""
         return self._post("/config/factory_reset")
+
+    # --- System actions ---
+
+    def reboot(self):
+        """POST /system/reboot -- reboot the device."""
+        return self._post("/system/reboot")
+
+    def get_system_ztp(self):
+        """GET /system/ztp -- zero touch provisioning status and config."""
+        return self._get("/system/ztp")
