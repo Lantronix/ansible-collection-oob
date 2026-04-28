@@ -27,3 +27,7 @@ plugins/modules/slc_system.py shebang
 plugins/modules/slc_system.py validate-modules:missing-gplv3-license
 plugins/modules/slc_system.py validate-modules:import-error
 plugins/modules/slc_system.py import-3.12
+plugins/modules/slc_device_ports.py shebang
+plugins/modules/slc_device_ports.py validate-modules:missing-gplv3-license
+plugins/modules/slc_device_ports.py validate-modules:import-error
+plugins/modules/slc_device_ports.py import-3.12
