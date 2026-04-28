@@ -49,6 +49,22 @@ slc_facts:
       description: Firmware version running on the active boot bank.
       type: str
       sample: 9.7.0.0R8
+    bootloader_version:
+      description: Bootloader version installed on the device.
+      type: str
+      sample: 1.0.0.0R19
+    sw_python_version:
+      description: Python interpreter version bundled with the firmware.
+      type: str
+      sample: 3.13.2
+    sw_kernel_version:
+      description: Linux kernel version running on the device.
+      type: str
+      sample: 6.6.52
+    io_module_types:
+      description: Comma-separated list of I/O module types installed.
+      type: str
+      sample: "RJ45-16, USB-16, ETH-16"
     uptime:
       description: Device uptime in seconds.
       type: int
@@ -57,14 +73,30 @@ slc_facts:
       description: Internal temperature in Celsius.
       type: int
       sample: 58
-    hostname:
-      description: Configured device hostname.
-      type: str
-      sample: slc9k-lab
     eth1_link:
       description: Ethernet port 1 link state.
       type: str
       sample: Up
+    eth2_link:
+      description: Ethernet port 2 link state.
+      type: str
+      sample: Up
+    ps1:
+      description: Power supply 1 status.
+      type: str
+      sample: Ok
+    ps2:
+      description: Power supply 2 status.
+      type: str
+      sample: Ok
+    hostname:
+      description: Configured device hostname.
+      type: str
+      sample: slc9k-lab
+    description:
+      description: User-configured device description.
+      type: str
+      sample: Lab console server
 """
 
 from ansible.module_utils.basic import AnsibleModule
