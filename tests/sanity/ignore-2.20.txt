@@ -11,3 +11,6 @@ plugins/modules/slc_facts.py shebang
 plugins/modules/slc_facts.py validate-modules:missing-gplv3-license
 plugins/modules/slc_facts.py validate-modules:import-error
 plugins/modules/slc_facts.py import-3.12
+plugins/modules/percepxion_facts.py shebang
+plugins/modules/percepxion_facts.py validate-modules:missing-gplv3-license
+plugins/modules/percepxion_facts.py import-3.12
