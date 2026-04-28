@@ -39,3 +39,7 @@ plugins/modules/slc_config.py shebang
 plugins/modules/slc_config.py validate-modules:missing-gplv3-license
 plugins/modules/slc_config.py validate-modules:import-error
 plugins/modules/slc_config.py import-3.12
+plugins/modules/slc_managed_devices.py shebang
+plugins/modules/slc_managed_devices.py validate-modules:missing-gplv3-license
+plugins/modules/slc_managed_devices.py validate-modules:import-error
+plugins/modules/slc_managed_devices.py import-3.12
