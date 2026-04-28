@@ -1,0 +1,9 @@
+---
+- name: Ensure local users are configured on SLC devices
+  lantronix.oob.slc_users:
+    username: "{{ item.username }}"
+    password: "{{ item.password | default(omit) }}"
+    role: "{{ item.role | default('user') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ oob_users }}"
+  when: oob_users | length > 0

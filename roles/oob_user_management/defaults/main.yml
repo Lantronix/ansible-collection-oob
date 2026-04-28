@@ -1,0 +1,3 @@
+---
+oob_users: []         # list of {username, password, role, state}
+oob_user_target_group: ""   # Percepxion smart group name to scope SLC devices
