@@ -1,0 +1,21 @@
+---
+- name: Check firmware compliance across fleet
+  lantronix.oob.percepxion_firmware:
+    smart_group_id: "{{ oob_firmware_smart_group_id }}"
+    firmware_version: "{{ oob_firmware_target_version }}"
+    state: check
+  register: _firmware_check
+
+- name: Report non-compliant devices
+  debug:
+    msg: "Non-compliant: {{ _firmware_check.non_compliant_devices | map(attribute='device_name') | list }}"
+  when: _firmware_check.non_compliant_devices | length > 0
+
+- name: Trigger firmware update (when remediate=true)
+  lantronix.oob.percepxion_firmware:
+    smart_group_id: "{{ oob_firmware_smart_group_id }}"
+    firmware_version: "{{ oob_firmware_target_version }}"
+    state: update
+  when:
+    - oob_firmware_remediate | bool
+    - _firmware_check.non_compliant_devices | length > 0
