@@ -41,7 +41,7 @@ def run_module(args, check_mode=False, side_effect=None):
 
 
 def test_percepxion_facts_returns_device_count():
-    m, _ = run_module({})
+    m, _client = run_module({})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     facts = kwargs["percepxion_facts"]
@@ -49,12 +49,12 @@ def test_percepxion_facts_returns_device_count():
 
 
 def test_percepxion_facts_calls_search_devices():
-    _, client = run_module({})
+    _unused, client = run_module({})
     client.search_devices.assert_called_once()
 
 
 def test_percepxion_facts_api_error_calls_fail_json():
     from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
-    m, _ = run_module({}, side_effect=AnsibleLantronixError("tenant unreachable"))
+    m, _client = run_module({}, side_effect=AnsibleLantronixError("tenant unreachable"))
     m.fail_json.assert_called_once()
     assert "tenant unreachable" in m.fail_json.call_args[1]["msg"]

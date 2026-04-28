@@ -38,7 +38,7 @@ def run_module(params):
 
 
 def test_list_returns_all_devices():
-    m, _ = run_module({"search_string": None, "limit": 100})
+    m, _client = run_module({"search_string": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["devices"]) == 2

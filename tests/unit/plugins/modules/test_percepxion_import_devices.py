@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_import_devices
 
 ALREADY_REGISTERED = {

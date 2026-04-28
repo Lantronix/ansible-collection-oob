@@ -57,7 +57,7 @@ def run_module(args, check_mode=False, version_side_effect=None):
 
 
 def test_slc_facts_returns_combined_data():
-    m, _ = run_module({})
+    m, _client = run_module({})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     facts = kwargs["slc_facts"]
@@ -68,7 +68,7 @@ def test_slc_facts_returns_combined_data():
 
 
 def test_slc_facts_calls_all_three_endpoints():
-    _, client = run_module({})
+    _unused, client = run_module({})
     client.get_system_version.assert_called_once()
     client.get_system_status.assert_called_once()
     client.get_system_identity.assert_called_once()
@@ -76,6 +76,6 @@ def test_slc_facts_calls_all_three_endpoints():
 
 def test_slc_facts_api_error_calls_fail_json():
     from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
-    m, _ = run_module({}, version_side_effect=AnsibleLantronixError("device unreachable"))
+    m, _client = run_module({}, version_side_effect=AnsibleLantronixError("device unreachable"))
     m.fail_json.assert_called_once()
     assert "device unreachable" in m.fail_json.call_args[1]["msg"]
