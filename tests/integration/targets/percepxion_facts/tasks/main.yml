@@ -1,26 +1,21 @@
 ---
 # Read-only: gather platform facts and assert required fields are present.
 
-- name: Gather Percepxion platform facts
-  hosts: percepxion_platform
-  gather_facts: false
-  tasks:
+- name: Gather facts
+  lantronix.oob.percepxion_facts:
+  register: facts_result
 
-    - name: Gather facts
-      lantronix.oob.percepxion_facts:
-      register: facts_result
+- name: Verify percepxion_facts key is present
+  ansible.builtin.assert:
+    that:
+      - facts_result.percepxion_facts is defined
+    success_msg: "percepxion_facts key returned"
+    fail_msg: "percepxion_facts key missing from result: {{ facts_result }}"
 
-    - name: Verify percepxion_facts key is present
-      ansible.builtin.assert:
-        that:
-          - facts_result.percepxion_facts is defined
-        success_msg: "percepxion_facts key returned"
-        fail_msg: "percepxion_facts key missing from result: {{ facts_result }}"
-
-    - name: Verify total_devices is a non-negative integer
-      ansible.builtin.assert:
-        that:
-          - facts_result.percepxion_facts.total_devices is defined
-          - facts_result.percepxion_facts.total_devices | int >= 0
-        success_msg: "total_devices: {{ facts_result.percepxion_facts.total_devices }}"
-        fail_msg: "total_devices missing or invalid: {{ facts_result.percepxion_facts }}"
+- name: Verify total_devices is a non-negative integer
+  ansible.builtin.assert:
+    that:
+      - facts_result.percepxion_facts.total_devices is defined
+      - facts_result.percepxion_facts.total_devices | int >= 0
+    success_msg: "total_devices: {{ facts_result.percepxion_facts.total_devices }}"
+    fail_msg: "total_devices missing or invalid: {{ facts_result.percepxion_facts }}"

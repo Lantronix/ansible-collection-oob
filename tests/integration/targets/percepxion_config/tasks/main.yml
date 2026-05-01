@@ -3,91 +3,86 @@
 # Creates a test config object, verifies idempotency, then deletes it.
 # Uses block/always to guarantee cleanup even on failure.
 
-- name: Percepxion config CRUD integration test
-  hosts: percepxion_platform
-  gather_facts: false
-  tasks:
+# Pre-clean: remove test config if left from a prior failed run
+- name: Pre-clean - ensure test config does not exist
+  lantronix.oob.percepxion_config:
+    name: "ansible-test-config"
+    state: absent
+  ignore_errors: true  # noqa: ignore-errors
 
-    # Pre-clean: remove test config if left from a prior failed run
-    - name: Pre-clean - ensure test config does not exist
+- name: Percepxion config CRUD test
+  block:
+
+    # --- CREATE ---
+
+    - name: Create test config
+      lantronix.oob.percepxion_config:
+        name: "ansible-test-config"
+        content_type: "config"
+        data: "# Ansible integration test config\nhostname ansible-test\n"
+        state: present
+      register: create_result
+
+    - name: Verify creation reported changed
+      ansible.builtin.assert:
+        that:
+          - create_result.changed is true
+          - create_result.name == 'ansible-test-config'
+          - create_result.content_id is defined
+          - create_result.content_id | length > 0
+        success_msg: "Config created: name={{ create_result.name }}, id={{ create_result.content_id }}"
+        fail_msg: "Config creation failed or missing fields: {{ create_result }}"
+
+    # --- IDEMPOTENCY ---
+
+    - name: Create same config again to verify idempotency
+      lantronix.oob.percepxion_config:
+        name: "ansible-test-config"
+        content_type: "config"
+        data: "# Ansible integration test config\nhostname ansible-test\n"
+        state: present
+      register: idempotent_create
+
+    - name: Verify idempotent create reports no change
+      ansible.builtin.assert:
+        that:
+          - idempotent_create.changed is false
+        success_msg: "Idempotent create correctly reported changed=false"
+        fail_msg: "Expected changed=false on repeat create, got: {{ idempotent_create.changed }}"
+
+    # --- DELETE ---
+
+    - name: Delete test config
+      lantronix.oob.percepxion_config:
+        name: "ansible-test-config"
+        state: absent
+      register: delete_result
+
+    - name: Verify deletion reported changed
+      ansible.builtin.assert:
+        that:
+          - delete_result.changed is true
+        success_msg: "Config deleted, changed=true"
+        fail_msg: "Delete did not report changed: {{ delete_result }}"
+
+    # --- IDEMPOTENCY (absent again) ---
+
+    - name: Delete same config again to verify absent idempotency
+      lantronix.oob.percepxion_config:
+        name: "ansible-test-config"
+        state: absent
+      register: idempotent_delete
+
+    - name: Verify idempotent delete reports no change
+      ansible.builtin.assert:
+        that:
+          - idempotent_delete.changed is false
+        success_msg: "Idempotent delete correctly reported changed=false"
+        fail_msg: "Expected changed=false on repeat delete, got: {{ idempotent_delete.changed }}"
+
+  always:
+    - name: Cleanup - ensure test config is removed
       lantronix.oob.percepxion_config:
         name: "ansible-test-config"
         state: absent
       ignore_errors: true  # noqa: ignore-errors
-
-    - name: Percepxion config CRUD test
-      block:
-
-        # --- CREATE ---
-
-        - name: Create test config
-          lantronix.oob.percepxion_config:
-            name: "ansible-test-config"
-            content_type: "config"
-            data: "# Ansible integration test config\nhostname ansible-test\n"
-            state: present
-          register: create_result
-
-        - name: Verify creation reported changed
-          ansible.builtin.assert:
-            that:
-              - create_result.changed is true
-              - create_result.name == 'ansible-test-config'
-              - create_result.content_id is defined
-              - create_result.content_id | length > 0
-            success_msg: "Config created: name={{ create_result.name }}, id={{ create_result.content_id }}"
-            fail_msg: "Config creation failed or missing fields: {{ create_result }}"
-
-        # --- IDEMPOTENCY ---
-
-        - name: Create same config again to verify idempotency
-          lantronix.oob.percepxion_config:
-            name: "ansible-test-config"
-            content_type: "config"
-            data: "# Ansible integration test config\nhostname ansible-test\n"
-            state: present
-          register: idempotent_create
-
-        - name: Verify idempotent create reports no change
-          ansible.builtin.assert:
-            that:
-              - idempotent_create.changed is false
-            success_msg: "Idempotent create correctly reported changed=false"
-            fail_msg: "Expected changed=false on repeat create, got: {{ idempotent_create.changed }}"
-
-        # --- DELETE ---
-
-        - name: Delete test config
-          lantronix.oob.percepxion_config:
-            name: "ansible-test-config"
-            state: absent
-          register: delete_result
-
-        - name: Verify deletion reported changed
-          ansible.builtin.assert:
-            that:
-              - delete_result.changed is true
-            success_msg: "Config deleted, changed=true"
-            fail_msg: "Delete did not report changed: {{ delete_result }}"
-
-        # --- IDEMPOTENCY (absent again) ---
-
-        - name: Delete same config again to verify absent idempotency
-          lantronix.oob.percepxion_config:
-            name: "ansible-test-config"
-            state: absent
-          register: idempotent_delete
-
-        - name: Verify idempotent delete reports no change
-          ansible.builtin.assert:
-            that:
-              - idempotent_delete.changed is false
-            success_msg: "Idempotent delete correctly reported changed=false"
-            fail_msg: "Expected changed=false on repeat delete, got: {{ idempotent_delete.changed }}"
-
-      always:
-        - name: Cleanup - ensure test config is removed
-          lantronix.oob.percepxion_config:
-            name: "ansible-test-config"
-            state: absent
-          ignore_errors: true  # noqa: ignore-errors

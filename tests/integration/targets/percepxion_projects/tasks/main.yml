@@ -2,91 +2,86 @@
 # Scoped test: assign a project tag to a device, assert, then unassign.
 # Looks up a real device ID from the sandbox before testing.
 
-- name: Percepxion projects integration test
-  hosts: percepxion_platform
-  gather_facts: false
-  tasks:
+- name: Get device list to find SLC9000-RH device ID
+  lantronix.oob.percepxion_devices:
+    search_string: "SLC9000-RH"
+  register: devices_result
 
-    - name: Get device list to find SLC9000-RH device ID
-      lantronix.oob.percepxion_devices:
-        search_string: "SLC9000-RH"
-      register: devices_result
+- name: Fail early if no matching device found
+  ansible.builtin.assert:
+    that:
+      - devices_result.devices | length > 0
+    fail_msg: "SLC9000-RH not found in sandbox — cannot run projects test"
 
-    - name: Fail early if no matching device found
+- name: Set device_id fact
+  ansible.builtin.set_fact:
+    test_device_id: "{{ devices_result.devices[0].id }}"
+
+# Pre-clean: remove the test tag if it was left from a prior failed run
+- name: Pre-clean - unassign ansible-test project tag if present
+  lantronix.oob.percepxion_projects:
+    device_id: "{{ test_device_id }}"
+    project_tag: "ansible-test"
+    state: absent
+  ignore_errors: true  # noqa: ignore-errors
+
+- name: Percepxion projects scoped test
+  block:
+
+    # --- ASSIGN ---
+
+    - name: Assign ansible-test project tag to device
+      lantronix.oob.percepxion_projects:
+        device_id: "{{ test_device_id }}"
+        project_tag: "ansible-test"
+        state: present
+      register: assign_result
+
+    - name: Verify assignment reported changed
       ansible.builtin.assert:
         that:
-          - devices_result.devices | length > 0
-        fail_msg: "SLC9000-RH not found in sandbox — cannot run projects test"
+          - assign_result.changed is true
+          - assign_result.device_id == test_device_id
+          - assign_result.project_tag == 'ansible-test'
+        success_msg: "Project tag assigned, device_id={{ assign_result.device_id }}"
+        fail_msg: "Assignment failed or missing fields: {{ assign_result }}"
 
-    - name: Set device_id fact
-      ansible.builtin.set_fact:
-        test_device_id: "{{ devices_result.devices[0].id }}"
+    # --- IDEMPOTENCY ---
 
-    # Pre-clean: remove the test tag if it was left from a prior failed run
-    - name: Pre-clean - unassign ansible-test project tag if present
+    - name: Assign same tag again to verify idempotency
+      lantronix.oob.percepxion_projects:
+        device_id: "{{ test_device_id }}"
+        project_tag: "ansible-test"
+        state: present
+      register: idempotent_assign
+
+    - name: Verify idempotent assign reports no change
+      ansible.builtin.assert:
+        that:
+          - idempotent_assign.changed is false
+        success_msg: "Idempotent assign correctly reported changed=false"
+        fail_msg: "Expected changed=false on repeat assign, got: {{ idempotent_assign.changed }}"
+
+    # --- UNASSIGN ---
+
+    - name: Unassign ansible-test project tag
+      lantronix.oob.percepxion_projects:
+        device_id: "{{ test_device_id }}"
+        project_tag: "ansible-test"
+        state: absent
+      register: unassign_result
+
+    - name: Verify unassignment reported changed
+      ansible.builtin.assert:
+        that:
+          - unassign_result.changed is true
+        success_msg: "Project tag unassigned, changed=true"
+        fail_msg: "Unassignment did not report changed: {{ unassign_result }}"
+
+  always:
+    - name: Cleanup - ensure test tag unassigned
       lantronix.oob.percepxion_projects:
         device_id: "{{ test_device_id }}"
         project_tag: "ansible-test"
         state: absent
       ignore_errors: true  # noqa: ignore-errors
-
-    - name: Percepxion projects scoped test
-      block:
-
-        # --- ASSIGN ---
-
-        - name: Assign ansible-test project tag to device
-          lantronix.oob.percepxion_projects:
-            device_id: "{{ test_device_id }}"
-            project_tag: "ansible-test"
-            state: present
-          register: assign_result
-
-        - name: Verify assignment reported changed
-          ansible.builtin.assert:
-            that:
-              - assign_result.changed is true
-              - assign_result.device_id == test_device_id
-              - assign_result.project_tag == 'ansible-test'
-            success_msg: "Project tag assigned, device_id={{ assign_result.device_id }}"
-            fail_msg: "Assignment failed or missing fields: {{ assign_result }}"
-
-        # --- IDEMPOTENCY ---
-
-        - name: Assign same tag again to verify idempotency
-          lantronix.oob.percepxion_projects:
-            device_id: "{{ test_device_id }}"
-            project_tag: "ansible-test"
-            state: present
-          register: idempotent_assign
-
-        - name: Verify idempotent assign reports no change
-          ansible.builtin.assert:
-            that:
-              - idempotent_assign.changed is false
-            success_msg: "Idempotent assign correctly reported changed=false"
-            fail_msg: "Expected changed=false on repeat assign, got: {{ idempotent_assign.changed }}"
-
-        # --- UNASSIGN ---
-
-        - name: Unassign ansible-test project tag
-          lantronix.oob.percepxion_projects:
-            device_id: "{{ test_device_id }}"
-            project_tag: "ansible-test"
-            state: absent
-          register: unassign_result
-
-        - name: Verify unassignment reported changed
-          ansible.builtin.assert:
-            that:
-              - unassign_result.changed is true
-            success_msg: "Project tag unassigned, changed=true"
-            fail_msg: "Unassignment did not report changed: {{ unassign_result }}"
-
-      always:
-        - name: Cleanup - ensure test tag unassigned
-          lantronix.oob.percepxion_projects:
-            device_id: "{{ test_device_id }}"
-            project_tag: "ansible-test"
-            state: absent
-          ignore_errors: true  # noqa: ignore-errors

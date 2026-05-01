@@ -1,51 +1,46 @@
 ---
 # Read-only: list devices and assert required fields are present.
 
-- name: List all Percepxion devices
-  hosts: percepxion_platform
-  gather_facts: false
-  tasks:
+- name: List devices (default limit)
+  lantronix.oob.percepxion_devices:
+  register: devices_result
 
-    - name: List devices (default limit)
-      lantronix.oob.percepxion_devices:
-      register: devices_result
+- name: Verify devices key is a list
+  ansible.builtin.assert:
+    that:
+      - devices_result.devices is defined
+      - devices_result.devices is iterable
+    success_msg: "devices list returned with {{ devices_result.devices | length }} entries"
+    fail_msg: "devices key missing or not a list: {{ devices_result }}"
 
-    - name: Verify devices key is a list
-      ansible.builtin.assert:
-        that:
-          - devices_result.devices is defined
-          - devices_result.devices is iterable
-        success_msg: "devices list returned with {{ devices_result.devices | length }} entries"
-        fail_msg: "devices key missing or not a list: {{ devices_result }}"
+- name: Verify total_results is a non-negative integer
+  ansible.builtin.assert:
+    that:
+      - devices_result.total_results is defined
+      - devices_result.total_results | int >= 0
+    success_msg: "total_results: {{ devices_result.total_results }}"
+    fail_msg: "total_results missing or invalid: {{ devices_result }}"
 
-    - name: Verify total_results is a non-negative integer
-      ansible.builtin.assert:
-        that:
-          - devices_result.total_results is defined
-          - devices_result.total_results | int >= 0
-        success_msg: "total_results: {{ devices_result.total_results }}"
-        fail_msg: "total_results missing or invalid: {{ devices_result }}"
+- name: Search by known device name (SLC9000-RH)
+  lantronix.oob.percepxion_devices:
+    search_string: "SLC9000-RH"
+  register: search_result
 
-    - name: Search by known device name (SLC9000-RH)
-      lantronix.oob.percepxion_devices:
-        search_string: "SLC9000-RH"
-      register: search_result
+- name: Verify search returns at least one result
+  ansible.builtin.assert:
+    that:
+      - search_result.devices | length > 0
+    success_msg: "SLC9000-RH found in device list"
+    fail_msg: "SLC9000-RH not found — verify sandbox has this device registered"
 
-    - name: Verify search returns at least one result
-      ansible.builtin.assert:
-        that:
-          - search_result.devices | length > 0
-        success_msg: "SLC9000-RH found in device list"
-        fail_msg: "SLC9000-RH not found — verify sandbox has this device registered"
+- name: Search with explicit limit
+  lantronix.oob.percepxion_devices:
+    limit: 1
+  register: limited_result
 
-    - name: Search with explicit limit
-      lantronix.oob.percepxion_devices:
-        limit: 1
-      register: limited_result
-
-    - name: Verify limit is honoured
-      ansible.builtin.assert:
-        that:
-          - limited_result.devices | length <= 1
-        success_msg: "Limit=1 returned {{ limited_result.devices | length }} device(s)"
-        fail_msg: "Limit=1 returned more than 1 device: {{ limited_result.devices | length }}"
+- name: Verify limit is honoured
+  ansible.builtin.assert:
+    that:
+      - limited_result.devices | length <= 1
+    success_msg: "Limit=1 returned {{ limited_result.devices | length }} device(s)"
+    fail_msg: "Limit=1 returned more than 1 device: {{ limited_result.devices | length }}"
