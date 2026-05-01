@@ -47,14 +47,20 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import Ansibl
 
 
 def main():
-    module = AnsibleModule(argument_spec={}, supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec=dict(
+            project_tag=dict(type="str"),
+            tenant_id=dict(type="str"),
+        ),
+        supports_check_mode=True,
+    )
 
     connection = Connection(module._socket_path)
     token = connection.get_token()
     csrf = connection.get_csrf_token()
     host = connection.get_option("host")
-    project_tag = connection.get_option("percepxion_project_tag") or None
-    tenant_id = connection.get_option("percepxion_tenant_id") or None
+    project_tag = module.params.get("project_tag") or None
+    tenant_id = module.params.get("tenant_id") or None
 
     client = PercepxionClient(
         host=host, token=token, csrf_token=csrf,

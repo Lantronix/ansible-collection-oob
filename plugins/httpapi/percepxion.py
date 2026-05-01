@@ -8,9 +8,13 @@ version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Manages authentication for Percepxion API.
-  - Login posts to POST /v2/user/login and stores both x-mystq-token and x-csrf-token.
+  - Manages authentication for Percepxion API (6.12+).
+  - Login posts to POST /api/v2/user/login and stores both x-mystq-token and x-csrf-token.
   - The CSRF token is injected on all requests; the server ignores it on GETs.
+  - Set C(ansible_host) to the bare API hostname for any Percepxion deployment.
+    Cloud production uses C(api.percepxion.ai); demo/sandbox uses C(api.gopercepxion.ai).
+    On-premises standard mode uses C(api.your-fqdn); single-domain mode uses C(your-fqdn).
+    The C(/api) path prefix is consistent across all environments.
 options:
   percepxion_project_tag:
     description: Project tag to scope all device operations. Set in inventory.
@@ -23,6 +27,12 @@ options:
 """
 
 import json
+try:
+    import requests as _requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    _requests = None  # type: ignore
 from ansible.plugins.httpapi import HttpApiBase
 from ansible.module_utils.connection import ConnectionError
 
@@ -31,17 +41,23 @@ class HttpApi(HttpApiBase):
     """HttpApi plugin for Percepxion REST API (OpenAPI 3.0.1, v6.12+)."""
 
     def login(self, username, password):
-        data = json.dumps({"username": username, "password": password})
+        # Use requests directly — netcommon's send() injects an Authorization: Basic
+        # header when _auth is None, which causes Percepxion to issue an invalid token.
+        if not HAS_REQUESTS:
+            raise ConnectionError("The requests Python library is required for this plugin.")
+        host = self.connection.get_option("host")
+        verify = self.connection.get_option("validate_certs")
+        url = "https://{0}/api/v2/user/login".format(host)
         try:
-            response, response_data = self.connection.send(
-                "/v2/user/login",
-                data,
-                method="POST",
+            resp = _requests.post(
+                url,
+                json={"username": username, "password": password},
                 headers={"Content-Type": "application/json"},
+                verify=verify,
+                timeout=30,
             )
-            body = json.loads(response_data.read())
-        except ConnectionError:
-            raise
+            resp.raise_for_status()
+            body = resp.json()
         except Exception as exc:
             raise ConnectionError("Percepxion login failed: {0}".format(str(exc)))
 
@@ -62,14 +78,12 @@ class HttpApi(HttpApiBase):
     def _ensure_logged_in(self):
         """Trigger _connect() → login() if not already authenticated.
 
-        login() is only called by the @ensure_connect decorator on send(). Modules
-        call get_token()/get_csrf_token() before any send(), so we force it here.
+        Calls _connect() directly to avoid send() injecting _auth headers into
+        the trigger request — Percepxion's single-session model would invalidate
+        the just-obtained token if a second request hits the login endpoint with it.
         """
         if self.connection._auth is None:
-            try:
-                self.connection.send("/v2/user/login", None, method="GET", headers={})
-            except Exception:
-                pass
+            self.connection._connect()
 
     def get_token(self):
         self._ensure_logged_in()

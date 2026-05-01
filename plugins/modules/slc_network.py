@@ -71,10 +71,22 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import Ansibl
 
 
 def _find_interface(interfaces, name):
-    for iface in interfaces.get("interfaces", []):
-        if iface.get("id") == name:
-            return iface
-    return None
+    """Extract interface config from the SLC API flat-key response.
+
+    The API returns a flat dict keyed as eth1_ipv4, eth1_mask, eth1_link, etc.
+    DHCP is inferred: if the IPv4 address is empty, DHCP is assumed active.
+    """
+    prefix = name + "_"
+    if not any(k.startswith(prefix) for k in interfaces):
+        return None
+    ipv4 = interfaces.get(name + "_ipv4", "").strip()
+    return {
+        "id": name,
+        "ipv4_address": ipv4,
+        "netmask": interfaces.get(name + "_mask", "").strip(),
+        "link": interfaces.get(name + "_link", ""),
+        "dhcp": not bool(ipv4),
+    }
 
 
 def _config_matches(current, params):
@@ -119,13 +131,11 @@ def main():
     changed = not _config_matches(current, module.params)
 
     if changed and not module.check_mode:
+        # SLC API uses flat keys: eth1_ipv4, eth1_mask (not nested objects)
         payload = {
-            "id": iface_name,
-            "dhcp": module.params["dhcp"],
+            iface_name + "_ipv4": "" if module.params["dhcp"] else (module.params.get("ipv4_address") or ""),
+            iface_name + "_mask": "" if module.params["dhcp"] else (module.params.get("netmask") or ""),
         }
-        if not module.params["dhcp"]:
-            payload["ipv4_address"] = module.params.get("ipv4_address") or ""
-            payload["netmask"] = module.params.get("netmask") or ""
         try:
             client.set_network_interfaces(payload)
         except AnsibleLantronixError as exc:

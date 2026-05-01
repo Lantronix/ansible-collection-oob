@@ -21,6 +21,9 @@ def api_error_message(exc):
     """Extract a human-readable message from a requests.HTTPError."""
     try:
         body = exc.response.json()
-        return body.get("message") or body.get("error") or str(exc)
+        msg = body.get("message") or body.get("error") or str(exc)
+        if isinstance(msg, list):
+            return "; ".join(str(m) for m in msg)
+        return msg
     except Exception:
         return str(exc)

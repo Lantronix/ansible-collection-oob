@@ -17,7 +17,8 @@ def run_module(params, check_mode=False):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -31,7 +32,7 @@ def run_module(params, check_mode=False):
 
 
 def test_initiates_session_for_device():
-    m, client, _ = run_module({"device_id": "dev-001", "session_id": None, "state": "present"})
+    m, client, mock_cls = run_module({"device_id": "dev-001", "session_id": None, "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     assert kwargs["session_id"] == "sess-abc123"
@@ -39,21 +40,21 @@ def test_initiates_session_for_device():
 
 
 def test_terminates_session():
-    m, client, _ = run_module({"device_id": None, "session_id": "sess-abc123", "state": "absent"})
+    m, client, mock_cls = run_module({"device_id": None, "session_id": "sess-abc123", "state": "absent"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.terminate_session.assert_called_once_with("sess-abc123")
 
 
 def test_check_mode_blocks_initiate():
-    m, client, _ = run_module({"device_id": "dev-001", "session_id": None, "state": "present"}, check_mode=True)
+    m, client, mock_cls = run_module({"device_id": "dev-001", "session_id": None, "state": "present"}, check_mode=True)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.initiate_session.assert_not_called()
 
 
 def test_check_mode_blocks_terminate():
-    m, client, _ = run_module({"device_id": None, "session_id": "sess-abc123", "state": "absent"}, check_mode=True)
+    m, client, mock_cls = run_module({"device_id": None, "session_id": "sess-abc123", "state": "absent"}, check_mode=True)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.terminate_session.assert_not_called()

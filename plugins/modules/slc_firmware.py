@@ -104,14 +104,18 @@ def main():
     client = SLC9Client(host=connection.get_option("host"), token=connection.get_token(), verify_ssl=connection.get_option("validate_certs"))
 
     try:
-        version = client.get_firmware_version()
+        status = client.get_firmware_status()
         update_status = client.get_firmware_update_status()
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 
-    firmware_info = dict(version)
-    firmware_info["update_status"] = update_status.get("status", "")
-    firmware_info["update_progress"] = update_status.get("progress", 0)
+    firmware_info = {
+        "current_firmware_version": status.get("current_firmware_version", ""),
+        "alternate_firmware_version": status.get("alternate_firmware_version", ""),
+        "active_bank": "bank{0}".format(status.get("current_boot_bank", "")),
+        "update_status": update_status.get("status", ""),
+        "update_progress": update_status.get("progress", 0),
+    }
 
     if module.params["state"] == "check":
         module.exit_json(changed=False, firmware=firmware_info)

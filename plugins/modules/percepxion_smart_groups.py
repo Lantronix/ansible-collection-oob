@@ -20,9 +20,23 @@ options:
     description: Smart group name.
     type: str
     required: true
-  criteria:
-    description: Filter criteria dict defining group membership. Required when C(state=present).
-    type: dict
+  query_string:
+    description:
+      - Filter expression defining group membership (e.g. C(device_name:SLC*)).
+      - Required when C(state=present) unless C(device_ids) is provided.
+    type: str
+  device_ids:
+    description:
+      - List of device IDs to include in the smart group.
+      - Used instead of C(query_string) for static group membership.
+    type: list
+    elements: str
+  project_tag:
+    description: Percepxion project tag to scope the operation.
+    type: str
+  tenant_id:
+    description: Tenant ID for Project Admin authentication.
+    type: str
   state:
     description: Whether the smart group should exist.
     type: str
@@ -31,16 +45,15 @@ options:
 """
 
 EXAMPLES = r"""
-- name: Create a smart group for DC1 devices
+- name: Create a smart group matching SLC devices
   lantronix.oob.percepxion_smart_groups:
-    name: dc1-servers
-    criteria:
-      tag: dc1
+    name: slc-devices
+    query_string: "device_name:SLC*"
     state: present
 
 - name: Remove a smart group
   lantronix.oob.percepxion_smart_groups:
-    name: dc1-servers
+    name: slc-devices
     state: absent
 """
 
@@ -53,6 +66,7 @@ group_id:
   description: Group ID assigned by Percepxion. Present after creation.
   returned: when changed and state is present
   type: str
+  sample: ebcc77ae-b0f7-417e-b699-f63929d81ac2
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -61,13 +75,13 @@ from ansible_collections.lantronix.oob.plugins.module_utils.percepxion_client im
 from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
 
 
-def _make_client(connection):
+def _make_client(connection, module):
     return PercepxionClient(
         host=connection.get_option("host"),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=connection.get_option("percepxion_project_tag") or None,
-        tenant_id=connection.get_option("percepxion_tenant_id") or None,
+        project_tag=module.params.get("project_tag") or None,
+        tenant_id=module.params.get("tenant_id") or None,
         verify_ssl=connection.get_option("validate_certs"),
     )
 
@@ -75,15 +89,18 @@ def _make_client(connection):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
+            project_tag=dict(type="str"),
+            tenant_id=dict(type="str"),
             name=dict(type="str", required=True),
-            criteria=dict(type="dict"),
+            query_string=dict(type="str"),
+            device_ids=dict(type="list", elements="str"),
             state=dict(type="str", default="present", choices=["present", "absent"]),
         ),
         supports_check_mode=True,
     )
 
     connection = Connection(module._socket_path)
-    client = _make_client(connection)
+    client = _make_client(connection, module)
 
     name = module.params["name"]
     state = module.params["state"]
@@ -93,7 +110,8 @@ def main():
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 
-    existing = {g["name"]: g for g in search.get("search_results", [])}
+    # API returns search_result (list); each item has id and name fields
+    existing = {g["name"]: g for g in search.get("search_result", [])}
     changed = False
     group_id = None
 
@@ -101,8 +119,12 @@ def main():
         changed = True
         if not module.check_mode:
             try:
-                result = client.create_smart_group(name, module.params.get("criteria") or {})
-                group_id = result.get("group_id")
+                result = client.create_smart_group(
+                    name,
+                    query_string=module.params.get("query_string"),
+                    device_ids=module.params.get("device_ids"),
+                )
+                group_id = result.get("id")
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
 
@@ -110,7 +132,7 @@ def main():
         changed = True
         if not module.check_mode:
             try:
-                client.delete_smart_group(existing[name]["group_id"])
+                client.delete_smart_group(existing[name]["id"])
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
 

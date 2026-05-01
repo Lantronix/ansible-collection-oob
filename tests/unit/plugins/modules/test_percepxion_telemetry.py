@@ -20,7 +20,8 @@ def run_module(params):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -34,7 +35,7 @@ def run_module(params):
 
 
 def test_returns_stats_for_device():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "device_id": "dev-001",
         "metrics": ["cpu", "memory", "temperature"],
         "start_time": None,
@@ -47,7 +48,7 @@ def test_returns_stats_for_device():
 
 
 def test_returns_history_when_time_range_given():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "device_id": "dev-001",
         "metrics": ["temperature"],
         "start_time": "2026-04-01T00:00:00Z",

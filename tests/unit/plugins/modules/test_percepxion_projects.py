@@ -23,7 +23,8 @@ def run_module(params, check_mode=False, device_project_tag="project-a"):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -37,7 +38,7 @@ def run_module(params, check_mode=False, device_project_tag="project-a"):
 
 
 def test_no_change_when_already_assigned():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"device_id": "dev-001", "project_tag": "project-a", "state": "present"},
         device_project_tag="project-a",
     )
@@ -47,7 +48,7 @@ def test_no_change_when_already_assigned():
 
 
 def test_changed_when_unassigned():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"device_id": "dev-001", "project_tag": "project-a", "state": "present"},
         device_project_tag=None,
     )
@@ -57,7 +58,7 @@ def test_changed_when_unassigned():
 
 
 def test_absent_removes_from_project():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"device_id": "dev-001", "project_tag": None, "state": "absent"},
         device_project_tag="project-a",
     )
@@ -67,7 +68,7 @@ def test_absent_removes_from_project():
 
 
 def test_check_mode_blocks_assign():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"device_id": "dev-001", "project_tag": "project-a", "state": "present"},
         check_mode=True,
         device_project_tag=None,

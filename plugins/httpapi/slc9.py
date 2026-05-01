@@ -14,6 +14,12 @@ options: {}
 """
 
 import json
+try:
+    import requests as _requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    _requests = None  # type: ignore
 from ansible.plugins.httpapi import HttpApiBase
 from ansible.module_utils.connection import ConnectionError
 
@@ -22,17 +28,23 @@ class HttpApi(HttpApiBase):
     """HttpApi plugin for SLC 9000 REST API v2."""
 
     def login(self, username, password):
-        data = json.dumps({"username": username, "password": password})
+        # Use requests directly to avoid netcommon injecting Authorization: Basic
+        # when _auth is None, which can interfere with token-based auth.
+        if not HAS_REQUESTS:
+            raise ConnectionError("The requests Python library is required for this plugin.")
+        host = self.connection.get_option("host")
+        verify = self.connection.get_option("validate_certs")
+        url = "https://{0}/api/v2/user/login".format(host)
         try:
-            response, response_data = self.connection.send(
-                "/api/v2/user/login",
-                data,
-                method="POST",
+            resp = _requests.post(
+                url,
+                json={"username": username, "password": password},
                 headers={"Content-Type": "application/json"},
+                verify=verify,
+                timeout=30,
             )
-            body = json.loads(response_data.read())
-        except ConnectionError:
-            raise
+            resp.raise_for_status()
+            body = resp.json()
         except Exception as exc:
             raise ConnectionError("SLC 9000 login failed: {0}".format(str(exc)))
 
@@ -56,12 +68,7 @@ class HttpApi(HttpApiBase):
 
     def get_token(self):
         if self.connection._auth is None:
-            # login() is only triggered by send(), which has @ensure_connect.
-            # Modules call get_token() before any send(), so we force it here.
-            try:
-                self.connection.send("/api/v2/user/login", None, method="GET", headers={})
-            except Exception:
-                pass
+            self.connection._connect()
         return (self.connection._auth or {}).get("X-auth-token")
 
     def handle_httperror(self, exc):

@@ -20,7 +20,8 @@ def run_module(params, check_mode=False, identity=None):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -34,7 +35,7 @@ def run_module(params, check_mode=False, identity=None):
 
 
 def test_no_change_when_hostname_matches():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "hostname": "slc9k-lab",
         "description": None,
         "reboot": False,
@@ -46,7 +47,7 @@ def test_no_change_when_hostname_matches():
 
 
 def test_changed_when_hostname_differs():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "hostname": "slc9k-prod",
         "description": None,
         "reboot": False,
@@ -58,7 +59,7 @@ def test_changed_when_hostname_differs():
 
 
 def test_changed_when_description_differs():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "hostname": None,
         "description": "Production console server",
         "reboot": False,
@@ -70,7 +71,7 @@ def test_changed_when_description_differs():
 
 
 def test_reboot_always_changed():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "hostname": None,
         "description": None,
         "reboot": True,
@@ -82,7 +83,7 @@ def test_reboot_always_changed():
 
 
 def test_check_mode_blocks_identity_change():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {
             "hostname": "new-hostname",
             "description": None,
@@ -97,7 +98,7 @@ def test_check_mode_blocks_identity_change():
 
 
 def test_check_mode_blocks_reboot():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {
             "hostname": None,
             "description": None,

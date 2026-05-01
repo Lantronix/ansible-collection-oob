@@ -24,7 +24,8 @@ def run_module(params):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -38,7 +39,7 @@ def run_module(params):
 
 
 def test_list_returns_all_devices():
-    m, _client, _ = run_module({"search_string": None, "limit": 100})
+    m, _client, mock_cls = run_module({"search_string": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["devices"]) == 2
@@ -46,7 +47,7 @@ def test_list_returns_all_devices():
 
 
 def test_search_string_passed_to_client():
-    m, client, _ = run_module({"search_string": "slc9k-01", "limit": 10})
+    m, client, mock_cls = run_module({"search_string": "slc9k-01", "limit": 10})
     client.search_devices.assert_called_with(search_string="slc9k-01", limit=10, offset=0)
 
 

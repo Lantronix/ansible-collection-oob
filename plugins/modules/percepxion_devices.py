@@ -61,6 +61,8 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import Ansibl
 def main():
     module = AnsibleModule(
         argument_spec=dict(
+            project_tag=dict(type="str"),
+            tenant_id=dict(type="str"),
             search_string=dict(type="str"),
             limit=dict(type="int", default=100),
         ),
@@ -72,8 +74,8 @@ def main():
         host=connection.get_option("host"),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=connection.get_option("percepxion_project_tag") or None,
-        tenant_id=connection.get_option("percepxion_tenant_id") or None,
+        project_tag=module.params.get("project_tag") or None,
+        tenant_id=module.params.get("tenant_id") or None,
         verify_ssl=connection.get_option("validate_certs"),
     )
 

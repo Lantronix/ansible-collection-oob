@@ -24,7 +24,8 @@ def run_module(params, check_mode=False):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -38,7 +39,7 @@ def run_module(params, check_mode=False):
 
 
 def test_check_returns_compliance_unchanged():
-    m, client, _ = run_module({"smart_group_id": "grp-001", "firmware_version": "9.7.0.0R8", "state": "check"})
+    m, client, mock_cls = run_module({"smart_group_id": "grp-001", "firmware_version": "9.7.0.0R8", "state": "check"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert "compliant_devices" in kwargs
@@ -47,14 +48,14 @@ def test_check_returns_compliance_unchanged():
 
 
 def test_update_creates_job_group():
-    m, client, _ = run_module({"smart_group_id": "grp-001", "firmware_version": "9.8.0.0R1", "state": "update"})
+    m, client, mock_cls = run_module({"smart_group_id": "grp-001", "firmware_version": "9.8.0.0R1", "state": "update"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_job_group.assert_called_once()
 
 
 def test_check_mode_blocks_update():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"smart_group_id": "grp-001", "firmware_version": "9.8.0.0R1", "state": "update"},
         check_mode=True,
     )

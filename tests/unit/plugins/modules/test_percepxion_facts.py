@@ -26,7 +26,8 @@ def run_module(args, check_mode=False, side_effect=None):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn._socket_path = "/tmp/fake-socket"
                 mock_conn_cls.return_value = mock_conn
 
@@ -41,7 +42,7 @@ def run_module(args, check_mode=False, side_effect=None):
 
 
 def test_percepxion_facts_returns_device_count():
-    m, _client, _ = run_module({})
+    m, _client, mock_cls = run_module({})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     facts = kwargs["percepxion_facts"]
@@ -49,13 +50,13 @@ def test_percepxion_facts_returns_device_count():
 
 
 def test_percepxion_facts_calls_search_devices():
-    _unused, client, _ = run_module({})
+    _unused, client, mock_cls = run_module({})
     client.search_devices.assert_called_once()
 
 
 def test_percepxion_facts_api_error_calls_fail_json():
     from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
-    m, _client, _ = run_module({}, side_effect=AnsibleLantronixError("tenant unreachable"))
+    m, _client, mock_cls = run_module({}, side_effect=AnsibleLantronixError("tenant unreachable"))
     m.fail_json.assert_called_once()
     assert "tenant unreachable" in m.fail_json.call_args[1]["msg"]
 

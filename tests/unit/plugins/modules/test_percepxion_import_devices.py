@@ -25,7 +25,8 @@ def run_module(params, check_mode=False, search_result=None):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -42,14 +43,14 @@ DEVICES = [{"serial": "SN123456", "mac": "aa:bb:cc:dd:ee:ff", "model": "SLC9016"
 
 
 def test_registers_new_device():
-    m, client, _ = run_module({"devices": DEVICES, "project_tag": "dc1", "state": "present"})
+    m, client, mock_cls = run_module({"devices": DEVICES, "project_tag": "dc1", "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.register_device.assert_called_once()
 
 
 def test_skips_already_registered_device():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"devices": DEVICES, "project_tag": "dc1", "state": "present"},
         search_result=ALREADY_REGISTERED,
     )
@@ -59,7 +60,7 @@ def test_skips_already_registered_device():
 
 
 def test_check_mode_blocks_register():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"devices": DEVICES, "project_tag": "dc1", "state": "present"},
         check_mode=True,
     )

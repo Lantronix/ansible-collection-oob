@@ -29,7 +29,8 @@ def run_module(params, check_mode=False):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -43,7 +44,7 @@ def run_module(params, check_mode=False):
 
 
 def test_returns_all_ports_when_no_filter():
-    m, client, _ = run_module({"port_id": None, "gather_connections": False})
+    m, client, mock_cls = run_module({"port_id": None, "gather_connections": False})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["ports"]) == 2
@@ -51,7 +52,7 @@ def test_returns_all_ports_when_no_filter():
 
 
 def test_filters_to_single_port():
-    m, client, _ = run_module({"port_id": "port1", "gather_connections": False})
+    m, client, mock_cls = run_module({"port_id": "port1", "gather_connections": False})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["ports"]) == 1
@@ -59,7 +60,7 @@ def test_filters_to_single_port():
 
 
 def test_includes_connections_when_requested():
-    m, client, _ = run_module({"port_id": None, "gather_connections": True})
+    m, client, mock_cls = run_module({"port_id": None, "gather_connections": True})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert "connections" in kwargs
@@ -68,7 +69,7 @@ def test_includes_connections_when_requested():
 
 
 def test_no_connections_by_default():
-    m, client, _ = run_module({"port_id": None, "gather_connections": False})
+    m, client, mock_cls = run_module({"port_id": None, "gather_connections": False})
     kwargs = m.exit_json.call_args[1]
     assert "connections" not in kwargs
     client.get_connections.assert_not_called()

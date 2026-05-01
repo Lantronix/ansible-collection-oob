@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+import io
+import json as _json
 import requests
 from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message, AnsibleLantronixError
 
@@ -29,7 +31,7 @@ class PercepxionClient:
         self.session.verify = verify_ssl
 
     def _url(self, path):
-        return "https://{0}{1}".format(self.host, path)
+        return "https://{0}/api{1}".format(self.host, path)
 
     def _scope(self, extra=None):
         """Build a base payload with optional project/tenant scoping."""
@@ -88,7 +90,10 @@ class PercepxionClient:
         return self._post("/v3/device/search", payload)
 
     def get_device(self, device_id):
-        return self._post("/v3/device/get", self._scope({"device_id": device_id}))
+        # API expects device_id as an array; returns {"total": N, "result": [...]}
+        resp = self._post("/v3/device/get", self._scope({"device_id": [device_id]}))
+        results = resp.get("result", [])
+        return results[0] if results else {}
 
     def update_device(self, device_id, updates):
         return self._post("/v3/device/update", self._scope(dict(device_id=device_id, **updates)))
@@ -100,28 +105,62 @@ class PercepxionClient:
         }))
 
     def unassign_device(self, device_id):
-        return self._post("/v3/device/unassign", self._scope({"device_id": device_id}))
+        # API expects device_id as an array
+        return self._post("/v3/device/unassign", self._scope({"device_id": [device_id]}))
 
     # --- Smart Groups ---
 
-    def create_smart_group(self, name, criteria):
-        return self._post("/v3/device/smartgroup/create", self._scope({"name": name, "criteria": criteria}))
+    def create_smart_group(self, name, query_string=None, device_ids=None):
+        payload = self._scope({"name": name})
+        if query_string:
+            payload["query_string"] = query_string
+        elif device_ids:
+            payload["device_ids"] = device_ids
+        return self._post("/v3/device/smartgroup/create", payload)
 
-    def search_smart_groups(self, search_string=None):
-        return self._post("/v3/device/smartgroup/search", self._scope(
-            {"search_string": search_string} if search_string else {}
-        ))
+    def search_smart_groups(self, search_string=None, limit=100):
+        payload = self._scope({"limit": limit})
+        if search_string:
+            payload["search_string"] = search_string
+        return self._post("/v3/device/smartgroup/search", payload)
 
     def delete_smart_group(self, group_id):
-        return self._post("/v3/device/smartgroup/delete", self._scope({"group_id": group_id}))
+        return self._post("/v3/device/smartgroup/delete", self._scope({"id": [group_id]}))
 
     # --- Content (config files) ---
 
-    def create_content(self, name, content_type, data):
-        return self._post("/v3/content/create", self._scope({"name": name, "type": content_type, "data": data}))
+    def create_content(self, name, content_type, data, version="1.0"):
+        """Upload a content file using multipart/form-data (required by the API).
 
-    def search_content(self, content_type=None):
-        payload = self._scope()
+        The session Content-Type header is excluded so requests can set the
+        multipart boundary correctly.
+        """
+        metadata = _json.dumps(self._scope({
+            "name": name,
+            "type": content_type,
+            "version": version,
+            "opcode": "download",
+        }))
+        files = {
+            "file": (name + ".cfg", io.BytesIO(data.encode("utf-8")), "text/plain"),
+            "data": (None, metadata, "application/json"),
+        }
+        headers = {k: v for k, v in self.session.headers.items()
+                   if k.lower() != "content-type"}
+        try:
+            resp = requests.post(
+                self._url("/v3/content/create"),
+                files=files,
+                headers=headers,
+                verify=self.session.verify,
+            )
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+
+    def search_content(self, content_type=None, limit=100):
+        payload = self._scope({"limit": limit})
         if content_type:
             payload["type"] = content_type
         return self._post("/v3/content/search", payload)
@@ -130,17 +169,18 @@ class PercepxionClient:
         return self._post("/v3/content/update", self._scope(dict(content_id=content_id, **updates)))
 
     def delete_content(self, content_id):
-        return self._post("/v3/content/delete", self._scope({"content_id": content_id}))
+        return self._post("/v3/content/delete", self._scope({"id": [content_id]}))
 
     # --- Jobs ---
 
     def create_job_group(self, payload):
         return self._post("/v1/job/jobgroup/create", self._scope(payload))
 
-    def search_job_groups(self, search_string=None):
-        return self._post("/v1/job/jobgroup/search", self._scope(
-            {"search_string": search_string} if search_string else {}
-        ))
+    def search_job_groups(self, search_string=None, limit=100):
+        payload = self._scope({"limit": limit})
+        if search_string:
+            payload["search_string"] = search_string
+        return self._post("/v1/job/jobgroup/search", payload)
 
     def delete_job_group(self, job_group_id):
         return self._post("/v1/job/jobgroup/delete", self._scope({"job_group_id": job_group_id}))
@@ -195,22 +235,22 @@ class PercepxionClient:
             "end_time": end_time,
         }))
 
-    # --- Users (endpoint paths TBD — confirm with Katie against production API) ---
+    # --- Users ---
 
-    def search_users(self, search_string=None):
-        payload = self._scope()
+    def search_users(self, search_string=None, limit=100):
+        payload = self._scope({"limit": limit})
         if search_string:
             payload["search_string"] = search_string
-        return self._post("/v3/user/search", payload)
+        return self._post("/v2/user/search", payload)
 
     def create_user(self, username, role, password=None):
         payload = self._scope({"username": username, "role": role})
         if password:
             payload["password"] = password
-        return self._post("/v3/user/create", payload)
+        return self._post("/v2/user/create", payload)
 
     def delete_user(self, username):
-        return self._post("/v3/user/delete", self._scope({"username": username}))
+        return self._post("/v2/user/delete", self._scope({"username": username}))
 
     # --- Device registration ---
 

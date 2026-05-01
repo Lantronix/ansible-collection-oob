@@ -104,9 +104,9 @@ class SLC9Client:
 
     # --- Firmware ---
 
-    def get_firmware_version(self):
-        """GET /firmware/version -- current and alternate boot bank versions."""
-        return self._get("/firmware/version")
+    def get_firmware_status(self):
+        """GET /firmware/status -- current/alternate boot bank versions and last update result."""
+        return self._get("/firmware/status")
 
     def get_firmware_update_status(self):
         """GET /firmware/update_status -- ongoing update progress."""

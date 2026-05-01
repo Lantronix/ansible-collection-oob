@@ -15,9 +15,8 @@ description:
   - Checks whether the user exists before acting; only calls create or delete
     when the desired state differs from current state.
 notes:
-  - User management endpoint paths (C(/v3/user/*)) are not confirmed in the
-    Percepxion 6.12 API spec. Verify with Percepxion engineering before use
-    in production. Update C(percepxion_client.py) if paths differ.
+  - User management uses C(/v2/user/*) endpoints confirmed against the
+    Percepxion 6.12 demo environment.
 options:
   username:
     description: Username to manage.
@@ -63,13 +62,13 @@ from ansible_collections.lantronix.oob.plugins.module_utils.percepxion_client im
 from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
 
 
-def _make_client(connection):
+def _make_client(connection, module):
     return PercepxionClient(
         host=connection.get_option("host"),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=connection.get_option("percepxion_project_tag") or None,
-        tenant_id=connection.get_option("percepxion_tenant_id") or None,
+        project_tag=module.params.get("project_tag") or None,
+        tenant_id=module.params.get("tenant_id") or None,
         verify_ssl=connection.get_option("validate_certs"),
     )
 
@@ -77,6 +76,8 @@ def _make_client(connection):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
+            project_tag=dict(type="str"),
+            tenant_id=dict(type="str"),
             username=dict(type="str", required=True),
             role=dict(type="str"),
             password=dict(type="str", no_log=True),
@@ -86,7 +87,7 @@ def main():
     )
 
     connection = Connection(module._socket_path)
-    client = _make_client(connection)
+    client = _make_client(connection, module)
 
     username = module.params["username"]
     state = module.params["state"]
@@ -96,7 +97,8 @@ def main():
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 
-    existing = [u["username"] for u in result.get("users", [])]
+    # API returns {"total": N, "result": [{id, username, ...}]}
+    existing = [u["username"] for u in result.get("result", [])]
     changed = False
 
     if state == "present" and username not in existing:

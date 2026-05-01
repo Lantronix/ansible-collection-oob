@@ -22,7 +22,8 @@ def run_module(params, check_mode=False, search_result=None):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -36,14 +37,14 @@ def run_module(params, check_mode=False, search_result=None):
 
 
 def test_create_when_missing():
-    m, client, _ = run_module({"name": "dc1-servers", "criteria": {"tag": "dc1"}, "state": "present"})
+    m, client, mock_cls = run_module({"name": "dc1-servers", "criteria": {"tag": "dc1"}, "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_smart_group.assert_called_once_with("dc1-servers", {"tag": "dc1"})
 
 
 def test_no_change_when_exists():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"name": "dc1-servers", "criteria": {}, "state": "present"},
         search_result=EXISTING_GROUP,
     )
@@ -53,7 +54,7 @@ def test_no_change_when_exists():
 
 
 def test_delete_removes_group():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"name": "dc1-servers", "criteria": None, "state": "absent"},
         search_result=EXISTING_GROUP,
     )
@@ -63,7 +64,7 @@ def test_delete_removes_group():
 
 
 def test_check_mode_blocks_create():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"name": "new-group", "criteria": {"tag": "x"}, "state": "present"},
         check_mode=True,
     )

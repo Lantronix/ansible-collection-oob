@@ -75,13 +75,13 @@ from ansible_collections.lantronix.oob.plugins.module_utils.percepxion_client im
 from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
 
 
-def _make_client(connection):
+def _make_client(connection, module):
     return PercepxionClient(
         host=connection.get_option("host"),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=connection.get_option("percepxion_project_tag") or None,
-        tenant_id=connection.get_option("percepxion_tenant_id") or None,
+        project_tag=module.params.get("project_tag") or None,
+        tenant_id=module.params.get("tenant_id") or None,
         verify_ssl=connection.get_option("validate_certs"),
     )
 
@@ -89,6 +89,8 @@ def _make_client(connection):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
+            project_tag=dict(type="str"),
+            tenant_id=dict(type="str"),
             smart_group_id=dict(type="str", required=True),
             firmware_version=dict(type="str", required=True),
             state=dict(type="str", required=True, choices=["check", "update"]),
@@ -97,7 +99,7 @@ def main():
     )
 
     connection = Connection(module._socket_path)
-    client = _make_client(connection)
+    client = _make_client(connection, module)
 
     smart_group_id = module.params["smart_group_id"]
     target_version = module.params["firmware_version"]

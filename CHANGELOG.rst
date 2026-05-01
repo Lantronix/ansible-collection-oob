@@ -4,6 +4,72 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.4
+======
+
+Release Summary
+---------------
+
+Bugfix release. Corrects API payload formats discovered during end-to-end
+integration testing against the Percepxion 6.12 demo environment and the
+SLC 9000 R8 lab device. Fixes ``ansible-test sanity`` failures blocking
+Red Hat certification submission.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.percepxion`` httpapi plugin: ``login()`` now uses
+  ``requests`` directly instead of netcommon's ``send()``. When ``_auth``
+  is ``None``, netcommon injects an ``Authorization: Basic`` header into
+  every request including the login POST itself. Percepxion's API, when
+  receiving login credentials with an extra Basic auth header, issues a
+  token that is immediately invalid, causing all subsequent calls to fail
+  with 401. Using ``requests`` in ``login()`` bypasses this injection.
+- ``lantronix.oob.slc9`` httpapi plugin: same ``login()`` fix as Percepxion
+  to maintain consistency and avoid future Basic-auth injection issues.
+- All 12 Percepxion modules: ``connection.get_option("percepxion_project_tag")``
+  and ``connection.get_option("percepxion_tenant_id")`` fail with "Internal
+  error" because JSON-RPC proxying from modules only covers standard connection
+  options. Fixed by reading these values from ``module.params`` instead and
+  adding ``project_tag`` and ``tenant_id`` to each module's ``argument_spec``.
+- ``percepxion_client.search_smart_groups()``: added required ``limit``
+  parameter to request body (API returns 400 if ``limit`` is missing).
+- ``percepxion_client.create_smart_group()``: changed from ``criteria`` dict
+  format to ``query_string`` string format matching the actual API. Old format
+  caused 400 "Must specify either query_string or array of device_id".
+- ``percepxion_client.delete_smart_group()``: changed payload from
+  ``{"group_id": id}`` to ``{"id": [id]}`` (array) to match the API.
+- ``percepxion_client.search_job_groups()``: added required ``limit`` parameter.
+- ``percepxion_client.create_content()``: the content API uses multipart/form-data
+  upload (not JSON). Rewrote to use multipart with ``file`` and ``data`` fields,
+  bypassing the session's ``Content-Type: application/json`` header.
+- ``percepxion_client.search_content()``: added required ``limit`` parameter.
+- ``percepxion_client.delete_content()``: changed from ``{"content_id": id}``
+  to ``{"id": [id]}`` array format.
+- ``percepxion_client.search_users()``: added ``limit`` parameter; corrected
+  endpoint from ``/v3/user/search`` to ``/v2/user/search``.
+- ``percepxion_client.create_user()``, ``delete_user()``: corrected endpoints
+  from ``/v3/`` to ``/v2/`` prefix.
+- ``percepxion_client.get_device()``: API requires ``device_id`` as a list
+  (``[device_id]``) not a bare string; now returns ``result[0]`` for transparency.
+- ``percepxion_client.unassign_device()``: ``device_id`` must be a list.
+- Multiple Percepxion modules: fixed response key parsing — ``search_results``
+  → ``result`` (content, users), ``search_result`` (smart groups),
+  ``total_results`` is correct for device search; ``id`` instead of
+  ``group_id`` / ``content_id`` in creation responses.
+- ``lantronix.oob.slc_network``: fixed ``_find_interface()`` to parse SLC API's
+  flat-key response format (``eth1_ipv4``, ``eth1_mask`` etc.) instead of
+  expecting a list. Fixed write payload to use the same flat-key format.
+- ``lantronix.oob.slc_firmware``: corrected API endpoint from
+  ``/firmware/version`` (404) to ``/firmware/status``.
+- ``plugins/httpapi/percepxion.py``, ``slc9.py``: wrapped ``import requests``
+  in ``try/except ImportError`` with ``HAS_REQUESTS`` guard so
+  ``ansible-test sanity --test import`` passes without ``requests`` installed.
+- All unit tests: replaced ``unnecessary-lambda`` ``side_effect`` patterns
+  with direct ``dict.get`` method references; renamed bare ``_`` unpack
+  variables to ``mock_cls`` to satisfy ``pylint disallowed-name`` rule;
+  fixed ``E501`` line-length violations in ``side_effect`` assignments.
+
 v1.0.3
 ======
 

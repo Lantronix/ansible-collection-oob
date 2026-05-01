@@ -43,7 +43,8 @@ def run_module(args, check_mode=False, version_side_effect=None):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -57,7 +58,7 @@ def run_module(args, check_mode=False, version_side_effect=None):
 
 
 def test_slc_facts_returns_combined_data():
-    m, _client, _ = run_module({})
+    m, _client, mock_cls = run_module({})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     facts = kwargs["slc_facts"]
@@ -68,7 +69,7 @@ def test_slc_facts_returns_combined_data():
 
 
 def test_slc_facts_calls_all_three_endpoints():
-    _unused, client, _ = run_module({})
+    _unused, client, mock_cls = run_module({})
     client.get_system_version.assert_called_once()
     client.get_system_status.assert_called_once()
     client.get_system_identity.assert_called_once()
@@ -76,7 +77,7 @@ def test_slc_facts_calls_all_three_endpoints():
 
 def test_slc_facts_api_error_calls_fail_json():
     from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
-    m, _client, _ = run_module({}, version_side_effect=AnsibleLantronixError("device unreachable"))
+    m, _client, mock_cls = run_module({}, version_side_effect=AnsibleLantronixError("device unreachable"))
     m.fail_json.assert_called_once()
     assert "device unreachable" in m.fail_json.call_args[1]["msg"]
 

@@ -23,7 +23,8 @@ def run_module(params):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -37,7 +38,7 @@ def run_module(params):
 
 
 def test_returns_all_devices_when_no_filter():
-    m, client, _ = run_module({"filter_status": None})
+    m, client, mock_cls = run_module({"filter_status": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["managed_devices"]) == 3
@@ -45,7 +46,7 @@ def test_returns_all_devices_when_no_filter():
 
 
 def test_filters_by_status_managed():
-    m, client, _ = run_module({"filter_status": "managed"})
+    m, client, mock_cls = run_module({"filter_status": "managed"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["managed_devices"]) == 1
@@ -53,14 +54,14 @@ def test_filters_by_status_managed():
 
 
 def test_filters_by_status_unmanaged():
-    m, client, _ = run_module({"filter_status": "unmanaged"})
+    m, client, mock_cls = run_module({"filter_status": "unmanaged"})
     kwargs = m.exit_json.call_args[1]
     assert len(kwargs["managed_devices"]) == 1
     assert kwargs["managed_devices"][0]["name"] == "juniper-switch"
 
 
 def test_filters_by_status_discovered():
-    m, client, _ = run_module({"filter_status": "discovered"})
+    m, client, mock_cls = run_module({"filter_status": "discovered"})
     kwargs = m.exit_json.call_args[1]
     assert len(kwargs["managed_devices"]) == 1
     assert kwargs["managed_devices"][0]["name"] == "arista-switch"

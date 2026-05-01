@@ -22,7 +22,8 @@ def run_module(params):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
+                _conn_opts = {"host": "api.consoleflow.com", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -36,7 +37,7 @@ def run_module(params):
 
 
 def test_device_logs_returned():
-    m, client, _ = run_module({"log_type": "device", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
+    m, client, mock_cls = run_module({"log_type": "device", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["audit_logs"]) == 1
@@ -44,14 +45,14 @@ def test_device_logs_returned():
 
 
 def test_user_logs_returned():
-    m, client, _ = run_module({"log_type": "user", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
+    m, client, mock_cls = run_module({"log_type": "user", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.search_user_audit_logs.assert_called_once()
 
 
 def test_access_log_downloads_for_device():
-    m, client, _ = run_module({"log_type": "access", "device_id": "dev-001", "start_time": None, "end_time": None, "limit": 100})
+    m, client, mock_cls = run_module({"log_type": "access", "device_id": "dev-001", "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.download_device_log.assert_called_once_with("dev-001", log_type="access")

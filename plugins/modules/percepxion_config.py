@@ -65,13 +65,13 @@ from ansible_collections.lantronix.oob.plugins.module_utils.percepxion_client im
 from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
 
 
-def _make_client(connection):
+def _make_client(connection, module):
     return PercepxionClient(
         host=connection.get_option("host"),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=connection.get_option("percepxion_project_tag") or None,
-        tenant_id=connection.get_option("percepxion_tenant_id") or None,
+        project_tag=module.params.get("project_tag") or None,
+        tenant_id=module.params.get("tenant_id") or None,
         verify_ssl=connection.get_option("validate_certs"),
     )
 
@@ -79,6 +79,8 @@ def _make_client(connection):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
+            project_tag=dict(type="str"),
+            tenant_id=dict(type="str"),
             name=dict(type="str", required=True),
             content_type=dict(type="str", choices=["config", "script", "certificate"]),
             data=dict(type="str"),
@@ -88,7 +90,7 @@ def main():
     )
 
     connection = Connection(module._socket_path)
-    client = _make_client(connection)
+    client = _make_client(connection, module)
 
     name = module.params["name"]
     state = module.params["state"]
@@ -98,7 +100,8 @@ def main():
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 
-    existing = {c["name"]: c for c in search.get("search_results", [])}
+    # API returns {"total": N, "result": [{id, name, type, ...}]}
+    existing = {c["name"]: c for c in search.get("result", [])}
     changed = False
     content_id = None
 
@@ -109,7 +112,7 @@ def main():
                 result = client.create_content(
                     name, module.params.get("content_type", "config"), module.params.get("data", "")
                 )
-                content_id = result.get("content_id")
+                content_id = result.get("id")
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
 
@@ -117,7 +120,7 @@ def main():
         changed = True
         if not module.check_mode:
             try:
-                client.delete_content(existing[name]["content_id"])
+                client.delete_content(existing[name]["id"])
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
 

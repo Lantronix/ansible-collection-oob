@@ -23,7 +23,8 @@ def run_module(params, check_mode=False, get_users_side_effect=None):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -37,7 +38,7 @@ def run_module(params, check_mode=False, get_users_side_effect=None):
 
 
 def test_present_user_already_exists_no_change():
-    m, client, _ = run_module({"username": "netops", "state": "present", "role": "admin", "password": None})
+    m, client, mock_cls = run_module({"username": "netops", "state": "present", "role": "admin", "password": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.set_users.assert_not_called()
@@ -47,7 +48,7 @@ def test_present_user_already_exists_no_change():
 
 def test_present_new_user_triggers_change():
     # First call returns existing list; second call (re-fetch) returns post-create list
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"username": "newuser", "state": "present", "role": "user", "password": "Secret123"},
         get_users_side_effect=[EXISTING_USERS, AFTER_CREATE],
     )
@@ -62,7 +63,7 @@ def test_present_new_user_triggers_change():
 
 def test_absent_existing_user_triggers_change():
     # First call returns existing list; second call (re-fetch) returns post-delete list
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"username": "netops", "state": "absent", "role": None, "password": None},
         get_users_side_effect=[EXISTING_USERS, AFTER_DELETE],
     )
@@ -75,7 +76,7 @@ def test_absent_existing_user_triggers_change():
 
 
 def test_check_mode_does_not_call_set():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {"username": "newuser", "state": "present", "role": "user", "password": "x"}, check_mode=True
     )
     client.set_users.assert_not_called()

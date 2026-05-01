@@ -28,7 +28,8 @@ def run_module(params, check_mode=False):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -42,7 +43,7 @@ def run_module(params, check_mode=False):
 
 
 def test_check_returns_version_unchanged():
-    m, client, _ = run_module({"state": "check", "url": None, "bank": None})
+    m, client, mock_cls = run_module({"state": "check", "url": None, "bank": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert kwargs["firmware"]["current_firmware_version"] == "9.7.0.0R8"
@@ -51,7 +52,7 @@ def test_check_returns_version_unchanged():
 
 
 def test_update_triggers_client_call():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "state": "update",
         "url": "https://downloads.lantronix.com/firmware/9.8.0.0R1.bin",
         "bank": None,
@@ -64,7 +65,7 @@ def test_update_triggers_client_call():
 
 
 def test_update_with_bank_passes_bank():
-    m, client, _ = run_module({
+    m, client, mock_cls = run_module({
         "state": "update",
         "url": "https://downloads.lantronix.com/firmware/9.8.0.0R1.bin",
         "bank": "alternate",
@@ -77,7 +78,7 @@ def test_update_with_bank_passes_bank():
 
 
 def test_check_mode_blocks_update():
-    m, client, _ = run_module(
+    m, client, mock_cls = run_module(
         {
             "state": "update",
             "url": "https://downloads.lantronix.com/firmware/9.8.0.0R1.bin",
