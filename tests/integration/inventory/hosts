@@ -2,4 +2,4 @@
 slc9k ansible_host={{ slc9_host }} ansible_user={{ slc9_username }} ansible_password={{ slc9_password }} ansible_network_os=lantronix.oob.slc9 ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=false
 
 [percepxion_platform]
-percepxion ansible_host={{ percepxion_host }} ansible_user={{ percepxion_username }} ansible_password={{ percepxion_password }} ansible_network_os=lantronix.oob.percepxion ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=false
+percepxion ansible_host={{ percepxion_host }} ansible_user={{ percepxion_username }} ansible_password={{ percepxion_password }} ansible_network_os=lantronix.oob.percepxion ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=true

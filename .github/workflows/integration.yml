@@ -12,18 +12,31 @@ jobs:
         with:
           path: ansible_collections/lantronix/oob
 
-      - name: Install dependencies
-        run: pip install ansible-core ansible.netcommon requests
+      - name: Install Python dependencies
+        run: pip install ansible-core requests
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy collection install ansible.netcommon
+          ansible-galaxy collection install . --force
+        working-directory: ansible_collections/lantronix/oob
 
       - name: Prepare integration config
+        env:
+          SLC9_PASSWORD: ${{ secrets.SLC9_PASSWORD }}
+          PERCEPXION_USERNAME: ${{ secrets.PERCEPXION_USERNAME }}
+          PERCEPXION_PASSWORD: ${{ secrets.PERCEPXION_PASSWORD }}
+          PERCEPXION_PROJECT_TAG: ${{ secrets.PERCEPXION_PROJECT_TAG }}
         run: |
           cp tests/integration/integration_config.yml.template \
              tests/integration/integration_config.yml
-          sed -i "s/slc9_password: \"\"/slc9_password: \"${{ secrets.SLC9_PASSWORD }}\"/" \
+          sed -i "s|slc9_password: \"\"|slc9_password: \"${SLC9_PASSWORD}\"|" \
               tests/integration/integration_config.yml
-          sed -i "s/percepxion_username: \"\"/percepxion_username: \"${{ secrets.PERCEPXION_USERNAME }}\"/" \
+          sed -i "s|percepxion_username: \"\"|percepxion_username: \"${PERCEPXION_USERNAME}\"|" \
               tests/integration/integration_config.yml
-          sed -i "s/percepxion_password: \"\"/percepxion_password: \"${{ secrets.PERCEPXION_PASSWORD }}\"/" \
+          sed -i "s|percepxion_password: \"\"|percepxion_password: \"${PERCEPXION_PASSWORD}\"|" \
+              tests/integration/integration_config.yml
+          sed -i "s|percepxion_project_tag: \"\"|percepxion_project_tag: \"${PERCEPXION_PROJECT_TAG}\"|" \
               tests/integration/integration_config.yml
         working-directory: ansible_collections/lantronix/oob
 

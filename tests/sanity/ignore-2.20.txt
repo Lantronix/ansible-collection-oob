@@ -91,7 +91,8 @@ plugins/modules/percepxion_telemetry.py import-3.12
 .github/workflows/sanity.yml shebang
 .github/workflows/units.yml shebang
 tests/integration/integration_config.yml.template shebang
-tests/integration/inventory shebang
+tests/integration/inventory/hosts shebang
+tests/integration/requirements.yml shebang
 .gitignore shebang
 README.md shebang
 galaxy.yml shebang
