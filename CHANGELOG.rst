@@ -4,6 +4,25 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.2
+======
+
+Release Summary
+---------------
+
+Bugfix release. Corrects the SLC 9000 authentication header name used for all
+API calls after login.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.slc9`` httpapi plugin and ``SLC9Client``: changed authentication
+  header from ``x-user-token`` to ``X-auth-token`` to match the SLC 9000 REST API
+  v2 security scheme. All SLC module tasks previously failed with
+  "Invalid or expired authentication tokens" on every API call despite successful
+  login, because the session token was sent under the wrong header name
+  (https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues/2).
+
 v1.0.1
 ======
 

@@ -40,7 +40,7 @@ class HttpApi(HttpApiBase):
         if not token:
             raise ConnectionError("SLC 9000 login failed: no token in response")
 
-        self.connection._auth = {"x-user-token": token}
+        self.connection._auth = {"X-auth-token": token}
 
     def logout(self):
         try:
@@ -55,7 +55,7 @@ class HttpApi(HttpApiBase):
         self.connection._auth = None
 
     def get_token(self):
-        return (self.connection._auth or {}).get("x-user-token")
+        return (self.connection._auth or {}).get("X-auth-token")
 
     def handle_httperror(self, exc):
         if not hasattr(exc, "code"):

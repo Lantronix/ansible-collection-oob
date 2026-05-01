@@ -19,7 +19,7 @@ class SLC9Client:
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
-            "x-user-token": token,
+            "X-auth-token": token,
         })
         self.session.verify = verify_ssl
 
