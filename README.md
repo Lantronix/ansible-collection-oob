@@ -157,24 +157,24 @@ To operate across multiple projects, loop over inventory groups rather than modu
 
 ## Status
 
-This collection is in active development. Red Hat Technology Partner application submitted April 2026.
+v1.0.0. Red Hat Technology Partner application submitted April 2026.
 
 | Component | Status |
 |---|---|
 | All 20 modules | Complete |
-| Unit tests (22 test files) | Complete — CI passing |
+| Unit tests (85 tests, 22 files) | Complete — CI passing |
 | Both httpapi plugins | Complete |
 | 4 example roles | Complete |
-| Integration tests | In progress |
-| CHANGELOG.rst | Pending |
+| Integration tests (20 targets) | Complete |
+| CHANGELOG.rst | Complete |
 | Red Hat certification | Application submitted — targeting Q4 2026 |
-| Galaxy community release | Ready — pending final repo on github.com/Lantronix |
+| Galaxy community release | Pending final repo on github.com/Lantronix |
 
 ## Contributing
 
 Bug reports and pull requests welcome. Please open an issue before submitting a PR for significant changes.
 
-For development setup, run tests against a local ansible-test environment:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and commit conventions.
 
 ```bash
 mkdir -p ansible_collections/lantronix

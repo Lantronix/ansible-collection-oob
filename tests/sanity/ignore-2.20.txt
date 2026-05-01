@@ -175,3 +175,7 @@ tests/integration/targets/percepxion_import_devices/aliases shebang
 tests/integration/targets/percepxion_import_devices/tasks/main.yml shebang
 tests/integration/targets/percepxion_telemetry/aliases shebang
 tests/integration/targets/percepxion_telemetry/tasks/main.yml shebang
+CHANGELOG.rst shebang
+CONTRIBUTING.md shebang
+docs/docsite/rst/guide_percepxion.rst shebang
+docs/docsite/rst/guide_slc9000.rst shebang
