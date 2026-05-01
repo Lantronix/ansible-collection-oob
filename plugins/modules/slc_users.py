@@ -93,6 +93,12 @@ def main():
                 client.set_users(payload)
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
+            # Re-fetch after write so the returned list reflects actual device state
+            try:
+                updated = client.get_users()
+            except AnsibleLantronixError as exc:
+                module.fail_json(msg=str(exc))
+            existing_usernames = [u["username"] for u in updated.get("users", [])]
 
     elif state == "absent" and username in existing_usernames:
         changed = True
@@ -101,6 +107,12 @@ def main():
                 client.set_users({"username": username, "delete": True})
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
+            # Re-fetch after write so the returned list reflects actual device state
+            try:
+                updated = client.get_users()
+            except AnsibleLantronixError as exc:
+                module.fail_json(msg=str(exc))
+            existing_usernames = [u["username"] for u in updated.get("users", [])]
 
     module.exit_json(changed=changed, users=existing_usernames)
 

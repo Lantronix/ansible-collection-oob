@@ -22,12 +22,11 @@
   register: single_port
   failed_when: false
 
-- name: Assert port1 query either returned data or failed cleanly
+- name: Assert port1 query returned valid data or was not found
   ansible.builtin.assert:
     that:
-      - single_port is defined
-    success_msg: "port1 query completed (changed={{ single_port.changed | default(false) }})"
-    fail_msg: "port1 query did not return a result at all"
+      - single_port.failed == false or 'not found' in (single_port.msg | default(''))
+    fail_msg: "Port1 query failed unexpectedly: {{ single_port.msg | default('unknown error') }}"
 
 - name: Assert port1 result is a list if query succeeded
   ansible.builtin.assert:

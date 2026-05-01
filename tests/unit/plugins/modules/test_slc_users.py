@@ -5,14 +5,19 @@ from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import slc_users
 
 EXISTING_USERS = {"users": [{"username": "netops", "role": "admin"}]}
+AFTER_CREATE = {"users": [{"username": "netops", "role": "admin"}, {"username": "newuser", "role": "user"}]}
+AFTER_DELETE = {"users": []}
 
 
-def run_module(params, check_mode=False):
+def run_module(params, check_mode=False, get_users_side_effect=None):
     with patch("ansible_collections.lantronix.oob.plugins.modules.slc_users.AnsibleModule") as mock_mod:
         with patch("ansible_collections.lantronix.oob.plugins.modules.slc_users.Connection") as mock_conn_cls:
             with patch("ansible_collections.lantronix.oob.plugins.modules.slc_users.SLC9Client") as mock_cls:
                 instance = MagicMock()
-                instance.get_users.return_value = EXISTING_USERS
+                if get_users_side_effect is not None:
+                    instance.get_users.side_effect = get_users_side_effect
+                else:
+                    instance.get_users.return_value = EXISTING_USERS
                 instance.set_users.return_value = {}
                 mock_cls.return_value = instance
 
@@ -36,19 +41,37 @@ def test_present_user_already_exists_no_change():
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.set_users.assert_not_called()
+    # No re-fetch when there is no change — get_users called exactly once
+    assert client.get_users.call_count == 1
 
 
 def test_present_new_user_triggers_change():
-    m, client = run_module({"username": "newuser", "state": "present", "role": "user", "password": "Secret123"})
+    # First call returns existing list; second call (re-fetch) returns post-create list
+    m, client = run_module(
+        {"username": "newuser", "state": "present", "role": "user", "password": "Secret123"},
+        get_users_side_effect=[EXISTING_USERS, AFTER_CREATE],
+    )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.set_users.assert_called_once()
+    # get_users called twice: initial fetch + re-fetch after write
+    assert client.get_users.call_count == 2
+    # Returned users list reflects post-write state
+    assert "newuser" in kwargs["users"]
 
 
 def test_absent_existing_user_triggers_change():
-    m, client = run_module({"username": "netops", "state": "absent", "role": None, "password": None})
+    # First call returns existing list; second call (re-fetch) returns post-delete list
+    m, client = run_module(
+        {"username": "netops", "state": "absent", "role": None, "password": None},
+        get_users_side_effect=[EXISTING_USERS, AFTER_DELETE],
+    )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
+    # get_users called twice: initial fetch + re-fetch after write
+    assert client.get_users.call_count == 2
+    # Returned users list reflects post-write state
+    assert "netops" not in kwargs["users"]
 
 
 def test_check_mode_does_not_call_set():
@@ -56,3 +79,5 @@ def test_check_mode_does_not_call_set():
         {"username": "newuser", "state": "present", "role": "user", "password": "x"}, check_mode=True
     )
     client.set_users.assert_not_called()
+    # In check_mode no write happens, so no re-fetch — get_users called exactly once
+    assert client.get_users.call_count == 1
