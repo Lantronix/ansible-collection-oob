@@ -1,48 +1,17 @@
 ---
-# Idempotency test only: devices are already registered in the sandbox.
-# Attempts re-import and asserts the device lands in 'skipped', not 'registered'.
-# This validates the module's duplicate-detection logic without adding new devices.
+# The Ansible-OOB test tenant has SLC9000-RH already registered.
+# This test verifies the module correctly skips re-importing it.
 
-- name: Percepxion import devices idempotency integration test
-  hosts: percepxion_platform
-  gather_facts: false
-  tasks:
+- name: Attempt to import already-registered device (expect skipped)
+  lantronix.oob.percepxion_import_devices:
+    devices:
+      - serial: "SLC9000-RH"
+  register: import_result
 
-    - name: Get current device list to confirm SLC9000-RH is already registered
-      lantronix.oob.percepxion_devices:
-        search_string: "SLC9000-RH"
-      register: devices_result
-
-    - name: Assert SLC9000-RH is present before import test
-      ansible.builtin.assert:
-        that:
-          - devices_result.devices | length > 0
-        fail_msg: "SLC9000-RH not found — the import idempotency test requires a pre-registered device"
-
-    - name: Attempt to import already-registered device (expect skipped)
-      lantronix.oob.percepxion_import_devices:
-        devices:
-          - serial_number: "{{ devices_result.devices[0].id }}"
-        state: present
-      register: import_result
-
-    - name: Verify device was skipped (not registered again)
-      ansible.builtin.assert:
-        that:
-          - import_result.skipped is defined
-          - import_result.registered is defined
-          - import_result.skipped | length > 0
-          - import_result.registered | length == 0
-        success_msg: >-
-          Import idempotency confirmed — skipped={{ import_result.skipped | length }},
-          registered={{ import_result.registered | length }}
-        fail_msg: >-
-          Expected device to be skipped, not re-registered.
-          Got: registered={{ import_result.registered }}, skipped={{ import_result.skipped }}
-
-    - name: Verify import of existing device reports no change
-      ansible.builtin.assert:
-        that:
-          - import_result.changed is false
-        success_msg: "Import of existing device correctly reported changed=false"
-        fail_msg: "Expected changed=false when device already registered, got: {{ import_result.changed }}"
+- name: Verify device was skipped (already registered)
+  ansible.builtin.assert:
+    that:
+      - import_result.skipped | length > 0
+      - import_result.registered | length == 0
+      - import_result.changed is false
+    fail_msg: "Expected SLC9000-RH to be skipped, got registered={{ import_result.registered }}, skipped={{ import_result.skipped }}"
