@@ -59,10 +59,24 @@ class HttpApi(HttpApiBase):
         # Percepxion 6.12 has no logout endpoint; clear local auth state only.
         self.connection._auth = None
 
+    def _ensure_logged_in(self):
+        """Trigger _connect() → login() if not already authenticated.
+
+        login() is only called by the @ensure_connect decorator on send(). Modules
+        call get_token()/get_csrf_token() before any send(), so we force it here.
+        """
+        if self.connection._auth is None:
+            try:
+                self.connection.send("/v2/user/login", None, method="GET", headers={})
+            except Exception:
+                pass
+
     def get_token(self):
+        self._ensure_logged_in()
         return (self.connection._auth or {}).get("x-mystq-token")
 
     def get_csrf_token(self):
+        self._ensure_logged_in()
         return (self.connection._auth or {}).get("x-csrf-token")
 
     def handle_httperror(self, exc):

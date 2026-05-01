@@ -4,6 +4,28 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.3
+======
+
+Release Summary
+---------------
+
+Bugfix release. Fixes a fundamental authentication timing issue where modules
+always received a ``None`` token from the httpapi plugin.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.slc9`` and ``lantronix.oob.percepxion`` httpapi plugins: modules
+  call ``get_token()`` before any ``send()`` has occurred, so the
+  ``@ensure_connect`` decorator (which triggers ``_connect()`` and ``login()``)
+  was never fired. All 20 modules silently received a ``None`` token and every
+  API call failed with a 401 from the device. Fixed by having ``get_token()`` (and
+  ``get_csrf_token()``) issue a lightweight ``send()`` call when ``_auth`` is
+  ``None``, forcing the connection and login to complete before the token is
+  returned
+  (https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues/3).
+
 v1.0.2
 ======
 

@@ -55,6 +55,13 @@ class HttpApi(HttpApiBase):
         self.connection._auth = None
 
     def get_token(self):
+        if self.connection._auth is None:
+            # login() is only triggered by send(), which has @ensure_connect.
+            # Modules call get_token() before any send(), so we force it here.
+            try:
+                self.connection.send("/api/v2/user/login", None, method="GET", headers={})
+            except Exception:
+                pass
         return (self.connection._auth or {}).get("X-auth-token")
 
     def handle_httperror(self, exc):
