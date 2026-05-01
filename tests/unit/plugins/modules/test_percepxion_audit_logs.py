@@ -22,7 +22,7 @@ def run_module(params):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -32,11 +32,11 @@ def run_module(params):
                 mock_mod.return_value = m
 
                 percepxion_audit_logs.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_device_logs_returned():
-    m, client = run_module({"log_type": "device", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
+    m, client, _ = run_module({"log_type": "device", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["audit_logs"]) == 1
@@ -44,14 +44,21 @@ def test_device_logs_returned():
 
 
 def test_user_logs_returned():
-    m, client = run_module({"log_type": "user", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
+    m, client, _ = run_module({"log_type": "user", "device_id": None, "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.search_user_audit_logs.assert_called_once()
 
 
 def test_access_log_downloads_for_device():
-    m, client = run_module({"log_type": "access", "device_id": "dev-001", "start_time": None, "end_time": None, "limit": 100})
+    m, client, _ = run_module({"log_type": "access", "device_id": "dev-001", "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.download_device_log.assert_called_once_with("dev-001", log_type="access")
+
+
+def test_percepxion_audit_logs_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"log_type": "device", "limit": 50, "start_time": None, "end_time": None, "device_id": None})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

@@ -22,7 +22,7 @@ def run_module(params, check_mode=False, existing=None):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -32,18 +32,18 @@ def run_module(params, check_mode=False, existing=None):
                 mock_mod.return_value = m
 
                 percepxion_users.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_no_change_when_user_exists():
-    m, client = run_module({"username": "netops", "role": "admin", "password": None, "state": "present"})
+    m, client, _ = run_module({"username": "netops", "role": "admin", "password": None, "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.create_user.assert_not_called()
 
 
 def test_changed_when_new_user():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"username": "newuser", "role": "user", "password": "Secret1", "state": "present"},
         existing=EMPTY_USERS,
     )
@@ -53,14 +53,14 @@ def test_changed_when_new_user():
 
 
 def test_absent_removes_user():
-    m, client = run_module({"username": "netops", "role": None, "password": None, "state": "absent"})
+    m, client, _ = run_module({"username": "netops", "role": None, "password": None, "state": "absent"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.delete_user.assert_called_once_with("netops")
 
 
 def test_check_mode_blocks_create():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"username": "newuser", "role": "user", "password": "x", "state": "present"},
         check_mode=True,
         existing=EMPTY_USERS,
@@ -68,3 +68,10 @@ def test_check_mode_blocks_create():
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_user.assert_not_called()
+
+
+def test_percepxion_users_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"username": "netops", "role": "admin", "password": None, "state": "present"})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

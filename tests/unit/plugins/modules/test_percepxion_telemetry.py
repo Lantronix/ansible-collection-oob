@@ -20,7 +20,7 @@ def run_module(params):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -30,11 +30,11 @@ def run_module(params):
                 mock_mod.return_value = m
 
                 percepxion_telemetry.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_returns_stats_for_device():
-    m, client = run_module({
+    m, client, _ = run_module({
         "device_id": "dev-001",
         "metrics": ["cpu", "memory", "temperature"],
         "start_time": None,
@@ -47,7 +47,7 @@ def test_returns_stats_for_device():
 
 
 def test_returns_history_when_time_range_given():
-    m, client = run_module({
+    m, client, _ = run_module({
         "device_id": "dev-001",
         "metrics": ["temperature"],
         "start_time": "2026-04-01T00:00:00Z",
@@ -59,3 +59,10 @@ def test_returns_history_when_time_range_given():
     client.get_telemetry_history.assert_called_once_with(
         "dev-001", "temperature", "2026-04-01T00:00:00Z", "2026-04-02T00:00:00Z"
     )
+
+
+def test_percepxion_telemetry_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"device_id": "dev-001", "metrics": ["cpu"], "start_time": None, "end_time": None})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

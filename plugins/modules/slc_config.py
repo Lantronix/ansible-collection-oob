@@ -86,7 +86,7 @@ def main():
     )
 
     connection = Connection(module._socket_path)
-    client = SLC9Client(host=connection.get_option("host"), token=connection.get_token())
+    client = SLC9Client(host=connection.get_option("host"), token=connection.get_token(), verify_ssl=connection.get_option("validate_certs"))
 
     action = module.params["action"]
 

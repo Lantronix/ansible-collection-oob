@@ -23,7 +23,7 @@ def run_module(params, check_mode=False, device_project_tag="project-a"):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -33,11 +33,11 @@ def run_module(params, check_mode=False, device_project_tag="project-a"):
                 mock_mod.return_value = m
 
                 percepxion_projects.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_no_change_when_already_assigned():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"device_id": "dev-001", "project_tag": "project-a", "state": "present"},
         device_project_tag="project-a",
     )
@@ -47,7 +47,7 @@ def test_no_change_when_already_assigned():
 
 
 def test_changed_when_unassigned():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"device_id": "dev-001", "project_tag": "project-a", "state": "present"},
         device_project_tag=None,
     )
@@ -57,7 +57,7 @@ def test_changed_when_unassigned():
 
 
 def test_absent_removes_from_project():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"device_id": "dev-001", "project_tag": None, "state": "absent"},
         device_project_tag="project-a",
     )
@@ -67,7 +67,7 @@ def test_absent_removes_from_project():
 
 
 def test_check_mode_blocks_assign():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"device_id": "dev-001", "project_tag": "project-a", "state": "present"},
         check_mode=True,
         device_project_tag=None,
@@ -75,3 +75,10 @@ def test_check_mode_blocks_assign():
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.assign_device.assert_not_called()
+
+
+def test_percepxion_projects_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"device_id": "dev-001", "project_tag": "proj", "state": "present"})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

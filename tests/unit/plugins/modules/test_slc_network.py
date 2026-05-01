@@ -34,7 +34,7 @@ def run_module(params, check_mode=False, interfaces=None):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.return_value = "192.0.2.1"
+                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -44,11 +44,11 @@ def run_module(params, check_mode=False, interfaces=None):
                 mock_mod.return_value = m
 
                 slc_network.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_no_change_when_static_config_matches():
-    m, client = run_module({
+    m, client, _ = run_module({
         "interface": "eth1",
         "ipv4_address": "192.168.1.100",
         "netmask": "255.255.255.0",
@@ -61,7 +61,7 @@ def test_no_change_when_static_config_matches():
 
 
 def test_changed_when_ip_differs():
-    m, client = run_module({
+    m, client, _ = run_module({
         "interface": "eth1",
         "ipv4_address": "10.0.0.50",
         "netmask": "255.255.255.0",
@@ -74,7 +74,7 @@ def test_changed_when_ip_differs():
 
 
 def test_changed_when_switching_to_dhcp():
-    m, client = run_module({
+    m, client, _ = run_module({
         "interface": "eth1",
         "ipv4_address": None,
         "netmask": None,
@@ -87,7 +87,7 @@ def test_changed_when_switching_to_dhcp():
 
 
 def test_no_change_when_already_dhcp():
-    m, client = run_module({
+    m, client, _ = run_module({
         "interface": "eth2",
         "ipv4_address": None,
         "netmask": None,
@@ -100,7 +100,7 @@ def test_no_change_when_already_dhcp():
 
 
 def test_check_mode_blocks_write():
-    m, client = run_module(
+    m, client, _ = run_module(
         {
             "interface": "eth1",
             "ipv4_address": "10.0.0.50",
@@ -113,3 +113,10 @@ def test_check_mode_blocks_write():
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.set_network_interfaces.assert_not_called()
+
+
+def test_slc_network_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"interface": "eth1", "dhcp": True, "ipv4_address": None, "netmask": None, "state": "present"})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

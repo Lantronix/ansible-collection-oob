@@ -79,6 +79,7 @@ def _make_client(connection):
         csrf_token=connection.get_csrf_token(),
         project_tag=connection.get_option("percepxion_project_tag") or None,
         tenant_id=connection.get_option("percepxion_tenant_id") or None,
+        verify_ssl=connection.get_option("validate_certs"),
     )
 
 

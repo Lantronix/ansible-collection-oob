@@ -59,6 +59,7 @@ def main():
     client = PercepxionClient(
         host=host, token=token, csrf_token=csrf,
         project_tag=project_tag, tenant_id=tenant_id,
+        verify_ssl=connection.get_option("validate_certs"),
     )
 
     try:

@@ -24,7 +24,7 @@ def run_module(params, check_mode=False):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -34,11 +34,11 @@ def run_module(params, check_mode=False):
                 mock_mod.return_value = m
 
                 percepxion_firmware.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_check_returns_compliance_unchanged():
-    m, client = run_module({"smart_group_id": "grp-001", "firmware_version": "9.7.0.0R8", "state": "check"})
+    m, client, _ = run_module({"smart_group_id": "grp-001", "firmware_version": "9.7.0.0R8", "state": "check"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert "compliant_devices" in kwargs
@@ -47,17 +47,24 @@ def test_check_returns_compliance_unchanged():
 
 
 def test_update_creates_job_group():
-    m, client = run_module({"smart_group_id": "grp-001", "firmware_version": "9.8.0.0R1", "state": "update"})
+    m, client, _ = run_module({"smart_group_id": "grp-001", "firmware_version": "9.8.0.0R1", "state": "update"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_job_group.assert_called_once()
 
 
 def test_check_mode_blocks_update():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"smart_group_id": "grp-001", "firmware_version": "9.8.0.0R1", "state": "update"},
         check_mode=True,
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_job_group.assert_not_called()
+
+
+def test_percepxion_firmware_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"smart_group_id": "grp-001", "firmware_version": "9.7.0.0R8", "state": "check"})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

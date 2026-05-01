@@ -25,7 +25,7 @@ def run_module(params, check_mode=False, search_result=None):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -35,21 +35,21 @@ def run_module(params, check_mode=False, search_result=None):
                 mock_mod.return_value = m
 
                 percepxion_import_devices.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 DEVICES = [{"serial": "SN123456", "mac": "aa:bb:cc:dd:ee:ff", "model": "SLC9016"}]
 
 
 def test_registers_new_device():
-    m, client = run_module({"devices": DEVICES, "project_tag": "dc1", "state": "present"})
+    m, client, _ = run_module({"devices": DEVICES, "project_tag": "dc1", "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.register_device.assert_called_once()
 
 
 def test_skips_already_registered_device():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"devices": DEVICES, "project_tag": "dc1", "state": "present"},
         search_result=ALREADY_REGISTERED,
     )
@@ -59,10 +59,17 @@ def test_skips_already_registered_device():
 
 
 def test_check_mode_blocks_register():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"devices": DEVICES, "project_tag": "dc1", "state": "present"},
         check_mode=True,
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.register_device.assert_not_called()
+
+
+def test_percepxion_import_devices_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"devices": [], "project_tag": None})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

@@ -29,7 +29,7 @@ def run_module(params, check_mode=False):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.return_value = "192.0.2.1"
+                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -39,11 +39,11 @@ def run_module(params, check_mode=False):
                 mock_mod.return_value = m
 
                 slc_device_ports.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_returns_all_ports_when_no_filter():
-    m, client = run_module({"port_id": None, "gather_connections": False})
+    m, client, _ = run_module({"port_id": None, "gather_connections": False})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["ports"]) == 2
@@ -51,7 +51,7 @@ def test_returns_all_ports_when_no_filter():
 
 
 def test_filters_to_single_port():
-    m, client = run_module({"port_id": "port1", "gather_connections": False})
+    m, client, _ = run_module({"port_id": "port1", "gather_connections": False})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["ports"]) == 1
@@ -59,7 +59,7 @@ def test_filters_to_single_port():
 
 
 def test_includes_connections_when_requested():
-    m, client = run_module({"port_id": None, "gather_connections": True})
+    m, client, _ = run_module({"port_id": None, "gather_connections": True})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert "connections" in kwargs
@@ -68,7 +68,14 @@ def test_includes_connections_when_requested():
 
 
 def test_no_connections_by_default():
-    m, client = run_module({"port_id": None, "gather_connections": False})
+    m, client, _ = run_module({"port_id": None, "gather_connections": False})
     kwargs = m.exit_json.call_args[1]
     assert "connections" not in kwargs
     client.get_connections.assert_not_called()
+
+
+def test_slc_device_ports_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"port_id": None, "gather_connections": False})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

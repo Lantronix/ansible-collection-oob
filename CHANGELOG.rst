@@ -4,6 +4,25 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.1
+======
+
+Release Summary
+---------------
+
+Bugfix release. Corrects SSL certificate validation behavior when
+``ansible_httpapi_validate_certs: false`` is set in inventory.
+
+Bugfixes
+--------
+
+- All 20 modules now correctly read the ``validate_certs`` connection option and
+  pass it to the underlying ``requests.Session`` as ``verify_ssl``. Previously,
+  the option was silently ignored and all modules defaulted to
+  ``verify_ssl=True``, causing ``SSLError`` failures against devices with
+  self-signed certificates even when ``ansible_httpapi_validate_certs: false``
+  was set (https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues/1).
+
 v1.0.0
 ======
 

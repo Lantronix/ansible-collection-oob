@@ -25,7 +25,7 @@ def run_module(params, check_mode=False, search_result=None):
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
                 mock_conn.get_csrf_token.return_value = "test-csrf"
-                mock_conn.get_option.return_value = None
+                mock_conn.get_option.side_effect = lambda k: {"host": "api.consoleflow.com", "validate_certs": False, "percepxion_project_tag": None, "percepxion_tenant_id": None}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -35,18 +35,18 @@ def run_module(params, check_mode=False, search_result=None):
                 mock_mod.return_value = m
 
                 percepxion_jobs.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_creates_new_job_group():
-    m, client = run_module({"name": "nightly-backup", "job_type": "backup", "enabled": True, "state": "present"})
+    m, client, _ = run_module({"name": "nightly-backup", "job_type": "backup", "enabled": True, "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_job_group.assert_called_once()
 
 
 def test_no_change_when_job_exists_and_enabled():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"name": "nightly-backup", "job_type": "backup", "enabled": True, "state": "present"},
         search_result=EXISTING_JOB,
     )
@@ -56,7 +56,7 @@ def test_no_change_when_job_exists_and_enabled():
 
 
 def test_disables_existing_job():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"name": "nightly-backup", "job_type": "backup", "enabled": False, "state": "present"},
         search_result=EXISTING_JOB,
     )
@@ -66,10 +66,17 @@ def test_disables_existing_job():
 
 
 def test_query_returns_logs_unchanged():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"name": "nightly-backup", "job_type": None, "enabled": True, "state": "query"},
         search_result=EXISTING_JOB,
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert "job_logs" in kwargs
+
+
+def test_percepxion_jobs_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"name": "job1", "job_type": "backup", "enabled": True, "state": "present"})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

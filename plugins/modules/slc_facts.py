@@ -112,7 +112,7 @@ def main():
     token = connection.get_token()
     host = connection.get_option("host")
 
-    client = SLC9Client(host=host, token=token)
+    client = SLC9Client(host=host, token=token, verify_ssl=connection.get_option("validate_certs"))
 
     try:
         version = client.get_system_version()

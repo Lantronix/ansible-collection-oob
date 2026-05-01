@@ -23,7 +23,7 @@ def run_module(params):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.return_value = "192.0.2.1"
+                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -33,11 +33,11 @@ def run_module(params):
                 mock_mod.return_value = m
 
                 slc_managed_devices.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_returns_all_devices_when_no_filter():
-    m, client = run_module({"filter_status": None})
+    m, client, _ = run_module({"filter_status": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["managed_devices"]) == 3
@@ -45,7 +45,7 @@ def test_returns_all_devices_when_no_filter():
 
 
 def test_filters_by_status_managed():
-    m, client = run_module({"filter_status": "managed"})
+    m, client, _ = run_module({"filter_status": "managed"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert len(kwargs["managed_devices"]) == 1
@@ -53,14 +53,21 @@ def test_filters_by_status_managed():
 
 
 def test_filters_by_status_unmanaged():
-    m, client = run_module({"filter_status": "unmanaged"})
+    m, client, _ = run_module({"filter_status": "unmanaged"})
     kwargs = m.exit_json.call_args[1]
     assert len(kwargs["managed_devices"]) == 1
     assert kwargs["managed_devices"][0]["name"] == "juniper-switch"
 
 
 def test_filters_by_status_discovered():
-    m, client = run_module({"filter_status": "discovered"})
+    m, client, _ = run_module({"filter_status": "discovered"})
     kwargs = m.exit_json.call_args[1]
     assert len(kwargs["managed_devices"]) == 1
     assert kwargs["managed_devices"][0]["name"] == "arista-switch"
+
+
+def test_slc_managed_devices_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"filter_status": None})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False

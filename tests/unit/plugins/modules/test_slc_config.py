@@ -21,7 +21,7 @@ def run_module(params, check_mode=False):
 
                 mock_conn = MagicMock()
                 mock_conn.get_token.return_value = "test-token"
-                mock_conn.get_option.return_value = "192.0.2.1"
+                mock_conn.get_option.side_effect = lambda k: {"host": "192.0.2.1", "validate_certs": False}.get(k)
                 mock_conn_cls.return_value = mock_conn
 
                 m = MagicMock()
@@ -31,11 +31,11 @@ def run_module(params, check_mode=False):
                 mock_mod.return_value = m
 
                 slc_config.main()
-                return m, instance
+                return m, instance, mock_cls
 
 
 def test_get_returns_commands_unchanged():
-    m, client = run_module({"action": "get", "commands": None})
+    m, client, _ = run_module({"action": "get", "commands": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert kwargs["commands"] == MOCK_COMMANDS["commands"]
@@ -44,7 +44,7 @@ def test_get_returns_commands_unchanged():
 
 
 def test_compare_returns_diff_unchanged():
-    m, client = run_module({"action": "compare", "commands": None})
+    m, client, _ = run_module({"action": "compare", "commands": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert "diff" in kwargs
@@ -52,7 +52,7 @@ def test_compare_returns_diff_unchanged():
 
 
 def test_save_is_always_changed():
-    m, client = run_module({"action": "save", "commands": None})
+    m, client, _ = run_module({"action": "save", "commands": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.save_config.assert_called_once()
@@ -60,23 +60,30 @@ def test_save_is_always_changed():
 
 def test_batch_calls_post_with_correct_commands():
     cmds = ["set hostname slc9k-prod", "set ntp server 10.1.1.1"]
-    m, client = run_module({"action": "batch", "commands": cmds})
+    m, client, _ = run_module({"action": "batch", "commands": cmds})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.post_config_batch.assert_called_once_with(cmds)
 
 
 def test_check_mode_blocks_save():
-    m, client = run_module({"action": "save", "commands": None}, check_mode=True)
+    m, client, _ = run_module({"action": "save", "commands": None}, check_mode=True)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.save_config.assert_not_called()
 
 
 def test_check_mode_blocks_batch():
-    m, client = run_module(
+    m, client, _ = run_module(
         {"action": "batch", "commands": ["set hostname x"]}, check_mode=True
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.post_config_batch.assert_not_called()
+
+
+def test_slc_config_passes_validate_certs_to_client():
+    m, _instance, mock_cls = run_module({"action": "get", "commands": None})
+    call_kwargs = mock_cls.call_args[1]
+    assert "verify_ssl" in call_kwargs
+    assert call_kwargs["verify_ssl"] is False
