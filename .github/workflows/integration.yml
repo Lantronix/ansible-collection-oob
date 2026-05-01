@@ -1,0 +1,33 @@
+name: Integration Tests
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/lantronix/oob
+
+      - name: Install dependencies
+        run: pip install ansible-core ansible.netcommon requests
+
+      - name: Prepare integration config
+        run: |
+          cp tests/integration/integration_config.yml.template \
+             tests/integration/integration_config.yml
+          sed -i "s/slc9_password: \"\"/slc9_password: \"${{ secrets.SLC9_PASSWORD }}\"/" \
+              tests/integration/integration_config.yml
+          sed -i "s/percepxion_username: \"\"/percepxion_username: \"${{ secrets.PERCEPXION_USERNAME }}\"/" \
+              tests/integration/integration_config.yml
+          sed -i "s/percepxion_password: \"\"/percepxion_password: \"${{ secrets.PERCEPXION_PASSWORD }}\"/" \
+              tests/integration/integration_config.yml
+        working-directory: ansible_collections/lantronix/oob
+
+      - name: Run integration tests
+        run: |
+          cd ansible_collections/lantronix/oob
+          ansible-test integration --python 3.11

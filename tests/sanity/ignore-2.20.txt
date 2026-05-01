@@ -87,8 +87,11 @@ plugins/modules/percepxion_telemetry.py shebang
 plugins/modules/percepxion_telemetry.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_telemetry.py validate-modules:import-error
 plugins/modules/percepxion_telemetry.py import-3.12
+.github/workflows/integration.yml shebang
 .github/workflows/sanity.yml shebang
 .github/workflows/units.yml shebang
+tests/integration/integration_config.yml.template shebang
+tests/integration/inventory shebang
 .gitignore shebang
 README.md shebang
 galaxy.yml shebang

@@ -3,3 +3,4 @@ __pycache__/
 tests/output/
 *.retry
 .DS_Store
+tests/integration/integration_config.yml
