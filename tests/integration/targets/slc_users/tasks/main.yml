@@ -1,0 +1,87 @@
+---
+# Full CRUD cycle for slc_users. Uses a dedicated test account that is
+# created and removed within this target so the device is left clean.
+
+- name: Ensure test user does not exist before starting (pre-clean)
+  lantronix.oob.slc_users:
+    username: ansible-test-user
+    state: absent
+  ignore_errors: true
+
+# --- CREATE ---
+
+- name: Create test user with role 'user'
+  lantronix.oob.slc_users:
+    username: ansible-test-user
+    password: AnsibleTest123!
+    role: user
+    state: present
+  register: create_result
+
+- name: Assert user creation reported changed
+  ansible.builtin.assert:
+    that:
+      - create_result.changed is true
+    success_msg: "User creation correctly reported changed=true"
+    fail_msg: "Expected changed=true on first create, got changed={{ create_result.changed }}"
+
+- name: Assert ansible-test-user appears in users list
+  ansible.builtin.assert:
+    that:
+      - "'ansible-test-user' in create_result.users"
+    success_msg: "ansible-test-user found in result.users"
+    fail_msg: "ansible-test-user missing from result.users: {{ create_result.users }}"
+
+# --- IDEMPOTENCY (create again, expect no change) ---
+
+- name: Create same user again to verify idempotency
+  lantronix.oob.slc_users:
+    username: ansible-test-user
+    password: AnsibleTest123!
+    role: user
+    state: present
+  register: idempotent_create
+
+- name: Assert idempotent create reported no change
+  ansible.builtin.assert:
+    that:
+      - idempotent_create.changed is false
+    success_msg: "Idempotent create correctly reported changed=false"
+    fail_msg: "Expected changed=false on repeat create, got changed={{ idempotent_create.changed }}"
+
+# --- DELETE ---
+
+- name: Delete test user
+  lantronix.oob.slc_users:
+    username: ansible-test-user
+    state: absent
+  register: delete_result
+
+- name: Assert user deletion reported changed
+  ansible.builtin.assert:
+    that:
+      - delete_result.changed is true
+    success_msg: "User deletion correctly reported changed=true"
+    fail_msg: "Expected changed=true on delete, got changed={{ delete_result.changed }}"
+
+- name: Assert ansible-test-user no longer in users list
+  ansible.builtin.assert:
+    that:
+      - "'ansible-test-user' not in delete_result.users"
+    success_msg: "ansible-test-user correctly absent from result.users"
+    fail_msg: "ansible-test-user still present in result.users after delete: {{ delete_result.users }}"
+
+# --- IDEMPOTENCY (delete again, expect no change) ---
+
+- name: Delete same user again to verify absent idempotency
+  lantronix.oob.slc_users:
+    username: ansible-test-user
+    state: absent
+  register: idempotent_delete
+
+- name: Assert idempotent delete reported no change
+  ansible.builtin.assert:
+    that:
+      - idempotent_delete.changed is false
+    success_msg: "Idempotent delete correctly reported changed=false"
+    fail_msg: "Expected changed=false on repeat delete, got changed={{ idempotent_delete.changed }}"

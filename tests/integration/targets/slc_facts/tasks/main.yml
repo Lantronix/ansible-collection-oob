@@ -1,0 +1,44 @@
+---
+- name: Gather facts from SLC 9000
+  lantronix.oob.slc_facts:
+  register: result
+
+- name: Verify model field is present and non-empty
+  ansible.builtin.assert:
+    that:
+      - result.slc_facts.model is defined
+      - result.slc_facts.model | length > 0
+    success_msg: "slc_facts.model returned: {{ result.slc_facts.model }}"
+    fail_msg: "slc_facts.model not returned or empty"
+
+- name: Verify firmware version format
+  ansible.builtin.assert:
+    that:
+      - result.slc_facts.current_firmware_version is defined
+      - result.slc_facts.current_firmware_version is match('\d+\.\d+\.\d+\.\d+R\d+')
+    success_msg: "Firmware version: {{ result.slc_facts.current_firmware_version }}"
+    fail_msg: "Unexpected firmware version: {{ result.slc_facts.current_firmware_version }}"
+
+- name: Verify bootloader_version is defined
+  ansible.builtin.assert:
+    that:
+      - result.slc_facts.bootloader_version is defined
+      - result.slc_facts.bootloader_version | length > 0
+    success_msg: "Bootloader version: {{ result.slc_facts.bootloader_version }}"
+    fail_msg: "slc_facts.bootloader_version not returned or empty"
+
+- name: Verify uptime is a positive integer
+  ansible.builtin.assert:
+    that:
+      - result.slc_facts.uptime is defined
+      - result.slc_facts.uptime | int > 0
+    success_msg: "Uptime: {{ result.slc_facts.uptime }}"
+    fail_msg: "Uptime not a positive integer: {{ result.slc_facts.uptime }}"
+
+- name: Verify hostname is defined
+  ansible.builtin.assert:
+    that:
+      - result.slc_facts.hostname is defined
+      - result.slc_facts.hostname | length > 0
+    success_msg: "Hostname: {{ result.slc_facts.hostname }}"
+    fail_msg: "slc_facts.hostname not returned or empty"

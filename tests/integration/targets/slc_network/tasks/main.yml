@@ -1,0 +1,32 @@
+---
+# Read-only test. Do NOT modify IP addresses on a live lab device —
+# changing network configuration would break connectivity and fail all
+# subsequent tests.
+
+- name: Query eth1 interface configuration
+  lantronix.oob.slc_network:
+    interface: eth1
+  register: result
+
+- name: Assert interface field is returned
+  ansible.builtin.assert:
+    that:
+      - result.interface is defined
+      - result.interface | length > 0
+    success_msg: "Interface returned: {{ result.interface }}"
+    fail_msg: "result.interface not returned or empty"
+
+- name: Assert config is a dict
+  ansible.builtin.assert:
+    that:
+      - result.config is defined
+      - result.config is mapping
+    success_msg: "config dict returned with keys: {{ result.config.keys() | list }}"
+    fail_msg: "result.config is not a dict: {{ result.config }}"
+
+- name: Assert interface matches requested interface
+  ansible.builtin.assert:
+    that:
+      - result.interface == 'eth1'
+    success_msg: "Interface correctly returned as eth1"
+    fail_msg: "Interface mismatch — expected eth1, got {{ result.interface }}"

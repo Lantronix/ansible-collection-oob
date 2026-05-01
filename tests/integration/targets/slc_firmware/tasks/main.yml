@@ -1,0 +1,54 @@
+---
+# Read-only firmware status check. state=update is NOT tested here —
+# triggering a firmware update on a shared lab device would disrupt
+# all other integration tests.
+
+- name: Check firmware status (state=check)
+  lantronix.oob.slc_firmware:
+    state: check
+  register: result
+
+- name: Assert firmware dict is returned
+  ansible.builtin.assert:
+    that:
+      - result.firmware is defined
+      - result.firmware is mapping
+    success_msg: "Firmware dict returned with keys: {{ result.firmware.keys() | list }}"
+    fail_msg: "result.firmware not returned or not a dict"
+
+- name: Assert current_firmware_version format is correct
+  ansible.builtin.assert:
+    that:
+      - result.firmware.current_firmware_version is defined
+      - result.firmware.current_firmware_version is match('\d+\.\d+\.\d+\.\d+R\d+')
+    success_msg: "Current firmware version: {{ result.firmware.current_firmware_version }}"
+    fail_msg: "Unexpected firmware version format: {{ result.firmware.current_firmware_version }}"
+
+- name: Assert alternate_firmware_version is defined
+  ansible.builtin.assert:
+    that:
+      - result.firmware.alternate_firmware_version is defined
+    success_msg: "Alternate firmware version: {{ result.firmware.alternate_firmware_version }}"
+    fail_msg: "result.firmware.alternate_firmware_version not returned"
+
+- name: Assert active_bank is defined
+  ansible.builtin.assert:
+    that:
+      - result.firmware.active_bank is defined
+      - result.firmware.active_bank | length > 0
+    success_msg: "Active bank: {{ result.firmware.active_bank }}"
+    fail_msg: "result.firmware.active_bank not returned or empty"
+
+- name: Assert update_status is defined
+  ansible.builtin.assert:
+    that:
+      - result.firmware.update_status is defined
+    success_msg: "Update status: {{ result.firmware.update_status }}"
+    fail_msg: "result.firmware.update_status not returned"
+
+- name: Assert firmware check did not report a change (read-only)
+  ansible.builtin.assert:
+    that:
+      - result.changed is false
+    success_msg: "Firmware check correctly reported changed=false"
+    fail_msg: "Firmware check reported changed=true — state=check should be read-only"

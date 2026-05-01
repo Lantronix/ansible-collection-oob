@@ -1,0 +1,62 @@
+---
+# Read-only tests for device port enumeration.
+
+- name: Query all device ports
+  lantronix.oob.slc_device_ports:
+  register: all_ports
+
+- name: Assert ports is a list
+  ansible.builtin.assert:
+    that:
+      - all_ports.ports is defined
+      - all_ports.ports is iterable
+      - all_ports.ports is not string
+    success_msg: "Ports returned as a list with {{ all_ports.ports | length }} items"
+    fail_msg: "result.ports is not a list: {{ all_ports.ports }}"
+
+# Query a specific port. The device may not have a port named 'port1'
+# so we use failed_when: false and assert gracefully.
+- name: Query port1 specifically
+  lantronix.oob.slc_device_ports:
+    port_id: port1
+  register: single_port
+  failed_when: false
+
+- name: Assert port1 query either returned data or failed cleanly
+  ansible.builtin.assert:
+    that:
+      - single_port is defined
+    success_msg: "port1 query completed (changed={{ single_port.changed | default(false) }})"
+    fail_msg: "port1 query did not return a result at all"
+
+- name: Assert port1 result is a list if query succeeded
+  ansible.builtin.assert:
+    that:
+      - single_port.ports is iterable
+      - single_port.ports is not string
+    success_msg: "port1 ports result is a list with {{ single_port.ports | length }} items"
+    fail_msg: "result.ports is not iterable for single port query"
+  when: single_port.ports is defined
+
+# Query with connection gathering enabled
+- name: Query all ports with gather_connections=true
+  lantronix.oob.slc_device_ports:
+    gather_connections: true
+  register: ports_with_conns
+
+- name: Assert connections key is returned when gather_connections is true
+  ansible.builtin.assert:
+    that:
+      - ports_with_conns.connections is defined
+      - ports_with_conns.connections is iterable
+      - ports_with_conns.connections is not string
+    success_msg: "Connections returned: {{ ports_with_conns.connections | length }} items"
+    fail_msg: "result.connections not returned when gather_connections=true"
+
+- name: Assert ports also returned alongside connections
+  ansible.builtin.assert:
+    that:
+      - ports_with_conns.ports is defined
+      - ports_with_conns.ports is iterable
+    success_msg: "Ports still returned alongside connections"
+    fail_msg: "result.ports missing when gather_connections=true"

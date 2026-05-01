@@ -1,0 +1,65 @@
+---
+# Tests description field only. Hostname is NOT changed (would affect
+# DNS/DHCP registration and other tests). Reboot is NOT tested (would
+# disrupt the lab). Description is set, verified, then restored to empty.
+
+- name: Gather current facts to capture original state
+  lantronix.oob.slc_facts:
+  register: initial_facts
+
+- name: Set description to ansible-integration-test
+  lantronix.oob.slc_system:
+    description: ansible-integration-test
+    state: present
+  register: set_desc
+
+- name: Assert description change reported changed
+  ansible.builtin.assert:
+    that:
+      - set_desc.changed is true
+    success_msg: "Setting description correctly reported changed=true"
+    fail_msg: "Expected changed=true when setting description, got changed={{ set_desc.changed }}"
+
+- name: Assert description matches expected value
+  ansible.builtin.assert:
+    that:
+      - set_desc.description == 'ansible-integration-test'
+    success_msg: "Description correctly set to ansible-integration-test"
+    fail_msg: "Description mismatch — got: {{ set_desc.description }}"
+
+# --- IDEMPOTENCY ---
+
+- name: Set same description again to verify idempotency
+  lantronix.oob.slc_system:
+    description: ansible-integration-test
+    state: present
+  register: idempotent_desc
+
+- name: Assert idempotent description update reported no change
+  ansible.builtin.assert:
+    that:
+      - idempotent_desc.changed is false
+    success_msg: "Idempotent description update correctly reported changed=false"
+    fail_msg: "Expected changed=false on repeat set, got changed={{ idempotent_desc.changed }}"
+
+# --- RESTORE ---
+
+- name: Restore description to empty string
+  lantronix.oob.slc_system:
+    description: ""
+    state: present
+  register: restore_desc
+
+- name: Assert restore reported changed
+  ansible.builtin.assert:
+    that:
+      - restore_desc.changed is true
+    success_msg: "Description restore correctly reported changed=true"
+    fail_msg: "Expected changed=true when restoring description, got changed={{ restore_desc.changed }}"
+
+- name: Assert hostname was not affected by description changes
+  ansible.builtin.assert:
+    that:
+      - restore_desc.hostname == initial_facts.slc_facts.hostname
+    success_msg: "Hostname unchanged: {{ restore_desc.hostname }}"
+    fail_msg: "Hostname changed unexpectedly — expected {{ initial_facts.slc_facts.hostname }}, got {{ restore_desc.hostname }}"

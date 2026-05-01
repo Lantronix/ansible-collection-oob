@@ -1,0 +1,59 @@
+---
+# Read-only tests. Managed device state is observed, not modified.
+
+- name: Get all managed devices (no filter)
+  lantronix.oob.slc_managed_devices:
+  register: all_devices
+
+- name: Assert managed_devices is a list
+  ansible.builtin.assert:
+    that:
+      - all_devices.managed_devices is defined
+      - all_devices.managed_devices is iterable
+      - all_devices.managed_devices is not string
+    success_msg: "managed_devices returned as a list with {{ all_devices.managed_devices | length }} items"
+    fail_msg: "result.managed_devices not returned or not a list"
+
+- name: Assert each device has required fields (if any returned)
+  ansible.builtin.assert:
+    that:
+      - item.id is defined
+      - item.name is defined
+      - item.status is defined
+      - item.port_id is defined
+    success_msg: "Device {{ item.name }} has all required fields"
+    fail_msg: "Device entry missing required fields: {{ item }}"
+  loop: "{{ all_devices.managed_devices }}"
+  when: all_devices.managed_devices | length > 0
+
+- name: Assert get did not report a change (read-only)
+  ansible.builtin.assert:
+    that:
+      - all_devices.changed is false
+    success_msg: "Managed devices query correctly reported changed=false"
+    fail_msg: "Managed devices query reported changed=true — should be read-only"
+
+# --- FILTER by status=managed ---
+
+- name: Filter to managed status only
+  lantronix.oob.slc_managed_devices:
+    filter_status: managed
+  register: managed_only
+
+- name: Assert filtered result is a list
+  ansible.builtin.assert:
+    that:
+      - managed_only.managed_devices is defined
+      - managed_only.managed_devices is iterable
+      - managed_only.managed_devices is not string
+    success_msg: "Filtered result returned {{ managed_only.managed_devices | length }} managed devices"
+    fail_msg: "result.managed_devices not returned for filter_status=managed"
+
+- name: Assert all filtered devices have status managed
+  ansible.builtin.assert:
+    that:
+      - item.status == 'managed'
+    success_msg: "Device {{ item.name }} correctly has status=managed"
+    fail_msg: "Device {{ item.name }} has unexpected status={{ item.status }} in managed filter"
+  loop: "{{ managed_only.managed_devices }}"
+  when: managed_only.managed_devices | length > 0
