@@ -1,0 +1,67 @@
+---
+# Read-only: query telemetry for a live device.
+# Looks up a device ID first, then runs both a point-in-time query (no time
+# range) and a historical query (with start_time/end_time).
+
+- name: Percepxion telemetry integration test
+  hosts: percepxion_platform
+  gather_facts: false
+  tasks:
+
+    - name: Get device list to find a device ID for telemetry test
+      lantronix.oob.percepxion_devices:
+      register: devices_result
+
+    - name: Fail early if no devices available
+      ansible.builtin.assert:
+        that:
+          - devices_result.devices | length > 0
+        fail_msg: "No devices found in sandbox — cannot run telemetry test"
+
+    - name: Set device_id fact
+      ansible.builtin.set_fact:
+        test_device_id: "{{ devices_result.devices[0].id }}"
+
+    # --- POINT-IN-TIME TELEMETRY (no time range, returns stats dict) ---
+
+    - name: Query current telemetry stats (no time range)
+      lantronix.oob.percepxion_telemetry:
+        device_id: "{{ test_device_id }}"
+        metrics:
+          - cpu
+          - memory
+      register: stats_result
+
+    - name: Verify stats dict returned
+      ansible.builtin.assert:
+        that:
+          - stats_result.stats is defined
+        success_msg: "Telemetry stats returned for device {{ test_device_id }}"
+        fail_msg: "stats key missing from telemetry result: {{ stats_result }}"
+
+    - name: Verify telemetry query does not report changed (read-only)
+      ansible.builtin.assert:
+        that:
+          - stats_result.changed is false
+        success_msg: "Telemetry query correctly reported changed=false"
+        fail_msg: "Telemetry query should not report changed=true: {{ stats_result }}"
+
+    # --- HISTORICAL TELEMETRY (with time range, returns history list) ---
+
+    - name: Query historical telemetry with time range
+      lantronix.oob.percepxion_telemetry:
+        device_id: "{{ test_device_id }}"
+        metrics:
+          - cpu
+          - memory
+        start_time: "2025-01-01T00:00:00Z"
+        end_time: "2025-01-01T01:00:00Z"
+      register: history_result
+
+    - name: Verify history list returned
+      ansible.builtin.assert:
+        that:
+          - history_result.history is defined
+          - history_result.history is iterable
+        success_msg: "Telemetry history returned {{ history_result.history | length }} entries"
+        fail_msg: "history key missing or not a list: {{ history_result }}"

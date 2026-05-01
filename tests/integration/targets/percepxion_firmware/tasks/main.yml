@@ -1,0 +1,70 @@
+---
+# Safe subset only: state=check (compliance report). Never triggers firmware updates.
+# Creates a temporary smart group, runs the compliance check, then removes it.
+
+- name: Percepxion firmware compliance check integration test
+  hosts: percepxion_platform
+  gather_facts: false
+  tasks:
+
+    # Pre-clean: remove firmware test group if left from a prior failed run
+    - name: Pre-clean - ensure firmware test smart group does not exist
+      lantronix.oob.percepxion_smart_groups:
+        name: "ansible-firmware-test-group"
+        state: absent
+      ignore_errors: true  # noqa: ignore-errors
+
+    - name: Percepxion firmware compliance test
+      block:
+
+        # --- CREATE temporary smart group ---
+
+        - name: Create temporary smart group for firmware compliance check
+          lantronix.oob.percepxion_smart_groups:
+            name: "ansible-firmware-test-group"
+            state: present
+          register: sg_result
+
+        - name: Verify smart group created
+          ansible.builtin.assert:
+            that:
+              - sg_result.changed is true
+              - sg_result.group_id is defined
+            success_msg: "Temporary smart group created: {{ sg_result.group_id }}"
+            fail_msg: "Smart group creation failed: {{ sg_result }}"
+
+        # --- FIRMWARE COMPLIANCE CHECK (read-only) ---
+
+        - name: Check firmware compliance against target version
+          lantronix.oob.percepxion_firmware:
+            smart_group_id: "{{ sg_result.group_id }}"
+            firmware_version: "9.7.0.0R8"
+            state: check
+          register: fw_result
+
+        - name: Verify compliance result returns expected keys
+          ansible.builtin.assert:
+            that:
+              - fw_result.compliant_devices is defined
+              - fw_result.non_compliant_devices is defined
+              - fw_result.compliant_devices is iterable
+              - fw_result.non_compliant_devices is iterable
+            success_msg: >-
+              Compliance check complete.
+              Compliant: {{ fw_result.compliant_devices | length }},
+              Non-compliant: {{ fw_result.non_compliant_devices | length }}
+            fail_msg: "Firmware compliance check missing required keys: {{ fw_result }}"
+
+        - name: Verify check does not report changed (read-only)
+          ansible.builtin.assert:
+            that:
+              - fw_result.changed is false
+            success_msg: "Compliance check correctly reported changed=false"
+            fail_msg: "Compliance check should not report changed=true: {{ fw_result }}"
+
+      always:
+        - name: Cleanup - remove temporary smart group
+          lantronix.oob.percepxion_smart_groups:
+            name: "ansible-firmware-test-group"
+            state: absent
+          ignore_errors: true  # noqa: ignore-errors

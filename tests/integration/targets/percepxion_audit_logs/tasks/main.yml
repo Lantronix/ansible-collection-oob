@@ -1,0 +1,52 @@
+---
+# Read-only: query all three audit log types and assert required fields.
+
+- name: Percepxion audit logs integration test
+  hosts: percepxion_platform
+  gather_facts: false
+  tasks:
+
+    # --- DEVICE AUDIT LOGS ---
+
+    - name: Query device audit logs
+      lantronix.oob.percepxion_audit_logs:
+        log_type: "device"
+      register: device_logs_result
+
+    - name: Verify device audit_logs key is a list
+      ansible.builtin.assert:
+        that:
+          - device_logs_result.audit_logs is defined
+          - device_logs_result.audit_logs is iterable
+        success_msg: "device audit_logs returned {{ device_logs_result.audit_logs | length }} entries"
+        fail_msg: "audit_logs key missing or not a list for log_type=device: {{ device_logs_result }}"
+
+    # --- USER AUDIT LOGS ---
+
+    - name: Query user audit logs
+      lantronix.oob.percepxion_audit_logs:
+        log_type: "user"
+      register: user_logs_result
+
+    - name: Verify user audit_logs key is a list
+      ansible.builtin.assert:
+        that:
+          - user_logs_result.audit_logs is defined
+          - user_logs_result.audit_logs is iterable
+        success_msg: "user audit_logs returned {{ user_logs_result.audit_logs | length }} entries"
+        fail_msg: "audit_logs key missing or not a list for log_type=user: {{ user_logs_result }}"
+
+    # --- ACCESS AUDIT LOGS ---
+
+    - name: Query access audit logs (returns download URL)
+      lantronix.oob.percepxion_audit_logs:
+        log_type: "access"
+      register: access_logs_result
+
+    - name: Verify access log returns download_url
+      ansible.builtin.assert:
+        that:
+          - access_logs_result.download_url is defined
+          - access_logs_result.download_url | length > 0
+        success_msg: "access log download_url returned: {{ access_logs_result.download_url }}"
+        fail_msg: "download_url missing for log_type=access: {{ access_logs_result }}"

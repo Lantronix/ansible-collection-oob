@@ -1,0 +1,72 @@
+---
+# Live session test: initiate an AOOB session to SLC9000-RH, assert session_id,
+# then terminate it. Uses block/always to guarantee termination even on failure.
+
+- name: Percepxion AOOB session integration test
+  hosts: percepxion_platform
+  gather_facts: false
+  tasks:
+
+    - name: Get device list to find SLC9000-RH device ID
+      lantronix.oob.percepxion_devices:
+        search_string: "SLC9000-RH"
+      register: devices_result
+
+    - name: Fail early if SLC9000-RH not found
+      ansible.builtin.assert:
+        that:
+          - devices_result.devices | length > 0
+        fail_msg: "SLC9000-RH not found in sandbox — cannot run AOOB session test"
+
+    - name: Set device_id fact
+      ansible.builtin.set_fact:
+        test_device_id: "{{ devices_result.devices[0].id }}"
+
+    - name: AOOB session lifecycle test
+      block:
+
+        # --- INITIATE SESSION ---
+
+        - name: Initiate AOOB session to SLC9000-RH
+          lantronix.oob.percepxion_aoob_session:
+            device_id: "{{ test_device_id }}"
+            state: present
+          register: session_result
+
+        - name: Verify session_id is returned
+          ansible.builtin.assert:
+            that:
+              - session_result.session_id is defined
+              - session_result.session_id | length > 0
+            success_msg: "AOOB session initiated: session_id={{ session_result.session_id }}"
+            fail_msg: "session_id missing or empty: {{ session_result }}"
+
+        - name: Verify session creation reported changed
+          ansible.builtin.assert:
+            that:
+              - session_result.changed is true
+            success_msg: "Session initiation correctly reported changed=true"
+            fail_msg: "Expected changed=true on session create, got: {{ session_result.changed }}"
+
+        # --- TERMINATE SESSION ---
+
+        - name: Terminate the AOOB session
+          lantronix.oob.percepxion_aoob_session:
+            session_id: "{{ session_result.session_id }}"
+            state: absent
+          register: terminate_result
+
+        - name: Verify termination reported changed
+          ansible.builtin.assert:
+            that:
+              - terminate_result.changed is true
+            success_msg: "Session terminated, changed=true"
+            fail_msg: "Termination did not report changed: {{ terminate_result }}"
+
+      always:
+        - name: Cleanup - terminate session if still active
+          lantronix.oob.percepxion_aoob_session:
+            session_id: "{{ session_result.session_id | default('') }}"
+            state: absent
+          when: session_result is defined and (session_result.session_id | default('')) | length > 0
+          ignore_errors: true  # noqa: ignore-errors
