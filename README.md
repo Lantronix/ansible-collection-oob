@@ -155,22 +155,6 @@ percepxion_tenant_id: "uuid-here"         # required only for Project Admins
 
 To operate across multiple projects, loop over inventory groups rather than module arguments.
 
-## Competitive Comparison
-
-| Capability | Opengear `opengear.om` | Lantronix `lantronix.oob` |
-|---|---|---|
-| Module count | 12 | 20 |
-| Fleet platform modules | 0 | 12 (Percepxion) |
-| Config management | 0 | `slc_config` (7 API endpoints) |
-| AOOB session management | None | `percepxion_aoob_session` |
-| Firmware compliance + push | None | `percepxion_firmware` |
-| Fleet audit log export | None | `percepxion_audit_logs` |
-| Multi-project / multi-tenant | None | Built in via connection vars |
-| Telemetry query | None | `percepxion_telemetry` |
-| Example roles | None | 4 |
-| Check mode / idempotency | Yes | Yes |
-| Red Hat certification | Yes | Targeting Q4 2026 |
-
 ## Status
 
 This collection is in active development. Red Hat Technology Partner application submitted April 2026.
