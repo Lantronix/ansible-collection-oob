@@ -58,7 +58,7 @@ def main():
     connection = Connection(module._socket_path)
     token = connection.get_token()
     csrf = connection.get_csrf_token()
-    host = connection.get_option("host")
+    host = connection.get_api_host()
     project_tag = module.params.get("project_tag") or None
     tenant_id = module.params.get("tenant_id") or None
 

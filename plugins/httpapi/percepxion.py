@@ -11,11 +11,26 @@ description:
   - Manages authentication for Percepxion API (6.12+).
   - Login posts to POST /api/v2/user/login and stores both x-mystq-token and x-csrf-token.
   - The CSRF token is injected on all requests; the server ignores it on GETs.
-  - Set C(ansible_host) to the bare API hostname for any Percepxion deployment.
-    Cloud production uses C(api.percepxion.ai); demo/sandbox uses C(api.gopercepxion.ai).
-    On-premises standard mode uses C(api.your-fqdn); single-domain mode uses C(your-fqdn).
-    The C(/api) path prefix is consistent across all environments.
+  - Set C(ansible_host) to the hostname Ansible connects to (TCP target).
+    Set C(percepxion_api_host) when the API URL hostname differs from the connection
+    hostname (on-premises split-DNS, load-balancer front ends, or switching between
+    C(api.percepxion.ai) and C(api.gopercepxion.ai) without changing C(ansible_host)).
+    The C(/api) path prefix is consistent across all Percepxion deployment types.
 options:
+  percepxion_api_host:
+    description:
+      - Hostname used to construct the Percepxion API base URL
+        (C(https://<percepxion_api_host>/api/...)).
+      - Defaults to C(ansible_host) when not set.
+      - Override when the TCP connection target (C(ansible_host)) differs from
+        the hostname that should appear in API URLs — for example, an on-premises
+        Percepxion server reachable by internal IP but requiring its public FQDN
+        for SSL certificate validation, or to point at the demo environment
+        (C(api.gopercepxion.ai)) without changing the inventory host entry.
+    type: str
+    required: false
+    vars:
+      - name: percepxion_api_host
   percepxion_project_tag:
     description: Project tag to scope all device operations. Set in inventory.
     type: str
@@ -40,12 +55,23 @@ from ansible.module_utils.connection import ConnectionError
 class HttpApi(HttpApiBase):
     """HttpApi plugin for Percepxion REST API (OpenAPI 3.0.1, v6.12+)."""
 
+    def get_api_host(self):
+        """Return the hostname used to build Percepxion API URLs.
+
+        Uses percepxion_api_host when set; falls back to ansible_host.
+        This allows the TCP connection target to differ from the API URL hostname
+        (on-premises split-DNS, load-balancer front ends, or switching between
+        api.percepxion.ai and api.gopercepxion.ai without changing ansible_host).
+        """
+        api_host = self.get_option("percepxion_api_host")
+        return api_host if api_host else self.connection.get_option("host")
+
     def login(self, username, password):
         # Use requests directly — netcommon's send() injects an Authorization: Basic
         # header when _auth is None, which causes Percepxion to issue an invalid token.
         if not HAS_REQUESTS:
             raise ConnectionError("The requests Python library is required for this plugin.")
-        host = self.connection.get_option("host")
+        host = self.get_api_host()
         verify = self.connection.get_option("validate_certs")
         url = "https://{0}/api/v2/user/login".format(host)
         try:

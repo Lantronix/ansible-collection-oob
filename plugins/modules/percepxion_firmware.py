@@ -77,7 +77,7 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import Ansibl
 
 def _make_client(connection, module):
     return PercepxionClient(
-        host=connection.get_option("host"),
+        host=connection.get_api_host(),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
         project_tag=module.params.get("project_tag") or None,

@@ -4,6 +4,31 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.5
+======
+
+Release Summary
+---------------
+
+Enhancement release. Adds ``percepxion_api_host`` inventory variable so the
+Percepxion API URL hostname can differ from the TCP connection target
+(``ansible_host``). Enables on-premises split-DNS deployments and switching
+between ``api.percepxion.ai`` (production) and ``api.gopercepxion.ai``
+(demo/sandbox) without changing the inventory host entry.
+
+Minor Changes
+-------------
+
+- ``lantronix.oob.percepxion`` httpapi plugin: added ``percepxion_api_host``
+  plugin option (``vars: - name: percepxion_api_host``). When set, this
+  hostname is used to construct all Percepxion API URLs
+  (``https://<percepxion_api_host>/api/...``) instead of ``ansible_host``.
+  Added ``get_api_host()`` method on ``HttpApi`` used by ``login()`` and
+  all 12 Percepxion modules.
+- All 12 Percepxion modules: replaced ``connection.get_option("host")`` with
+  ``connection.get_api_host()`` so the ``percepxion_api_host`` variable is
+  honoured throughout the module lifecycle, not just at login.
+
 v1.0.4
 ======
 

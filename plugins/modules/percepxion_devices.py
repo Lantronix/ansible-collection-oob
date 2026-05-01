@@ -71,7 +71,7 @@ def main():
 
     connection = Connection(module._socket_path)
     client = PercepxionClient(
-        host=connection.get_option("host"),
+        host=connection.get_api_host(),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
         project_tag=module.params.get("project_tag") or None,
