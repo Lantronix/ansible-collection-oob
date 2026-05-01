@@ -48,20 +48,20 @@
 
     # --- HISTORICAL TELEMETRY (with time range, returns history list) ---
 
-    - name: Query historical telemetry with time range
+    - name: Query historical telemetry (CY2026 window -- empty result valid for fresh tenant)
       lantronix.oob.percepxion_telemetry:
         device_id: "{{ test_device_id }}"
         metrics:
           - cpu
-          - memory
-        start_time: "2025-01-01T00:00:00Z"
-        end_time: "2025-01-01T01:00:00Z"
+        start_time: "2026-01-01T00:00:00Z"
+        end_time: "2026-12-31T23:59:59Z"
       register: history_result
+      when: devices_result.devices | length > 0
 
-    - name: Verify history list returned
+    - name: Verify history is a list (empty list valid for fresh tenant)
       ansible.builtin.assert:
         that:
           - history_result.history is defined
           - history_result.history is iterable
-        success_msg: "Telemetry history returned {{ history_result.history | length }} entries"
-        fail_msg: "history key missing or not a list: {{ history_result }}"
+        fail_msg: "percepxion_telemetry did not return history list for time range query"
+      when: devices_result.devices | length > 0

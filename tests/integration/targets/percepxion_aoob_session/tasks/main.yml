@@ -64,9 +64,9 @@
             fail_msg: "Termination did not report changed: {{ terminate_result }}"
 
       always:
-        - name: Cleanup - terminate session if still active
+        - name: Cleanup - terminate any active session on test device
           lantronix.oob.percepxion_aoob_session:
-            session_id: "{{ session_result.session_id | default('') }}"
+            device_id: "{{ test_device_id | default('') }}"
             state: absent
-          when: session_result is defined and (session_result.session_id | default('')) | length > 0
+          when: test_device_id is defined and test_device_id | length > 0
           ignore_errors: true  # noqa: ignore-errors

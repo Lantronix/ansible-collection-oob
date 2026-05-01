@@ -22,6 +22,8 @@
         - name: Create temporary smart group for firmware compliance check
           lantronix.oob.percepxion_smart_groups:
             name: "ansible-firmware-test-group"
+            criteria:
+              name_filter: "SLC9000-RH"
             state: present
           register: sg_result
 
