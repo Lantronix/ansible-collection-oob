@@ -3,12 +3,12 @@ __metaclass__ = type
 
 DOCUMENTATION = r"""
 name: slc9
-short_description: HttpApi plugin for Lantronix SLC 9000 REST API v2
+short_description: HttpApi plugin for Lantronix SLC9000 REST API v2
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Manages authentication and request routing for SLC 9000 REST API v2.
+  - Manages authentication and request routing for SLC9000 REST API v2.
   - Login posts credentials to POST /api/v2/user/login and stores the returned token.
 options: {}
 """
@@ -25,7 +25,7 @@ from ansible.module_utils.connection import ConnectionError
 
 
 class HttpApi(HttpApiBase):
-    """HttpApi plugin for SLC 9000 REST API v2."""
+    """HttpApi plugin for SLC9000 REST API v2."""
 
     def login(self, username, password):
         # Use requests directly to avoid netcommon injecting Authorization: Basic
@@ -46,11 +46,11 @@ class HttpApi(HttpApiBase):
             resp.raise_for_status()
             body = resp.json()
         except Exception as exc:
-            raise ConnectionError("SLC 9000 login failed: {0}".format(str(exc)))
+            raise ConnectionError("SLC9000 login failed: {0}".format(str(exc)))
 
         token = body.get("token")
         if not token:
-            raise ConnectionError("SLC 9000 login failed: no token in response")
+            raise ConnectionError("SLC9000 login failed: no token in response")
 
         self.connection._auth = {"X-auth-token": token}
 
@@ -75,12 +75,12 @@ class HttpApi(HttpApiBase):
         if not hasattr(exc, "code"):
             return False
         if exc.code == 401:
-            raise ConnectionError("SLC 9000: authentication error (401). Check credentials.")
+            raise ConnectionError("SLC9000: authentication error (401). Check credentials.")
         if exc.code == 403:
-            raise ConnectionError("SLC 9000: forbidden (403). User lacks rights for this endpoint.")
+            raise ConnectionError("SLC9000: forbidden (403). User lacks rights for this endpoint.")
         if exc.code == 404:
             raise ConnectionError(
-                "SLC 9000: endpoint not found (404). Verify firmware supports API v2 (requires R7+)."
+                "SLC9000: endpoint not found (404). Verify firmware supports API v2 (requires R7+)."
             )
         return False
 
@@ -110,5 +110,5 @@ class HttpApi(HttpApiBase):
         except Exception:
             raw_text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
             raise ConnectionError(
-                "SLC 9000: unexpected non-JSON response from {0}: {1}".format(path, raw_text[:200])
+                "SLC9000: unexpected non-JSON response from {0}: {1}".format(path, raw_text[:200])
             )

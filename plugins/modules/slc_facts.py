@@ -6,13 +6,13 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_facts
-short_description: Gather facts from a Lantronix SLC 9000 device
+short_description: Gather facts from a Lantronix SLC9000 device
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
   - Retrieves hardware version, software version, system status, and identity
-    information from an SLC 9000 device via REST API v2.
+    information from an SLC9000 device via REST API v2.
   - Combines output from /system/version, /system/status, and /system/identity
     into a single C(slc_facts) dict.
 notes:
@@ -21,7 +21,7 @@ notes:
 """
 
 EXAMPLES = r"""
-- name: Gather SLC 9000 facts
+- name: Gather SLC9000 facts
   lantronix.oob.slc_facts:
   register: result
 

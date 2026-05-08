@@ -6,7 +6,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_firmware
-short_description: Check firmware version or trigger a firmware update on SLC 9000
+short_description: Check firmware version or trigger a firmware update on SLC9000
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
@@ -32,10 +32,18 @@ options:
   url:
     description: URL of the firmware image to install. Required when C(state=update).
     type: str
-  bank:
-    description: Boot bank to write the firmware into. When omitted, the device chooses.
+  md5_key:
+    description: MD5 checksum string provided by Lantronix alongside the firmware download. Required when C(state=update).
     type: str
-    choices: [active, alternate]
+    no_log: true
+  reboot_after_update:
+    description: Reboot the device automatically after the firmware image is written to the alternate bank.
+    type: bool
+    default: false
+  description:
+    description: Optional label stored in the firmware update job record.
+    type: str
+    default: ""
 """
 
 EXAMPLES = r"""
@@ -48,11 +56,12 @@ EXAMPLES = r"""
   debug:
     msg: "Firmware: {{ result.firmware.current_firmware_version }}"
 
-- name: Trigger firmware update to alternate bank
+- name: Trigger firmware update (no immediate reboot)
   lantronix.oob.slc_firmware:
     state: update
-    url: "https://downloads.lantronix.com/firmware/slc9000-9.8.0.0R1.bin"
-    bank: alternate
+    url: "http://fileserver.example.com/firmware/slc9update-9.8.0.0R1.tgz"
+    md5_key: "{{ vault_fw_md5_key }}"
+    description: "Upgrade to 9.8.0.0R1"
 """
 
 RETURN = r"""
@@ -94,9 +103,11 @@ def main():
         argument_spec=dict(
             state=dict(type="str", required=True, choices=["check", "update"]),
             url=dict(type="str"),
-            bank=dict(type="str", choices=["active", "alternate"]),
+            md5_key=dict(type="str", no_log=True),
+            reboot_after_update=dict(type="bool", default=False),
+            description=dict(type="str", default=""),
         ),
-        required_if=[("state", "update", ["url"])],
+        required_if=[("state", "update", ["url", "md5_key"])],
         supports_check_mode=True,
     )
 
@@ -123,7 +134,12 @@ def main():
 
     if not module.check_mode:
         try:
-            client.trigger_firmware_update(module.params["url"], bank=module.params.get("bank"))
+            client.trigger_firmware_update(
+                file_url=module.params["url"],
+                md5_key=module.params["md5_key"],
+                reboot_after_update=module.params["reboot_after_update"],
+                description=module.params.get("description") or "",
+            )
         except AnsibleLantronixError as exc:
             module.fail_json(msg=str(exc))
 

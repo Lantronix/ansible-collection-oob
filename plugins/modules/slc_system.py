@@ -6,12 +6,12 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_system
-short_description: Manage system identity and reboot an SLC 9000 device
+short_description: Manage system identity and reboot an SLC9000 device
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Sets hostname and description on an SLC 9000 device via POST /system/identity.
+  - Sets hostname and description on an SLC9000 device via POST /system/identity.
   - Fetches current identity before writing; only applies a change when desired
     state differs from current state.
   - Optionally reboots the device. Reboot is always reported as C(changed=True)

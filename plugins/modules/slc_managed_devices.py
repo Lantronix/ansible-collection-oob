@@ -6,15 +6,15 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_managed_devices
-short_description: Query devices discovered on serial ports of an SLC 9000
+short_description: Query devices discovered on serial ports of an SLC9000
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Returns the list of devices discovered on SLC 9000 serial ports via GET /managed_devices.
+  - Returns the list of devices discovered on SLC9000 serial ports via GET /managed_devices.
   - Optionally filters the list by device status.
   - This is a read-only module. Device management state is controlled via the
-    SLC 9000 web UI or CLI.
+    SLC9000 web UI or CLI.
 options:
   filter_status:
     description:

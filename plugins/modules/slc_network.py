@@ -6,12 +6,12 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_network
-short_description: Manage ethernet interface configuration on SLC 9000
+short_description: Manage ethernet interface configuration on SLC9000
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Configures ethernet interface IP settings (static or DHCP) on an SLC 9000 device.
+  - Configures ethernet interface IP settings (static or DHCP) on an SLC9000 device.
   - Fetches current interface config before writing; only applies a change when the
     desired state differs from the current state.
 options:

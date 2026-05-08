@@ -6,7 +6,7 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import api_er
 
 
 class SLC9Client:
-    """Thin REST client for SLC 9000 API v2.
+    """Thin REST client for SLC9000 API v2.
 
     Instantiate with host and token obtained from the httpapi plugin.
     Modules never import requests directly -- they call methods on this class.
@@ -33,6 +33,12 @@ class SLC9Client:
             return resp.json()
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
+        except ValueError as exc:
+            raise AnsibleLantronixError(
+                "Invalid JSON from {0} (HTTP {1}): {2} — body: {3!r}".format(
+                    path, resp.status_code, exc, resp.text[:200]
+                )
+            )
 
     def _post(self, path, data=None):
         try:
@@ -112,11 +118,18 @@ class SLC9Client:
         """GET /firmware/update_status -- ongoing update progress."""
         return self._get("/firmware/update_status")
 
-    def trigger_firmware_update(self, url, bank=None):
-        """POST /firmware/update -- start a firmware update from URL."""
-        payload = {"url": url}
-        if bank is not None:
-            payload["bank"] = bank
+    def trigger_firmware_update(self, file_url, md5_key, reboot_after_update=False, description=""):
+        """POST /firmware/update -- start a firmware update from URL.
+
+        Despite the OpenAPI spec listing multipart/form-data, the SLC accepts
+        plain JSON. Firmware is always written to the alternate boot bank.
+        """
+        payload = {
+            "file_url": file_url,
+            "key": md5_key,
+            "reboot_after_update": reboot_after_update,
+            "description": description,
+        }
         return self._post("/firmware/update", payload)
 
     # --- Config ---

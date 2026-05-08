@@ -6,12 +6,12 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_device_ports
-short_description: Query serial device port information on SLC 9000
+short_description: Query serial device port information on SLC9000
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Returns serial port configuration from an SLC 9000 device via GET /ports.
+  - Returns serial port configuration from an SLC9000 device via GET /ports.
   - Optionally fetches active port connections via GET /connections.
   - This is a read-only module. Port configuration changes are applied via
     C(slc_config) using batch CLI commands.
