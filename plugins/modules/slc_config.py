@@ -6,12 +6,12 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_config
-short_description: Manage running configuration on SLC 9000
+short_description: Manage running configuration on SLC9000
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Provides four configuration actions on an SLC 9000 device.
+  - Provides four configuration actions on an SLC9000 device.
   - C(get) retrieves the current running configuration as CLI commands. Read-only.
   - C(compare) shows a diff between running and saved configuration. Read-only.
   - C(save) persists running configuration to flash. Always C(changed=True).

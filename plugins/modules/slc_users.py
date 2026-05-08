@@ -6,12 +6,12 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: slc_users
-short_description: Manage local user accounts on SLC 9000
+short_description: Manage local user accounts on SLC9000
 version_added: "1.0.0"
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Creates, updates, or deletes local user accounts on an SLC 9000 device.
+  - Creates, updates, or deletes local user accounts on an SLC9000 device.
 options:
   username:
     description: Username to manage.

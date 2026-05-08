@@ -4,6 +4,40 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.6
+======
+
+Release Summary
+---------------
+
+Bugfix release. Corrects ``slc_firmware`` module parameter declarations and
+``SLC9Client`` API payload field names found during end-to-end firmware update
+testing against the SLC9000 R9 lab device.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.slc_firmware``: module ``argument_spec`` was missing
+  ``md5_key``, ``reboot_after_update``, and ``description`` parameters declared
+  in the module's ``DOCUMENTATION``. Ansible rejected any playbook that passed
+  these values with "Unsupported parameters" errors. Fixed by adding all three
+  to the spec with correct types and defaults. Removed the unused ``bank``
+  parameter. ``required_if`` now enforces that both ``url`` and ``md5_key`` are
+  provided when ``state: update``.
+- ``lantronix.oob.slc_firmware``: the firmware trigger call passed ``bank``
+  (undeclared, ignored by the API) to ``trigger_firmware_update()``. Call now
+  passes ``file_url``, ``md5_key``, ``reboot_after_update``, and ``description``
+  matching the actual SLC9000 ``POST /firmware/update`` contract.
+- ``SLC9Client.trigger_firmware_update()``: API payload used ``url`` and ``bank``
+  keys. The SLC9000 REST API v2 requires ``file_url`` (URL to the ``.tgz``
+  file server path) and ``key`` (MD5 checksum string). Fixed field names to
+  match the OpenAPI spec; removed ``bank`` (firmware is always written to the
+  alternate boot bank). Added ``reboot_after_update`` and ``description`` fields.
+- ``SLC9Client._get()``: a non-JSON response body (device returning an HTML error
+  page during firmware flash or reboot) raised an unhandled ``ValueError``. Added
+  ``except ValueError`` with a message that includes the HTTP status code and the
+  first 200 bytes of the body for easier diagnosis.
+
 v1.0.5
 ======
 
@@ -37,7 +71,7 @@ Release Summary
 
 Bugfix release. Corrects API payload formats discovered during end-to-end
 integration testing against the Percepxion 6.12 demo environment and the
-SLC 9000 R8 lab device. Fixes ``ansible-test sanity`` failures blocking
+SLC9000 R8 lab device. Fixes ``ansible-test sanity`` failures blocking
 Red Hat certification submission.
 
 Bugfixes
@@ -123,14 +157,14 @@ v1.0.2
 Release Summary
 ---------------
 
-Bugfix release. Corrects the SLC 9000 authentication header name used for all
+Bugfix release. Corrects the SLC9000 authentication header name used for all
 API calls after login.
 
 Bugfixes
 --------
 
 - ``lantronix.oob.slc9`` httpapi plugin and ``SLC9Client``: changed authentication
-  header from ``x-user-token`` to ``X-auth-token`` to match the SLC 9000 REST API
+  header from ``x-user-token`` to ``X-auth-token`` to match the SLC9000 REST API
   v2 security scheme. All SLC module tasks previously failed with
   "Invalid or expired authentication tokens" on every API call despite successful
   login, because the session token was sent under the wrong header name
@@ -163,7 +197,7 @@ Release Summary
 
 Initial release of the ``lantronix.oob`` Ansible collection. Provides 20 modules,
 two httpapi connection plugins, and four example roles covering the full
-Lantronix Out-of-Band infrastructure stack: SLC 9000 console servers and the
+Lantronix Out-of-Band infrastructure stack: SLC9000 console servers and the
 Percepxion 6.12+ fleet management platform.
 
 New Plugins
@@ -172,7 +206,7 @@ New Plugins
 Connection
 ~~~~~~~~~~
 
-- ``lantronix.oob.slc9`` - HttpApi plugin for SLC 9000 REST API v2 (R8+).
+- ``lantronix.oob.slc9`` - HttpApi plugin for SLC9000 REST API v2 (R8+).
   Handles session-token authentication against the device-local API.
 - ``lantronix.oob.percepxion`` - HttpApi plugin for Percepxion REST API (6.12+).
   Handles Bearer token and CSRF token authentication against the cloud API.
@@ -180,23 +214,23 @@ Connection
 New Modules
 -----------
 
-SLC 9000 Device Modules
+SLC9000 Device Modules
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``lantronix.oob.slc_facts`` - Gather hardware, firmware, and status facts
-  from a Lantronix SLC 9000 device.
-- ``lantronix.oob.slc_users`` - Manage local user accounts on an SLC 9000.
-- ``lantronix.oob.slc_network`` - Configure Ethernet interfaces on an SLC 9000.
+  from a Lantronix SLC9000 device.
+- ``lantronix.oob.slc_users`` - Manage local user accounts on an SLC9000.
+- ``lantronix.oob.slc_network`` - Configure Ethernet interfaces on an SLC9000.
 - ``lantronix.oob.slc_system`` - Manage hostname, NTP, timezone, and reboot
-  an SLC 9000.
+  an SLC9000.
 - ``lantronix.oob.slc_device_ports`` - Query serial and console port
-  configuration on an SLC 9000.
+  configuration on an SLC9000.
 - ``lantronix.oob.slc_firmware`` - Check firmware version and trigger firmware
-  upgrades on an SLC 9000.
+  upgrades on an SLC9000.
 - ``lantronix.oob.slc_config`` - Back up, compare, batch commands, and save
-  configuration on an SLC 9000.
+  configuration on an SLC9000.
 - ``lantronix.oob.slc_managed_devices`` - Query devices connected via serial
-  ports on an SLC 9000.
+  ports on an SLC9000.
 
 Percepxion Fleet Modules
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,9 +1,9 @@
 .. _guide_slc9000:
 
-SLC 9000 Guide
+SLC9000 Guide
 ==============
 
-The ``lantronix.oob`` collection manages Lantronix SLC 9000 console servers
+The ``lantronix.oob`` collection manages Lantronix SLC9000 console servers
 via the device-local REST API v2 (firmware R8+).
 
 .. contents::
@@ -13,7 +13,7 @@ via the device-local REST API v2 (firmware R8+).
 Connection Setup
 ----------------
 
-SLC 9000 modules use the ``ansible.netcommon.httpapi`` connection with the
+SLC9000 modules use the ``ansible.netcommon.httpapi`` connection with the
 ``lantronix.oob.slc9`` network OS plugin. Configure this in your inventory:
 
 .. code-block:: yaml
@@ -95,7 +95,7 @@ Quick Start
 Firmware Requirements
 ---------------------
 
-SLC 9000 REST API v2 requires firmware **R8 or later** (9.7.0.0R8+). Earlier
+SLC9000 REST API v2 requires firmware **R8 or later** (9.7.0.0R8+). Earlier
 firmware does not expose the v2 API endpoints used by this collection.
 
 Check your firmware version:

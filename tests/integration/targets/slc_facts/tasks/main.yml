@@ -1,5 +1,5 @@
 ---
-- name: Gather facts from SLC 9000
+- name: Gather facts from SLC9000
   lantronix.oob.slc_facts:
   register: result
 

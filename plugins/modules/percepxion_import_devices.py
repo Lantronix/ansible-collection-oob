@@ -43,7 +43,7 @@ options:
 """
 
 EXAMPLES = r"""
-- name: Register a batch of SLC 9000 devices
+- name: Register a batch of SLC9000 devices
   lantronix.oob.percepxion_import_devices:
     devices:
       - serial: SN123456
