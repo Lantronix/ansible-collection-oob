@@ -30,8 +30,8 @@ inventory:
        ansible_httpapi_use_ssl: true
        ansible_user: "{{ vault_percepxion_user }}"
        ansible_password: "{{ vault_percepxion_password }}"
-       percepxion_project_tag: "prod-datacenter-east"   # optional
-       percepxion_tenant_id: "34f5c98e-..."             # optional — Project Admin only
+       percepxion_project_tag: "MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b"  # optional
+       percepxion_tenant_id: "34f5c98e-7a12-4b01-965f-d4239f67e770"             # optional, Project Admin only
 
 Authentication
 --------------
@@ -55,6 +55,23 @@ Percepxion supports multi-project and multi-tenant deployments.
 Set these as inventory connection variables. All Percepxion modules inherit
 them automatically. To operate across multiple projects, loop over inventory
 groups rather than passing project identifiers as module arguments.
+
+The ``project_tag`` value is Percepxion's internal project identifier, format
+is ``MYSTQ_PT_<UUID>`` (e.g. ``MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b``).
+It is **not** a human-readable name. To find your project tag, inspect a device
+already assigned to the project:
+
+.. code-block:: yaml
+
+   - name: Discover project_tag from an assigned device
+     lantronix.oob.percepxion_devices:
+       state: query
+       filters:
+         search_string: "my-device-name"
+     register: result
+
+   - debug:
+       msg: "project_tag = {{ result.devices[0].project_tag }}"
 
 Available Modules
 -----------------
@@ -80,7 +97,7 @@ Available Modules
    * - :ref:`lantronix.oob.percepxion_config <ansible_collections.lantronix.oob.percepxion_config_module>`
      - Config backup, restore, push at fleet scale
    * - :ref:`lantronix.oob.percepxion_jobs <ansible_collections.lantronix.oob.percepxion_jobs_module>`
-     - Job group lifecycle — create, schedule, monitor
+     - Job group lifecycle, create, schedule, monitor
    * - :ref:`lantronix.oob.percepxion_audit_logs <ansible_collections.lantronix.oob.percepxion_audit_logs_module>`
      - Security audit log query and device access log export
    * - :ref:`lantronix.oob.percepxion_aoob_session <ansible_collections.lantronix.oob.percepxion_aoob_session_module>`

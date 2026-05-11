@@ -1,6 +1,6 @@
 # lantronix.oob Ansible Collection
 
-Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC 9000 device configuration and Percepxion fleet management — the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
+Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC 9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
 
 ## Installation
 
@@ -54,7 +54,7 @@ pip install requests
 | `lantronix.oob.percepxion_smart_groups` | Create and manage device smart groups |
 | `lantronix.oob.percepxion_firmware` | Fleet firmware compliance report and upgrade |
 | `lantronix.oob.percepxion_config` | Config backup, restore, push at fleet scale |
-| `lantronix.oob.percepxion_jobs` | Job group lifecycle — create, schedule, monitor |
+| `lantronix.oob.percepxion_jobs` | Job group lifecycle, create, schedule, monitor |
 | `lantronix.oob.percepxion_audit_logs` | Security audit log query and device access log export |
 | `lantronix.oob.percepxion_aoob_session` | Initiate and terminate OOB sessions |
 | `lantronix.oob.percepxion_import_devices` | Bulk device import and project assignment |
@@ -99,7 +99,7 @@ slc_devices:
 
     - name: Show firmware and model
       ansible.builtin.debug:
-        msg: "{{ inventory_hostname }} — {{ result.slc_facts.model }} running {{ result.slc_facts.firmware_version }}"
+        msg: "{{ inventory_hostname }}, {{ result.slc_facts.model }} running {{ result.slc_facts.firmware_version }}"
 ```
 
 ### Percepxion
@@ -116,8 +116,8 @@ percepxion:
     ansible_httpapi_use_ssl: true
     ansible_user: "{{ vault_percepxion_user }}"
     ansible_password: "{{ vault_percepxion_password }}"
-    percepxion_project_tag: "prod-datacenter-east"   # optional — scopes all ops to project
-    percepxion_tenant_id: "34f5c98e-..."             # optional — Project Admin only
+    percepxion_project_tag: "MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b"  # optional, scopes all ops to project
+    percepxion_tenant_id: "34f5c98e-7a12-4b01-965f-d4239f67e770"             # optional, Project Admin only
 ```
 
 ```yaml
@@ -139,18 +139,32 @@ percepxion:
 
 This collection includes two httpapi connection plugins:
 
-- **`lantronix.oob.slc9`** — authenticates to SLC 9000 REST API v2 via session token
-- **`lantronix.oob.percepxion`** — authenticates to Percepxion API with Bearer token and CSRF token handling
+- **`lantronix.oob.slc9`**, authenticates to SLC 9000 REST API v2 via session token
+- **`lantronix.oob.percepxion`**, authenticates to Percepxion API with Bearer token and CSRF token handling
 
 Both plugins handle login, token management, and error translation automatically. You do not call them directly; set `ansible_network_os` in your inventory.
 
 ## Percepxion Project and Tenant Scoping
 
-The Percepxion API supports multi-project and multi-tenant deployments. Set these as inventory connection variables — all Percepxion modules inherit them automatically:
+The Percepxion API supports multi-project and multi-tenant deployments. Set these as inventory connection variables, all Percepxion modules inherit them automatically:
 
 ```yaml
-percepxion_project_tag: "prod-east"       # scope all ops to this project
-percepxion_tenant_id: "uuid-here"         # required only for Project Admins
+percepxion_project_tag: "MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b"  # scope all ops to this project
+percepxion_tenant_id: "34f5c98e-7a12-4b01-965f-d4239f67e770"              # required only for Project Admins
+```
+
+The `project_tag` value is Percepxion's internal identifier for a project, format is `MYSTQ_PT_<UUID>`. To find yours, inspect a device already assigned to the project:
+
+```yaml
+- name: Discover project_tag from an assigned device
+  lantronix.oob.percepxion_devices:
+    state: query
+    filters:
+      search_string: "my-device-name"
+  register: result
+
+- debug:
+    msg: "project_tag = {{ result.devices[0].project_tag }}"
 ```
 
 To operate across multiple projects, loop over inventory groups rather than module arguments.
@@ -162,12 +176,12 @@ v1.0.0. Red Hat Technology Partner application submitted April 2026.
 | Component | Status |
 |---|---|
 | All 20 modules | Complete |
-| Unit tests (85 tests, 22 files) | Complete — CI passing |
+| Unit tests (85 tests, 22 files) | Complete, CI passing |
 | Both httpapi plugins | Complete |
 | 4 example roles | Complete |
 | Integration tests (20 targets) | Complete |
 | CHANGELOG.rst | Complete |
-| Red Hat certification | Application submitted — targeting Q4 2026 |
+| Red Hat certification | Application submitted, targeting Q4 2026 |
 | Galaxy community release | Pending final repo on github.com/Lantronix |
 
 ## Contributing
