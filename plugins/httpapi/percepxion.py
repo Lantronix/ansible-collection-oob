@@ -23,7 +23,7 @@ options:
         (C(https://<percepxion_api_host>/api/...)).
       - Defaults to C(ansible_host) when not set.
       - Override when the TCP connection target (C(ansible_host)) differs from
-        the hostname that should appear in API URLs — for example, an on-premises
+        the hostname that should appear in API URLs, for example, an on-premises
         Percepxion server reachable by internal IP but requiring its public FQDN
         for SSL certificate validation, or to point at the demo environment
         (C(api.gopercepxion.ai)) without changing the inventory host entry.
@@ -35,10 +35,14 @@ options:
     description: Project tag to scope all device operations. Set in inventory.
     type: str
     required: false
+    vars:
+      - name: percepxion_project_tag
   percepxion_tenant_id:
     description: Tenant ID for Project Admin multi-tenant operations. Set in inventory.
     type: str
     required: false
+    vars:
+      - name: percepxion_tenant_id
 """
 
 import json
@@ -67,7 +71,7 @@ class HttpApi(HttpApiBase):
         return api_host if api_host else self.connection.get_option("host")
 
     def login(self, username, password):
-        # Use requests directly — netcommon's send() injects an Authorization: Basic
+        # Use requests directly, netcommon's send() injects an Authorization: Basic
         # header when _auth is None, which causes Percepxion to issue an invalid token.
         if not HAS_REQUESTS:
             raise ConnectionError("The requests Python library is required for this plugin.")
@@ -105,7 +109,7 @@ class HttpApi(HttpApiBase):
         """Trigger _connect() → login() if not already authenticated.
 
         Calls _connect() directly to avoid send() injecting _auth headers into
-        the trigger request — Percepxion's single-session model would invalidate
+        the trigger request, Percepxion's single-session model would invalidate
         the just-obtained token if a second request hits the login endpoint with it.
         """
         if self.connection._auth is None:
@@ -138,7 +142,7 @@ class HttpApi(HttpApiBase):
     def send_request(self, data, **message_kwargs):
         """Send an authenticated API request.
 
-        ``data`` is the URL path (str) — named ``data`` to match HttpApiBase.send_request
+        ``data`` is the URL path (str), named ``data`` to match HttpApiBase.send_request
         signature and avoid a pylint arguments-renamed violation. Pass ``body``, ``method``,
         and ``headers`` as keyword arguments via ``message_kwargs``.
         """
