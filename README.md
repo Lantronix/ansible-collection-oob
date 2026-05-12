@@ -1,3 +1,6 @@
+> **This repository has been archived.** The project has moved to the official Lantronix organization:
+> **[github.com/Lantronix/ansible-collection-oob](https://github.com/Lantronix/ansible-collection-oob)**
+
 # lantronix.oob Ansible Collection
 
 Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC 9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
