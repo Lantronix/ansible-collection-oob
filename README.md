@@ -182,7 +182,7 @@ v1.0.0. Red Hat Technology Partner application submitted April 2026.
 | Integration tests (20 targets) | Complete |
 | CHANGELOG.rst | Complete |
 | Red Hat certification | Application submitted, targeting Q4 2026 |
-| Galaxy community release | Pending final repo on github.com/Lantronix |
+| Galaxy community release | Repo live at github.com/Lantronix/ansible-collection-oob |
 
 ## Contributing
 

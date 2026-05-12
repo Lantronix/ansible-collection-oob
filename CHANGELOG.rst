@@ -149,7 +149,7 @@ Bugfixes
   ``get_csrf_token()``) issue a lightweight ``send()`` call when ``_auth`` is
   ``None``, forcing the connection and login to complete before the token is
   returned
-  (https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues/3).
+  (https://github.com/Lantronix/ansible-collection-oob/issues/3).
 
 v1.0.2
 ======
@@ -168,7 +168,7 @@ Bugfixes
   v2 security scheme. All SLC module tasks previously failed with
   "Invalid or expired authentication tokens" on every API call despite successful
   login, because the session token was sent under the wrong header name
-  (https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues/2).
+  (https://github.com/Lantronix/ansible-collection-oob/issues/2).
 
 v1.0.1
 ======
@@ -187,7 +187,7 @@ Bugfixes
   the option was silently ignored and all modules defaulted to
   ``verify_ssl=True``, causing ``SSLError`` failures against devices with
   self-signed certificates even when ``ansible_httpapi_validate_certs: false``
-  was set (https://github.com/What-Is-Phase-Two/ansible-collection-oob/issues/1).
+  was set (https://github.com/Lantronix/ansible-collection-oob/issues/1).
 
 v1.0.0
 ======
