@@ -4,8 +4,8 @@ __metaclass__ = type
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_smart_groups
 
-EXISTING_GROUP = {"search_results": [{"group_id": "grp-001", "name": "dc1-servers", "criteria": {}}]}
-NO_GROUPS = {"search_results": []}
+EXISTING_GROUP = {"search_result": [{"id": "grp-001", "name": "dc1-servers"}]}
+NO_GROUPS = {"search_result": []}
 
 
 def run_module(params, check_mode=False, search_result=None):
@@ -37,15 +37,15 @@ def run_module(params, check_mode=False, search_result=None):
 
 
 def test_create_when_missing():
-    m, client, mock_cls = run_module({"name": "dc1-servers", "criteria": {"tag": "dc1"}, "state": "present"})
+    m, client, mock_cls = run_module({"name": "dc1-servers", "query_string": "tag=dc1", "device_ids": None, "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
-    client.create_smart_group.assert_called_once_with("dc1-servers", {"tag": "dc1"})
+    client.create_smart_group.assert_called_once_with("dc1-servers", query_string="tag=dc1", device_ids=None)
 
 
 def test_no_change_when_exists():
     m, client, mock_cls = run_module(
-        {"name": "dc1-servers", "criteria": {}, "state": "present"},
+        {"name": "dc1-servers", "query_string": None, "device_ids": None, "state": "present"},
         search_result=EXISTING_GROUP,
     )
     kwargs = m.exit_json.call_args[1]
@@ -55,7 +55,7 @@ def test_no_change_when_exists():
 
 def test_delete_removes_group():
     m, client, mock_cls = run_module(
-        {"name": "dc1-servers", "criteria": None, "state": "absent"},
+        {"name": "dc1-servers", "query_string": None, "device_ids": None, "state": "absent"},
         search_result=EXISTING_GROUP,
     )
     kwargs = m.exit_json.call_args[1]
@@ -65,7 +65,7 @@ def test_delete_removes_group():
 
 def test_check_mode_blocks_create():
     m, client, mock_cls = run_module(
-        {"name": "new-group", "criteria": {"tag": "x"}, "state": "present"},
+        {"name": "new-group", "query_string": "tag=x", "device_ids": None, "state": "present"},
         check_mode=True,
     )
     kwargs = m.exit_json.call_args[1]
@@ -74,7 +74,7 @@ def test_check_mode_blocks_create():
 
 
 def test_percepxion_smart_groups_passes_validate_certs_to_client():
-    m, _instance, mock_cls = run_module({"name": "grp", "criteria": {}, "state": "present"})
+    m, _instance, mock_cls = run_module({"name": "grp", "query_string": None, "device_ids": None, "state": "present"})
     call_kwargs = mock_cls.call_args[1]
     assert "verify_ssl" in call_kwargs
     assert call_kwargs["verify_ssl"] is False
