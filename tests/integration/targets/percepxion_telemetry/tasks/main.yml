@@ -11,11 +11,11 @@
   ansible.builtin.assert:
     that:
       - devices_result.devices | length > 0
-    fail_msg: "No devices found in sandbox — cannot run telemetry test"
+    fail_msg: "No devices found in sandbox, cannot run telemetry test"
 
 - name: Set device_id fact
   ansible.builtin.set_fact:
-    test_device_id: "{{ devices_result.devices[0].id }}"
+    test_device_id: "{{ devices_result.devices[0].device_id }}"
 
 # --- POINT-IN-TIME TELEMETRY (no time range, returns stats dict) ---
 
@@ -53,10 +53,10 @@
   register: history_result
   when: devices_result.devices | length > 0
 
-- name: Verify history is a list (empty list valid for fresh tenant)
+- name: Verify history dict returned (empty points valid for fresh tenant)
   ansible.builtin.assert:
     that:
       - history_result.history is defined
-      - history_result.history is iterable
-    fail_msg: "percepxion_telemetry did not return history list for time range query"
+      - history_result.history is mapping
+    fail_msg: "percepxion_telemetry did not return history dict for time range query: {{ history_result }}"
   when: devices_result.devices | length > 0

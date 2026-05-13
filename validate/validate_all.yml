@@ -1,0 +1,185 @@
+---
+# Master validation playbook, runs all 20 lantronix.oob module integration tests.
+# Run from the collection root:
+#   ansible-playbook validate/validate_all.yml -i validate/inventory.yml
+#
+# Each module section prints a banner so failures are easy to locate.
+
+# ---------------------------------------------------------------------------
+# SLC 9000 modules (8)
+# ---------------------------------------------------------------------------
+- name: SLC 9000 module validation
+  hosts: slc9k
+  gather_facts: false
+
+  tasks:
+
+    - name: "=== slc_facts ==="
+      ansible.builtin.debug:
+        msg: "Running slc_facts integration tests"
+
+    - name: Include slc_facts integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_facts/tasks/main.yml
+
+    - name: "=== slc_users ==="
+      ansible.builtin.debug:
+        msg: "Running slc_users integration tests"
+
+    - name: Include slc_users integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_users/tasks/main.yml
+
+    - name: "=== slc_config ==="
+      ansible.builtin.debug:
+        msg: "Running slc_config integration tests"
+
+    - name: Include slc_config integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_config/tasks/main.yml
+
+    - name: "=== slc_device_ports ==="
+      ansible.builtin.debug:
+        msg: "Running slc_device_ports integration tests"
+
+    - name: Include slc_device_ports integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_device_ports/tasks/main.yml
+
+    - name: "=== slc_firmware ==="
+      ansible.builtin.debug:
+        msg: "Running slc_firmware integration tests (read-only)"
+
+    - name: Include slc_firmware integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_firmware/tasks/main.yml
+
+    - name: "=== slc_managed_devices ==="
+      ansible.builtin.debug:
+        msg: "Running slc_managed_devices integration tests"
+
+    - name: Include slc_managed_devices integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_managed_devices/tasks/main.yml
+
+    - name: "=== slc_network ==="
+      ansible.builtin.debug:
+        msg: "Running slc_network integration tests (read-only)"
+
+    - name: Include slc_network integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_network/tasks/main.yml
+
+    - name: "=== slc_system ==="
+      ansible.builtin.debug:
+        msg: "Running slc_system integration tests"
+
+    - name: Include slc_system integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_system/tasks/main.yml
+
+
+# ---------------------------------------------------------------------------
+# Percepxion modules (12)
+# ---------------------------------------------------------------------------
+- name: Percepxion module validation
+  hosts: percepxion
+  gather_facts: false
+
+  tasks:
+
+    - name: "=== percepxion_facts ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_facts integration tests"
+
+    - name: Include percepxion_facts integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_facts/tasks/main.yml
+
+    - name: "=== percepxion_devices ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_devices integration tests (read-only)"
+
+    - name: Include percepxion_devices integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_devices/tasks/main.yml
+
+    - name: "=== percepxion_audit_logs ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_audit_logs integration tests (read-only)"
+
+    - name: Include percepxion_audit_logs integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_audit_logs/tasks/main.yml
+
+    - name: "=== percepxion_telemetry ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_telemetry integration tests (read-only)"
+
+    - name: Include percepxion_telemetry integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_telemetry/tasks/main.yml
+
+    - name: "=== percepxion_users ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_users integration tests (CRUD)"
+
+    - name: Include percepxion_users integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_users/tasks/main.yml
+
+    - name: "=== percepxion_projects ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_projects integration tests"
+
+    - name: Include percepxion_projects integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_projects/tasks/main.yml
+
+    - name: "=== percepxion_smart_groups ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_smart_groups integration tests (CRUD)"
+
+    - name: Include percepxion_smart_groups integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_smart_groups/tasks/main.yml
+
+    - name: "=== percepxion_config ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_config integration tests (CRUD)"
+
+    - name: Include percepxion_config integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_config/tasks/main.yml
+
+    - name: "=== percepxion_firmware ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_firmware integration tests (compliance check only)"
+
+    - name: Include percepxion_firmware integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_firmware/tasks/main.yml
+
+    - name: "=== percepxion_jobs ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_jobs integration tests (CRUD)"
+
+    - name: Include percepxion_jobs integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_jobs/tasks/main.yml
+
+    - name: "=== percepxion_aoob_session ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_aoob_session integration tests (live session)"
+
+    - name: Include percepxion_aoob_session integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_aoob_session/tasks/main.yml
+
+    - name: "=== percepxion_import_devices ==="
+      ansible.builtin.debug:
+        msg: "Running percepxion_import_devices integration tests (idempotency)"
+
+    - name: Include percepxion_import_devices integration tasks
+      ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/percepxion_import_devices/tasks/main.yml

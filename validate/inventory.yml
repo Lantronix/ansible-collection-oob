@@ -1,0 +1,24 @@
+all:
+  children:
+    slc_devices:
+      hosts:
+        slc9k:
+          ansible_host: 192.168.100.75
+          ansible_user: sysadmin
+          ansible_password: "XLLAZFKQ"
+          ansible_network_os: lantronix.oob.slc9
+          ansible_connection: ansible.netcommon.httpapi
+          ansible_httpapi_use_ssl: true
+          ansible_httpapi_validate_certs: false
+
+    percepxion_platform:
+      hosts:
+        percepxion:
+          ansible_host: api.gopercepxion.ai
+          ansible_user: ryan.hogg
+          ansible_password: "J9iG*&KV3e^YF!K"
+          ansible_network_os: lantronix.oob.percepxion
+          ansible_connection: ansible.netcommon.httpapi
+          ansible_httpapi_use_ssl: true
+          ansible_httpapi_validate_certs: true
+          percepxion_tenant_id: "a1aa0869-f4d6-4579-b662-cea9fcc65bfe"

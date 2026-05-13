@@ -74,8 +74,8 @@ def main():
         host=connection.get_api_host(),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=module.params.get("project_tag") or None,
-        tenant_id=module.params.get("tenant_id") or None,
+        project_tag=module.params.get("project_tag") or connection.get_project_tag(),
+        tenant_id=module.params.get("tenant_id") or connection.get_tenant_id(),
         verify_ssl=connection.get_option("validate_certs"),
     )
 

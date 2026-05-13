@@ -214,10 +214,14 @@ class PercepxionClient:
         return self._post("/v1/audit/user/search", self._scope({"limit": limit}))
 
     def download_device_log(self, device_id, log_type="access"):
-        return self._post("/v1/storage/file/devicelog/download", self._scope({
-            "device_id": device_id,
-            "log_type": log_type,
-        }))
+        """POST /v1/storage/file/devicelog/download -- returns raw log text (text/plain)."""
+        try:
+            resp = self.session.post(self._url("/v1/storage/file/devicelog/download"),
+                                     json=self._scope({"device_id": device_id, "log_type": log_type}))
+            resp.raise_for_status()
+            return resp.text
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
 
     # --- Telemetry ---
 
@@ -229,10 +233,10 @@ class PercepxionClient:
 
     def get_telemetry_history(self, device_id, metric, start_time, end_time):
         return self._post("/v1/storage/telemetry/history", self._scope({
-            "device_id": device_id,
-            "metric": metric,
-            "start_time": start_time,
-            "end_time": end_time,
+            "device_id": [device_id],
+            "name": metric,
+            "from_date": start_time,
+            "to_date": end_time,
         }))
 
     # --- Users ---
@@ -255,15 +259,15 @@ class PercepxionClient:
     # --- Device registration ---
 
     def register_device(self, payload):
-        """POST /v1/device/register — register a new device by serial/MAC."""
+        """POST /v1/device/register, register a new device by serial/MAC."""
         return self._post("/v1/device/register", self._scope(payload))
 
-    # --- AOOB sessions (endpoint paths TBD — confirm with Katie against production API) ---
+    # --- AOOB sessions (endpoint paths TBD, confirm with Katie against production API) ---
 
     def initiate_session(self, device_id):
-        """POST /v3/device/connect — initiate an OOB terminal session."""
+        """POST /v3/device/connect, initiate an OOB terminal session."""
         return self._post("/v3/device/connect", self._scope({"device_id": device_id}))
 
     def terminate_session(self, session_id):
-        """POST /v3/device/disconnect — terminate an active OOB session."""
+        """POST /v3/device/disconnect, terminate an active OOB session."""
         return self._post("/v3/device/disconnect", self._scope({"session_id": session_id}))

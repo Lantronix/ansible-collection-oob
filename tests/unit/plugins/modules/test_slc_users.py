@@ -4,21 +4,33 @@ __metaclass__ = type
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import slc_users
 
-EXISTING_USERS = {"users": [{"username": "netops", "role": "admin"}]}
-AFTER_CREATE = {"users": [{"username": "netops", "role": "admin"}, {"username": "newuser", "role": "user"}]}
-AFTER_DELETE = {"users": []}
+SYSADMIN_ATTRS = {
+    "uid": "0",
+    "username": "sysadmin",
+    "group": "Administrators",
+    "permissions": "ad,nt,sv",
+    "data_ports": "1-32",
+    "listen_ports": "1-32",
+    "clear_ports": "1-32",
+    "power_outlets": "1-8",
+    "escape_seq": "\\x1bA",
+    "break_seq": "\\x1bB",
+    "allow_dialback": "n",
+    "dialback_number": "",
+    "status": "Active",
+}
 
 
-def run_module(params, check_mode=False, get_users_side_effect=None):
+def run_module(params, check_mode=False, get_sysadmin_side_effect=None):
     with patch("ansible_collections.lantronix.oob.plugins.modules.slc_users.AnsibleModule") as mock_mod:
         with patch("ansible_collections.lantronix.oob.plugins.modules.slc_users.Connection") as mock_conn_cls:
             with patch("ansible_collections.lantronix.oob.plugins.modules.slc_users.SLC9Client") as mock_cls:
                 instance = MagicMock()
-                if get_users_side_effect is not None:
-                    instance.get_users.side_effect = get_users_side_effect
+                if get_sysadmin_side_effect is not None:
+                    instance.get_sysadmin.side_effect = get_sysadmin_side_effect
                 else:
-                    instance.get_users.return_value = EXISTING_USERS
-                instance.set_users.return_value = {}
+                    instance.get_sysadmin.return_value = SYSADMIN_ATTRS
+                instance.set_sysadmin_password.return_value = {}
                 mock_cls.return_value = instance
 
                 mock_conn = MagicMock()
@@ -37,55 +49,36 @@ def run_module(params, check_mode=False, get_users_side_effect=None):
                 return m, instance, mock_cls
 
 
-def test_present_user_already_exists_no_change():
-    m, client, mock_cls = run_module({"username": "netops", "state": "present", "role": "admin", "password": None})
+def test_read_only_no_change():
+    m, client, _ = run_module({"new_password": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
-    client.set_users.assert_not_called()
-    # No re-fetch when there is no change — get_users called exactly once
-    assert client.get_users.call_count == 1
+    assert kwargs["sysadmin"]["username"] == "sysadmin"
+    client.set_sysadmin_password.assert_not_called()
 
 
-def test_present_new_user_triggers_change():
-    # First call returns existing list; second call (re-fetch) returns post-create list
-    m, client, mock_cls = run_module(
-        {"username": "newuser", "state": "present", "role": "user", "password": "Secret123"},
-        get_users_side_effect=[EXISTING_USERS, AFTER_CREATE],
-    )
+def test_password_change_reports_changed():
+    m, client, _ = run_module({"new_password": "NewPass123!"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
-    client.set_users.assert_called_once()
-    # get_users called twice: initial fetch + re-fetch after write
-    assert client.get_users.call_count == 2
-    # Returned users list reflects post-write state
-    assert "newuser" in kwargs["users"]
+    client.set_sysadmin_password.assert_called_once_with("NewPass123!")
 
 
-def test_absent_existing_user_triggers_change():
-    # First call returns existing list; second call (re-fetch) returns post-delete list
-    m, client, mock_cls = run_module(
-        {"username": "netops", "state": "absent", "role": None, "password": None},
-        get_users_side_effect=[EXISTING_USERS, AFTER_DELETE],
-    )
+def test_check_mode_does_not_call_patch():
+    m, client, _ = run_module({"new_password": "NewPass123!"}, check_mode=True)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
-    # get_users called twice: initial fetch + re-fetch after write
-    assert client.get_users.call_count == 2
-    # Returned users list reflects post-write state
-    assert "netops" not in kwargs["users"]
+    client.set_sysadmin_password.assert_not_called()
 
 
-def test_check_mode_does_not_call_set():
-    m, client, mock_cls = run_module(
-        {"username": "newuser", "state": "present", "role": "user", "password": "x"}, check_mode=True
-    )
-    client.set_users.assert_not_called()
-    # In check_mode no write happens, so no re-fetch — get_users called exactly once
-    assert client.get_users.call_count == 1
+def test_returns_sysadmin_dict():
+    m, _, _ = run_module({"new_password": None})
+    kwargs = m.exit_json.call_args[1]
+    assert kwargs["sysadmin"] == SYSADMIN_ATTRS
 
 
-def test_slc_users_passes_validate_certs_to_client():
-    m, _instance, mock_cls = run_module({"username": "testuser", "password": None, "role": "admin", "state": "present"})
+def test_passes_verify_ssl_to_client():
+    _, _instance, mock_cls = run_module({"new_password": None})
     call_kwargs = mock_cls.call_args[1]
     assert "verify_ssl" in call_kwargs
     assert call_kwargs["verify_ssl"] is False

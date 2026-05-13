@@ -1,0 +1,7 @@
+---
+- name: slc_system test
+  hosts: slc9k
+  gather_facts: false
+  tasks:
+    - ansible.builtin.include_tasks:
+        file: ../tests/integration/targets/slc_system/tasks/main.yml
