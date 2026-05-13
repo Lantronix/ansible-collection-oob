@@ -1,6 +1,6 @@
 # lantronix.oob Ansible Collection
 
-Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC 9000 device configuration and Percepxion fleet management — the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
+Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
 
 ## Installation
 
@@ -25,12 +25,12 @@ pip install requests
 
 | Platform | Connection Plugin | API |
 |---|---|---|
-| SLC 9000 (firmware R8+) | `lantronix.oob.slc9` | REST API v2 (OpenAPI 3.1.0) |
+| SLC9000 (firmware R8+) | `lantronix.oob.slc9` | REST API v2 (OpenAPI 3.1.0) |
 | Percepxion 6.12+ | `lantronix.oob.percepxion` | OpenAPI 3.0.1 |
 
 ## Modules
 
-### SLC 9000 Device Modules
+### SLC9000 Device Modules
 
 | Module | What it does |
 |---|---|
@@ -54,7 +54,7 @@ pip install requests
 | `lantronix.oob.percepxion_smart_groups` | Create and manage device smart groups |
 | `lantronix.oob.percepxion_firmware` | Fleet firmware compliance report and upgrade |
 | `lantronix.oob.percepxion_config` | Config backup, restore, push at fleet scale |
-| `lantronix.oob.percepxion_jobs` | Job group lifecycle — create, schedule, monitor |
+| `lantronix.oob.percepxion_jobs` | Job group lifecycle, create, schedule, monitor |
 | `lantronix.oob.percepxion_audit_logs` | Security audit log query and device access log export |
 | `lantronix.oob.percepxion_aoob_session` | Initiate and terminate OOB sessions |
 | `lantronix.oob.percepxion_import_devices` | Bulk device import and project assignment |
@@ -71,7 +71,7 @@ pip install requests
 
 ## Quick Start
 
-### SLC 9000
+### SLC9000
 
 ```yaml
 # inventory.yml
@@ -99,7 +99,7 @@ slc_devices:
 
     - name: Show firmware and model
       ansible.builtin.debug:
-        msg: "{{ inventory_hostname }} — {{ result.slc_facts.model }} running {{ result.slc_facts.firmware_version }}"
+        msg: "{{ inventory_hostname }}, {{ result.slc_facts.model }} running {{ result.slc_facts.firmware_version }}"
 ```
 
 ### Percepxion
@@ -116,8 +116,8 @@ percepxion:
     ansible_httpapi_use_ssl: true
     ansible_user: "{{ vault_percepxion_user }}"
     ansible_password: "{{ vault_percepxion_password }}"
-    percepxion_project_tag: "prod-datacenter-east"   # optional — scopes all ops to project
-    percepxion_tenant_id: "34f5c98e-..."             # optional — Project Admin only
+    percepxion_project_tag: "prod-datacenter-east"   # optional, scopes all ops to project
+    percepxion_tenant_id: "34f5c98e-..."             # optional, Project Admin only
 ```
 
 ```yaml
@@ -139,14 +139,14 @@ percepxion:
 
 This collection includes two httpapi connection plugins:
 
-- **`lantronix.oob.slc9`** — authenticates to SLC 9000 REST API v2 via session token
-- **`lantronix.oob.percepxion`** — authenticates to Percepxion API with Bearer token and CSRF token handling
+- **`lantronix.oob.slc9`**, authenticates to SLC9000 REST API v2 via session token
+- **`lantronix.oob.percepxion`**, authenticates to Percepxion API with Bearer token and CSRF token handling
 
 Both plugins handle login, token management, and error translation automatically. You do not call them directly; set `ansible_network_os` in your inventory.
 
 ## Percepxion Project and Tenant Scoping
 
-The Percepxion API supports multi-project and multi-tenant deployments. Set these as inventory connection variables — all Percepxion modules inherit them automatically:
+The Percepxion API supports multi-project and multi-tenant deployments. Set these as inventory connection variables, all Percepxion modules inherit them automatically:
 
 ```yaml
 percepxion_project_tag: "prod-east"       # scope all ops to this project
@@ -154,21 +154,6 @@ percepxion_tenant_id: "uuid-here"         # required only for Project Admins
 ```
 
 To operate across multiple projects, loop over inventory groups rather than module arguments.
-
-## Status
-
-v1.0.0. Red Hat Technology Partner application submitted April 2026.
-
-| Component | Status |
-|---|---|
-| All 20 modules | Complete |
-| Unit tests (85 tests, 22 files) | Complete — CI passing |
-| Both httpapi plugins | Complete |
-| 4 example roles | Complete |
-| Integration tests (20 targets) | Complete |
-| CHANGELOG.rst | Complete |
-| Red Hat certification | Application submitted — targeting Q4 2026 |
-| Galaxy community release | Pending final repo on github.com/Lantronix |
 
 ## Contributing
 
