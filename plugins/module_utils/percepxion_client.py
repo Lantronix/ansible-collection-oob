@@ -3,7 +3,14 @@ __metaclass__ = type
 
 import io
 import json as _json
-import requests
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    requests = None
+
 from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message, AnsibleLantronixError
 
 
@@ -255,15 +262,15 @@ class PercepxionClient:
     # --- Device registration ---
 
     def register_device(self, payload):
-        """POST /v1/device/register — register a new device by serial/MAC."""
+        """POST /v1/device/register, register a new device by serial/MAC."""
         return self._post("/v1/device/register", self._scope(payload))
 
-    # --- AOOB sessions (endpoint paths TBD — confirm with Katie against production API) ---
+    # --- AOOB sessions (endpoint paths TBD, confirm with Katie against production API) ---
 
     def initiate_session(self, device_id):
-        """POST /v3/device/connect — initiate an OOB terminal session."""
+        """POST /v3/device/connect, initiate an OOB terminal session."""
         return self._post("/v3/device/connect", self._scope({"device_id": device_id}))
 
     def terminate_session(self, session_id):
-        """POST /v3/device/disconnect — terminate an active OOB session."""
+        """POST /v3/device/disconnect, terminate an active OOB session."""
         return self._post("/v3/device/disconnect", self._scope({"session_id": session_id}))

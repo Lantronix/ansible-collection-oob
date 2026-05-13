@@ -1,13 +1,13 @@
 ---
 - name: Query Percepxion device inventory
   lantronix.oob.percepxion_devices:
-    search_string: "{{ oob_inventory_search_string | default(omit) }}"
-    limit: "{{ oob_inventory_limit }}"
+    search_string: "{{ oob_fleet_inventory_search_string | default(omit) }}"
+    limit: "{{ oob_fleet_inventory_limit }}"
   register: _percepxion_inventory
 
 - name: Write dynamic inventory file
-  copy:
-    dest: "{{ oob_inventory_output_path }}"
+  ansible.builtin.copy:
+    dest: "{{ oob_fleet_inventory_output_path }}"
     content: |
       all:
         children:

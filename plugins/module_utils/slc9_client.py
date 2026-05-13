@@ -1,7 +1,13 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-import requests
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    requests = None
+
 from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message, AnsibleLantronixError
 
 
@@ -35,7 +41,7 @@ class SLC9Client:
             raise AnsibleLantronixError(api_error_message(exc))
         except ValueError as exc:
             raise AnsibleLantronixError(
-                "Invalid JSON from {0} (HTTP {1}): {2} — body: {3!r}".format(
+                "Invalid JSON from {0} (HTTP {1}): {2}, body: {3!r}".format(
                     path, resp.status_code, exc, resp.text[:200]
                 )
             )

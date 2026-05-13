@@ -1,4 +1,4 @@
 ---
-oob_baseline_hostname: ""
-oob_baseline_ntp_servers: []
-oob_baseline_syslog_host: ""
+oob_baseline_config_hostname: ""
+oob_baseline_config_ntp_servers: []
+oob_baseline_config_syslog_host: ""

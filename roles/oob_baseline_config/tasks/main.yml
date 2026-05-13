@@ -1,18 +1,20 @@
 ---
 - name: Set device hostname
   lantronix.oob.slc_system:
-    hostname: "{{ oob_baseline_hostname }}"
-  when: oob_baseline_hostname | length > 0
+    hostname: "{{ oob_baseline_config_hostname }}"
+  when: oob_baseline_config_hostname | length > 0
+
+- name: Build baseline commands list
+  ansible.builtin.set_fact:
+    _oob_baseline_commands: >-
+      {{ (oob_baseline_config_ntp_servers | map('regex_replace', '^', 'set ntp server ') | list) +
+         ([('set logging host ' + oob_baseline_config_syslog_host)] if oob_baseline_config_syslog_host else []) }}
 
 - name: Apply baseline config via batch commands
   lantronix.oob.slc_config:
     action: batch
-    commands: >-
-      {{
-        (['set ntp server ' + item for item in oob_baseline_ntp_servers]) +
-        (['set logging host ' + oob_baseline_syslog_host] if oob_baseline_syslog_host else [])
-      }}
-  when: oob_baseline_ntp_servers | length > 0 or oob_baseline_syslog_host | length > 0
+    commands: "{{ _oob_baseline_commands }}"
+  when: oob_baseline_config_ntp_servers | length > 0 or oob_baseline_config_syslog_host | length > 0
 
 - name: Save configuration
   lantronix.oob.slc_config:

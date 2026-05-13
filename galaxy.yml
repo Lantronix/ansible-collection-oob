@@ -16,8 +16,8 @@ tags:
   - oob
   - lantronix
   - percepxion
-  - console-server
+  - consoleserver
   - slc9000
-  - serial-console
+  - serialconsole
 dependencies:
   ansible.netcommon: ">=5.0.0"
