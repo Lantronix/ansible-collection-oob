@@ -35,6 +35,12 @@ options:
   end_time:
     description: ISO 8601 end timestamp for historical queries.
     type: str
+  project_tag:
+    description: Percepxion project tag to scope the operation.
+    type: str
+  tenant_id:
+    description: Tenant ID for Project Admin authentication.
+    type: str
 """
 
 EXAMPLES = r"""

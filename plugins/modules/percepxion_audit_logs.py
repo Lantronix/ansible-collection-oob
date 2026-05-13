@@ -35,6 +35,12 @@ options:
     description: Maximum number of log entries to return.
     type: int
     default: 100
+  project_tag:
+    description: Percepxion project tag to scope the operation.
+    type: str
+  tenant_id:
+    description: Tenant ID for Project Admin authentication.
+    type: str
 """
 
 EXAMPLES = r"""

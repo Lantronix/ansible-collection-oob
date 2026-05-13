@@ -40,6 +40,9 @@ options:
     type: str
     default: present
     choices: [present]
+  tenant_id:
+    description: Tenant ID for Project Admin authentication.
+    type: str
 """
 
 EXAMPLES = r"""

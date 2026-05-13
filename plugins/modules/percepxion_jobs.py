@@ -33,6 +33,12 @@ options:
     type: str
     default: present
     choices: [present, absent, query]
+  project_tag:
+    description: Percepxion project tag to scope the operation.
+    type: str
+  tenant_id:
+    description: Tenant ID for Project Admin authentication.
+    type: str
 """
 
 EXAMPLES = r"""

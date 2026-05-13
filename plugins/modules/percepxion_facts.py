@@ -16,6 +16,13 @@ description:
 notes:
   - Requires C(ansible_network_os=lantronix.oob.percepxion) and
     C(ansible_connection=ansible.netcommon.httpapi).
+options:
+  project_tag:
+    description: Percepxion project tag to scope the operation.
+    type: str
+  tenant_id:
+    description: Tenant ID for Project Admin authentication.
+    type: str
 """
 
 EXAMPLES = r"""
