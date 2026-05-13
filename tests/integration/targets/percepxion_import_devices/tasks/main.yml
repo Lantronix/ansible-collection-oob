@@ -1,21 +1,44 @@
 ---
-- name: Percepxion import idempotency test
-  block:
-    - name: Attempt to import already-registered device (expect skipped)
-      lantronix.oob.percepxion_import_devices:
-        devices:
-          - serial: "SLC9000-RH"
-      register: import_result
+# percepxion_import_devices integration test.
+# Two paths tested:
+# 1. Idempotency: a device already in the tenant (SLC8000-RH) is skipped.
+# 2. check_mode: a fake serial shows as "would register" without hitting the API.
+# tenant_id must be passed explicitly -- connection.get_tenant_id() returns None.
 
-    - name: Verify device was skipped (already registered)
-      ansible.builtin.assert:
-        that:
-          - import_result.skipped | length > 0
-          - import_result.registered | length == 0
-          - import_result.changed is false
-        fail_msg: "Expected SLC9000-RH to be skipped, got registered={{ import_result.registered }}, skipped={{ import_result.skipped }}"
+# --- SKIP PATH (idempotency) ---
 
-  always:
-    - name: Ensure no test artifacts remain
-      ansible.builtin.debug:
-        msg: "Import idempotency test complete. SLC9000-RH is tenant infrastructure and was not modified."
+- name: Import already-registered device (expect skipped)
+  lantronix.oob.percepxion_import_devices:
+    devices:
+      - serial: "SLC8000-RH"
+    tenant_id: "{{ percepxion_tenant_id }}"
+  register: skip_result
+
+- name: Verify already-registered device is skipped (changed=false)
+  ansible.builtin.assert:
+    that:
+      - skip_result.skipped | length > 0
+      - skip_result.registered | length == 0
+      - skip_result.changed is false
+    success_msg: "Import idempotency correct: SLC8000-RH was skipped (already registered)"
+    fail_msg: "Expected SLC8000-RH to be skipped: registered={{ skip_result.registered }}, skipped={{ skip_result.skipped }}"
+
+# --- CHECK_MODE PATH (would-register) ---
+
+- name: Import non-existent device in check_mode (expect would-register)
+  lantronix.oob.percepxion_import_devices:
+    devices:
+      - serial: "ANSIBLE-FAKE-SERIAL-99999"
+        device_name: "ansible-test-fake"
+    tenant_id: "{{ percepxion_tenant_id }}"
+  check_mode: true
+  register: checkmode_result
+
+- name: Verify check_mode reports would-change for new device
+  ansible.builtin.assert:
+    that:
+      - checkmode_result.changed is true
+      - checkmode_result.registered | length > 0
+      - checkmode_result.skipped | length == 0
+    success_msg: "check_mode correctly reports changed=true for unregistered device"
+    fail_msg: "Unexpected check_mode result: {{ checkmode_result }}"

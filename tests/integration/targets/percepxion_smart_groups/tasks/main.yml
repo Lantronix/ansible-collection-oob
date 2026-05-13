@@ -2,11 +2,14 @@
 # Full CRUD cycle for percepxion_smart_groups.
 # Creates a test smart group, verifies idempotency, then deletes it.
 # Uses block/always to guarantee cleanup even on failure.
+# NOTE: tenant_id must be passed explicitly -- connection.get_tenant_id() returns None.
+# NOTE: query_string is an optional filter string; device_ids is the alternative.
 
 # Pre-clean: remove test group if left from a prior failed run
 - name: Pre-clean - ensure test smart group does not exist
   lantronix.oob.percepxion_smart_groups:
     name: "ansible-test-sg"
+    tenant_id: "{{ percepxion_tenant_id }}"
     state: absent
   ignore_errors: true  # noqa: ignore-errors
 
@@ -18,8 +21,8 @@
     - name: Create test smart group
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-test-sg"
-        criteria:
-          firmware_version: "9.7.0.0R8"
+        query_string: "firmware_version=9.7.0.0R8"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: create_result
 
@@ -42,8 +45,8 @@
     - name: Create same smart group again to verify idempotency
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-test-sg"
-        criteria:
-          firmware_version: "9.7.0.0R8"
+        query_string: "firmware_version=9.7.0.0R8"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: idempotent_create
 
@@ -59,6 +62,7 @@
     - name: Delete test smart group
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-test-sg"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       register: delete_result
 
@@ -74,6 +78,7 @@
     - name: Delete same group again to verify absent idempotency
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-test-sg"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       register: idempotent_delete
 
@@ -88,5 +93,6 @@
     - name: Cleanup - ensure test smart group is removed
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-test-sg"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       ignore_errors: true  # noqa: ignore-errors

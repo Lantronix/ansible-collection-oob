@@ -1,11 +1,24 @@
 ---
 # Read-only: query all three audit log types and assert required fields.
 
+# Fetch a known device_id to use for the access log test.
+- name: Find SLC9000-RH to get a device_id for access log test
+  lantronix.oob.percepxion_devices:
+    search_string: "SLC9000-RH"
+    limit: 1
+  register: device_lookup
+
+- name: Set device_id fact
+  ansible.builtin.set_fact:
+    audit_test_device_id: "{{ device_lookup.devices[0].device_id }}"
+  when: device_lookup.devices | length > 0
+
 # --- DEVICE AUDIT LOGS ---
 
 - name: Query device audit logs
   lantronix.oob.percepxion_audit_logs:
     log_type: "device"
+    tenant_id: "{{ percepxion_tenant_id }}"
   register: device_logs_result
 
 - name: Verify device audit_logs key is a list
@@ -21,6 +34,7 @@
 - name: Query user audit logs
   lantronix.oob.percepxion_audit_logs:
     log_type: "user"
+    tenant_id: "{{ percepxion_tenant_id }}"
   register: user_logs_result
 
 - name: Verify user audit_logs key is a list
@@ -36,12 +50,16 @@
 - name: Query access audit logs (returns download URL)
   lantronix.oob.percepxion_audit_logs:
     log_type: "access"
+    device_id: "{{ audit_test_device_id }}"
+    tenant_id: "{{ percepxion_tenant_id }}"
   register: access_logs_result
+  when: audit_test_device_id is defined
 
-- name: Verify access log returns download_url
+- name: Verify access log returns log_content
   ansible.builtin.assert:
     that:
-      - access_logs_result.download_url is defined
-      - access_logs_result.download_url | length > 0
-    success_msg: "access log download_url returned: {{ access_logs_result.download_url }}"
-    fail_msg: "download_url missing for log_type=access: {{ access_logs_result }}"
+      - access_logs_result.log_content is defined
+      - access_logs_result.log_content | length > 0
+    success_msg: "access log content returned ({{ access_logs_result.log_content | length }} chars)"
+    fail_msg: "log_content missing or empty for log_type=access: {{ access_logs_result }}"
+  when: audit_test_device_id is defined

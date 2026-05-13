@@ -63,8 +63,8 @@ audit_logs:
   returned: when log_type is device or user
   type: list
   elements: dict
-download_url:
-  description: Pre-signed URL to download the access log file. Present for C(log_type=access).
+log_content:
+  description: Raw access log text returned by the platform. Present for C(log_type=access).
   returned: when log_type is access
   type: str
 """
@@ -76,12 +76,14 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import Ansibl
 
 
 def _make_client(connection, module):
+    tenant_id = module.params.get("tenant_id") or connection.get_tenant_id()
+    project_tag = module.params.get("project_tag") or connection.get_project_tag()
     return PercepxionClient(
         host=connection.get_api_host(),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=module.params.get("project_tag") or None,
-        tenant_id=module.params.get("tenant_id") or None,
+        project_tag=project_tag,
+        tenant_id=tenant_id,
         verify_ssl=connection.get_option("validate_certs"),
     )
 
@@ -116,7 +118,7 @@ def main():
             )
         except AnsibleLantronixError as exc:
             module.fail_json(msg=str(exc))
-        module.exit_json(changed=False, audit_logs=result.get("audit_logs", []))
+        module.exit_json(changed=False, audit_logs=result.get("audit", []))
         return
 
     if log_type == "user":
@@ -124,14 +126,14 @@ def main():
             result = client.search_user_audit_logs(limit=limit)
         except AnsibleLantronixError as exc:
             module.fail_json(msg=str(exc))
-        module.exit_json(changed=False, audit_logs=result.get("audit_logs", []))
+        module.exit_json(changed=False, audit_logs=result.get("audit", []))
         return
 
     try:
-        result = client.download_device_log(module.params["device_id"], log_type="access")
+        log_content = client.download_device_log(module.params["device_id"], log_type="access")
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
-    module.exit_json(changed=False, download_url=result.get("url", ""))
+    module.exit_json(changed=False, log_content=log_content or "")
 
 
 if __name__ == "__main__":

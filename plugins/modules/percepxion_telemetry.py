@@ -63,10 +63,11 @@ stats:
   returned: when start_time and end_time are not provided
   type: dict
 history:
-  description: Time-series data points for the queried metric. Present when time range given.
+  description: >
+    Historical telemetry object keyed by metric name. Contains C(name) and C(devices)
+    where each device entry has a C(points) list of time-series data. Present when time range given.
   returned: when start_time and end_time are provided
-  type: list
-  elements: dict
+  type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -80,8 +81,8 @@ def _make_client(connection, module):
         host=connection.get_api_host(),
         token=connection.get_token(),
         csrf_token=connection.get_csrf_token(),
-        project_tag=module.params.get("project_tag") or None,
-        tenant_id=module.params.get("tenant_id") or None,
+        project_tag=module.params.get("project_tag") or connection.get_project_tag(),
+        tenant_id=module.params.get("tenant_id") or connection.get_tenant_id(),
         verify_ssl=connection.get_option("validate_certs"),
     )
 
@@ -112,7 +113,7 @@ def main():
             result = client.get_telemetry_history(device_id, metrics[0], start_time, end_time)
         except AnsibleLantronixError as exc:
             module.fail_json(msg=str(exc))
-        module.exit_json(changed=False, history=result.get("history", []))
+        module.exit_json(changed=False, history=result.get("history", {}))
         return
 
     try:

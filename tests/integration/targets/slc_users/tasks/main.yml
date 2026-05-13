@@ -1,98 +1,62 @@
 ---
-# Full CRUD cycle for slc_users. Uses a dedicated test account that is
-# created and removed within this target so the device is left clean.
+# The SLC9000 REST API v2 exposes only the sysadmin account (GET /users/sysadmin,
+# PATCH /users/sysadmin). Other local users are managed via CLI only.
+#
+# Tests: read sysadmin attributes, verify fields, and exercise check_mode for
+# the password-change path (actual password is NOT changed so the lab stays clean).
 
-# Pre-clean: remove test user if it exists from a previous failed run
-- name: Ensure test user does not exist before test
+- name: Get sysadmin account attributes
   lantronix.oob.slc_users:
-    username: ansible-test-user
-    state: absent
-  ignore_errors: true  # noqa: ignore-errors
+  register: result
 
-- name: SLC users CRUD test
-  block:
+- name: Assert sysadmin key is returned
+  ansible.builtin.assert:
+    that:
+      - result.sysadmin is defined
+      - result.sysadmin is mapping
+    success_msg: "sysadmin dict returned"
+    fail_msg: "sysadmin key missing from result: {{ result }}"
 
-    # --- CREATE ---
+- name: Assert username is sysadmin
+  ansible.builtin.assert:
+    that:
+      - result.sysadmin.username is defined
+      - result.sysadmin.username == "sysadmin"
+    success_msg: "username: {{ result.sysadmin.username }}"
+    fail_msg: "Unexpected username: {{ result.sysadmin.username }}"
 
-    - name: Create test user with role 'user'
-      lantronix.oob.slc_users:
-        username: ansible-test-user
-        password: AnsibleTest123!
-        role: user
-        state: present
-      register: create_result
+- name: Assert group is defined and non-empty
+  ansible.builtin.assert:
+    that:
+      - result.sysadmin.group is defined
+      - result.sysadmin.group | length > 0
+    success_msg: "group: {{ result.sysadmin.group }}"
+    fail_msg: "group missing or empty"
 
-    - name: Assert user creation reported changed
-      ansible.builtin.assert:
-        that:
-          - create_result.changed is true
-        success_msg: "User creation correctly reported changed=true"
-        fail_msg: "Expected changed=true on first create, got changed={{ create_result.changed }}"
+- name: Assert status is Active
+  ansible.builtin.assert:
+    that:
+      - result.sysadmin.status is defined
+      - result.sysadmin.status == "Active"
+    success_msg: "status: {{ result.sysadmin.status }}"
+    fail_msg: "Expected status Active, got: {{ result.sysadmin.status }}"
 
-    - name: Assert ansible-test-user appears in users list
-      ansible.builtin.assert:
-        that:
-          - "'ansible-test-user' in create_result.users"
-        success_msg: "ansible-test-user found in result.users"
-        fail_msg: "ansible-test-user missing from result.users: {{ create_result.users }}"
+- name: Assert read-only query reports no change
+  ansible.builtin.assert:
+    that:
+      - result.changed is false
+    success_msg: "Read-only query correctly reported changed=false"
+    fail_msg: "Expected changed=false on read-only query, got changed={{ result.changed }}"
 
-    # --- IDEMPOTENCY (create again, expect no change) ---
+- name: Password change in check_mode (does not alter the device)
+  lantronix.oob.slc_users:
+    new_password: "CheckModeTestPassword123!"
+  check_mode: true
+  register: check_result
 
-    - name: Create same user again to verify idempotency
-      lantronix.oob.slc_users:
-        username: ansible-test-user
-        password: AnsibleTest123!
-        role: user
-        state: present
-      register: idempotent_create
-
-    - name: Assert idempotent create reported no change
-      ansible.builtin.assert:
-        that:
-          - idempotent_create.changed is false
-        success_msg: "Idempotent create correctly reported changed=false"
-        fail_msg: "Expected changed=false on repeat create, got changed={{ idempotent_create.changed }}"
-
-    # --- DELETE ---
-
-    - name: Delete test user
-      lantronix.oob.slc_users:
-        username: ansible-test-user
-        state: absent
-      register: delete_result
-
-    - name: Assert user deletion reported changed
-      ansible.builtin.assert:
-        that:
-          - delete_result.changed is true
-        success_msg: "User deletion correctly reported changed=true"
-        fail_msg: "Expected changed=true on delete, got changed={{ delete_result.changed }}"
-
-    - name: Assert ansible-test-user no longer in users list
-      ansible.builtin.assert:
-        that:
-          - "'ansible-test-user' not in delete_result.users"
-        success_msg: "ansible-test-user correctly absent from result.users"
-        fail_msg: "ansible-test-user still present in result.users after delete: {{ delete_result.users }}"
-
-    # --- IDEMPOTENCY (delete again, expect no change) ---
-
-    - name: Delete same user again to verify absent idempotency
-      lantronix.oob.slc_users:
-        username: ansible-test-user
-        state: absent
-      register: idempotent_delete
-
-    - name: Assert idempotent delete reported no change
-      ansible.builtin.assert:
-        that:
-          - idempotent_delete.changed is false
-        success_msg: "Idempotent delete correctly reported changed=false"
-        fail_msg: "Expected changed=false on repeat delete, got changed={{ idempotent_delete.changed }}"
-
-  always:
-    - name: Cleanup - ensure test user is removed
-      lantronix.oob.slc_users:
-        username: ansible-test-user
-        state: absent
-      ignore_errors: true  # noqa: ignore-errors
+- name: Assert check_mode password change reports changed
+  ansible.builtin.assert:
+    that:
+      - check_result.changed is true
+    success_msg: "check_mode password change correctly reported changed=true"
+    fail_msg: "Expected changed=true in check_mode, got changed={{ check_result.changed }}"
