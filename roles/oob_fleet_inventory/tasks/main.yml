@@ -8,6 +8,7 @@
 - name: Write dynamic inventory file
   ansible.builtin.copy:
     dest: "{{ oob_fleet_inventory_output_path }}"
+    mode: '0644'
     content: |
       all:
         children:
