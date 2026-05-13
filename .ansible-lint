@@ -1,0 +1,9 @@
+exclude_paths:
+  - .github/
+  - docs/
+  - tests/integration/
+  - tests/unit/
+  - tests/sanity/
+  - .gitignore
+  - CHANGELOG.rst
+  - CONTRIBUTING.md
