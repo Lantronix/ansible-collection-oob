@@ -50,7 +50,7 @@ def run_module(params, check_mode=False, get_sysadmin_side_effect=None):
 
 
 def test_read_only_no_change():
-    m, client, _ = run_module({"new_password": None})
+    m, client, _mock_cls = run_module({"new_password": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     assert kwargs["sysadmin"]["username"] == "sysadmin"
@@ -58,27 +58,27 @@ def test_read_only_no_change():
 
 
 def test_password_change_reports_changed():
-    m, client, _ = run_module({"new_password": "NewPass123!"})
+    m, client, _mock_cls = run_module({"new_password": "NewPass123!"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.set_sysadmin_password.assert_called_once_with("NewPass123!")
 
 
 def test_check_mode_does_not_call_patch():
-    m, client, _ = run_module({"new_password": "NewPass123!"}, check_mode=True)
+    m, client, _mock_cls = run_module({"new_password": "NewPass123!"}, check_mode=True)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.set_sysadmin_password.assert_not_called()
 
 
 def test_returns_sysadmin_dict():
-    m, _, _ = run_module({"new_password": None})
+    m, _client, _mock_cls = run_module({"new_password": None})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["sysadmin"] == SYSADMIN_ATTRS
 
 
 def test_passes_verify_ssl_to_client():
-    _, _instance, mock_cls = run_module({"new_password": None})
+    _m, _instance, mock_cls = run_module({"new_password": None})
     call_kwargs = mock_cls.call_args[1]
     assert "verify_ssl" in call_kwargs
     assert call_kwargs["verify_ssl"] is False

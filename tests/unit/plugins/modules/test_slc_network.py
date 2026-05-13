@@ -5,20 +5,12 @@ from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import slc_network
 
 MOCK_INTERFACES = {
-    "interfaces": [
-        {
-            "id": "eth1",
-            "ipv4_address": "192.168.1.100",
-            "netmask": "255.255.255.0",
-            "dhcp": False,
-        },
-        {
-            "id": "eth2",
-            "ipv4_address": "",
-            "netmask": "",
-            "dhcp": True,
-        },
-    ]
+    "eth1_ipv4": "192.168.1.100",
+    "eth1_mask": "255.255.255.0",
+    "eth1_link": "up",
+    "eth2_ipv4": "",
+    "eth2_mask": "",
+    "eth2_link": "up",
 }
 
 

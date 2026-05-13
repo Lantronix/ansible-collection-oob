@@ -4,8 +4,8 @@ __metaclass__ = type
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_audit_logs
 
-MOCK_DEVICE_LOGS = {"audit_logs": [{"timestamp": "2026-04-01T00:00:00Z", "action": "login", "device_id": "dev-001"}]}
-MOCK_USER_LOGS = {"audit_logs": [{"timestamp": "2026-04-01T00:00:00Z", "action": "create_user", "username": "netops"}]}
+MOCK_DEVICE_LOGS = {"audit": [{"timestamp": "2026-04-01T00:00:00Z", "action": "login", "device_id": "dev-001"}]}
+MOCK_USER_LOGS = {"audit": [{"timestamp": "2026-04-01T00:00:00Z", "action": "create_user", "username": "netops"}]}
 MOCK_ACCESS_LOG = {"url": "https://storage/logs/dev-001.log"}
 
 

@@ -35,7 +35,6 @@ options:
   md5_key:
     description: MD5 checksum string provided by Lantronix alongside the firmware download. Required when C(state=update).
     type: str
-    no_log: true
   reboot_after_update:
     description: Reboot the device automatically after the firmware image is written to the alternate bank.
     type: bool
