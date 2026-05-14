@@ -16,7 +16,7 @@ pip install requests
 
 ## Requirements
 
-- ansible-core >= 2.14
+- ansible-core >= 2.16
 - ansible.netcommon >= 5.0.0
 - Python 3.9+
 - Python `requests` library
@@ -159,20 +159,30 @@ To operate across multiple projects, loop over inventory groups rather than modu
 
 Bug reports and pull requests welcome. Please open an issue before submitting a PR for significant changes.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and commit conventions.
+See [CONTRIBUTING.md](https://github.com/Lantronix/ansible-collection-oob/blob/main/CONTRIBUTING.md) for development setup, coding standards, and commit conventions.
 
 ```bash
 mkdir -p ansible_collections/lantronix
-git clone https://github.com/lantronix/ansible-collection-oob ansible_collections/lantronix/oob
+git clone https://github.com/Lantronix/ansible-collection-oob ansible_collections/lantronix/oob
 cd ansible_collections/lantronix/oob
 
 # Sanity tests
-ansible-test sanity --python 3.11
+ansible-test sanity --python 3.12
 
 # Unit tests
-ansible-test units --python 3.11
+ansible-test units --python 3.12
 ```
+
+## Changelog
+
+See [CHANGELOG.rst](https://github.com/Lantronix/ansible-collection-oob/blob/main/CHANGELOG.rst) for release history.
+
+## Support
+
+This collection is maintained by the Lantronix OOB product team. For bugs and feature requests, open an issue at [https://github.com/Lantronix/ansible-collection-oob/issues](https://github.com/Lantronix/ansible-collection-oob/issues).
+
+For product support, visit [https://www.lantronix.com/support/](https://www.lantronix.com/support/).
 
 ## License
 
-Apache 2.0. See [LICENSE](LICENSE) for details.
+Apache 2.0. See [LICENSE](https://github.com/Lantronix/ansible-collection-oob/blob/main/LICENSE) for details.

@@ -5,5 +5,5 @@
     password: "{{ item.password | default(omit) }}"
     role: "{{ item.role | default('user') }}"
     state: "{{ item.state | default('present') }}"
-  loop: "{{ oob_users }}"
-  when: oob_users | length > 0
+  loop: "{{ oob_user_management_users }}"
+  when: oob_user_management_users | length > 0
