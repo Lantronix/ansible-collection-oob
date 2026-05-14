@@ -4,6 +4,32 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.8
+======
+
+Release Summary
+---------------
+
+Red Hat certification compliance fixes. Adds missing ``LICENSE`` file (Apache 2.0),
+``requirements.txt`` declaring the ``requests`` dependency, and ``.ansible-lint``
+configuration for ``--profile=production`` CI validation. Bumps ``requires_ansible``
+to ``>=2.16.0`` (ansible-core 2.14 is EOL). Fixes role variable naming to use full
+role-name prefixes per ansible-lint production rules, replaces bare module names with
+FQCN in role tasks, and corrects invalid Jinja2 syntax in ``oob_baseline_config``.
+
+Minor Changes
+-------------
+
+- ``.ansible-lint`` - Added production profile config excluding ``tests/``, ``changelogs/``, ``validate/``, and ``.github/`` directories.
+- ``LICENSE`` - Added Apache 2.0 license file at collection root (required by galaxy-importer).
+- ``galaxy.yml`` - Fixed tag format: ``console-server`` and ``serial-console`` changed to ``console_server`` and ``serial_console`` (hyphens not allowed).
+- ``meta/runtime.yml`` - Bumped ``requires_ansible`` from ``>=2.14.0`` to ``>=2.16.0``.
+- ``requirements.txt`` - Added to declare ``requests`` as a Python dependency.
+- Roles - Renamed all role variables to use the full ``<role_name>_`` prefix convention required by ansible-lint production profile.
+- Roles - Replaced bare module names (``debug``, ``copy``) with FQCN (``ansible.builtin.debug``, ``ansible.builtin.copy``) in role tasks.
+- ``roles/oob_baseline_config`` - Fixed invalid Jinja2 list comprehension syntax; replaced with ``map('regex_replace')`` filter.
+- ``roles/oob_fleet_inventory`` - Added ``mode: "0644"`` to the inventory file write task.
+
 v1.0.7
 ======
 

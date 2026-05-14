@@ -11,9 +11,9 @@ Queries Percepxion for all managed devices and writes a dynamic Ansible inventor
 
 | Variable | Default | Description |
 |---|---|---|
-| `oob_inventory_output_path` | `/tmp/oob-inventory.yml` | Path to write the generated inventory file |
-| `oob_inventory_search_string` | `""` | Optional device name filter |
-| `oob_inventory_limit` | `500` | Maximum devices to fetch |
+| `oob_fleet_inventory_output_path` | `/tmp/oob-inventory.yml` | Path to write the generated inventory file |
+| `oob_fleet_inventory_search_string` | `""` | Optional device name filter |
+| `oob_fleet_inventory_limit` | `500` | Maximum devices to fetch |
 
 ## Example Playbook
 
@@ -23,6 +23,6 @@ Queries Percepxion for all managed devices and writes a dynamic Ansible inventor
   roles:
     - role: lantronix.oob.oob_fleet_inventory
       vars:
-        oob_inventory_output_path: /etc/ansible/oob-inventory.yml
-        oob_inventory_limit: 1000
+        oob_fleet_inventory_output_path: /etc/ansible/oob-inventory.yml
+        oob_fleet_inventory_limit: 1000
 ```

@@ -1,4 +1,4 @@
 ---
-oob_inventory_output_path: "/tmp/oob-inventory.yml"
-oob_inventory_search_string: ""
-oob_inventory_limit: 500
+oob_fleet_inventory_output_path: "/tmp/oob-inventory.yml"
+oob_fleet_inventory_search_string: ""
+oob_fleet_inventory_limit: 500

@@ -5,3 +5,4 @@ tests/output/
 .DS_Store
 tests/integration/integration_config.yml
 *.tar.gz
+.ansible/
