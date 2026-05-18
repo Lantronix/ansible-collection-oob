@@ -4,6 +4,25 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.10
+=======
+
+Release Summary
+---------------
+
+Strips executable bit from all collection files. WSL filesystem artifact caused
+all files to appear executable, failing the ansible-test sanity ``shebang`` check
+on the Red Hat certification pipeline.
+
+v1.0.9
+======
+
+Release Summary
+---------------
+
+Adds missing ``README.md`` files to ``oob_baseline_config``, ``oob_firmware_audit``,
+and ``oob_user_management`` roles. Required by Red Hat Automation Hub galaxy-importer.
+
 v1.0.8
 ======
 
