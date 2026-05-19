@@ -179,9 +179,13 @@ See [CHANGELOG.rst](https://github.com/Lantronix/ansible-collection-oob/blob/mai
 
 ## Support
 
-This collection is maintained by the Lantronix OOB product team. For bugs and feature requests, open an issue at [https://github.com/Lantronix/ansible-collection-oob/issues](https://github.com/Lantronix/ansible-collection-oob/issues).
+This collection is maintained by the Lantronix OOB product team.
 
-For product support, visit [https://www.lantronix.com/support/](https://www.lantronix.com/support/).
+**Red Hat Automation Hub users:** Open a support request via the [collection page on Automation Hub](https://console.redhat.com/ansible/automation-hub/repo/published/lantronix/oob) using the "Create issue" link. This ensures your request is routed through the appropriate Red Hat support channels.
+
+**Community support:** Open an issue on [GitHub](https://github.com/Lantronix/ansible-collection-oob/issues). Pull requests are welcome, please open an issue before submitting a PR for significant changes.
+
+**Product support:** Visit [https://www.lantronix.com/support/](https://www.lantronix.com/support/).
 
 ## License
 

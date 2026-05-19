@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: oob_user_management
+  author: Lantronix Product Team
+  description: Manages local user accounts across SLC9000 devices idempotently, adding, updating, or removing accounts as needed.
+  company: Lantronix
+  license: Apache-2.0
+  min_ansible_version: "2.16"

@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: oob_firmware_audit
+  author: Lantronix Product Team
+  description: Checks firmware compliance across a Percepxion smart group and optionally triggers upgrades for non-compliant devices.
+  company: Lantronix
+  license: Apache-2.0
+  min_ansible_version: "2.16"

@@ -4,6 +4,17 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.11
+=======
+
+Release Summary
+---------------
+
+Adds role metadata and updates README Support section per Red Hat certification
+feedback. Adds ``meta/main.yml`` to all four roles so descriptions appear
+correctly on Automation Hub. Updates Support section to list the Automation Hub
+"Create issue" link as the primary support channel for Red Hat customers.
+
 v1.0.10
 =======
 
