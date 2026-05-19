@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: oob_baseline_config
+  author: Lantronix Product Team
+  description: Enforces baseline hostname, NTP, and syslog configuration across SLC9000 devices.
+  company: Lantronix
+  license: Apache-2.0
+  min_ansible_version: "2.16"
