@@ -3,7 +3,13 @@ __metaclass__ = type
 
 import time
 
-import requests
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    requests = None
+
 from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message, AnsibleLantronixError
 
 
