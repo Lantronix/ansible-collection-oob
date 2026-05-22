@@ -1,6 +1,6 @@
 namespace: lantronix
 name: oob
-version: 1.0.14
+version: 1.0.15
 readme: README.md
 description: Ansible collection for Lantronix Out-of-Band infrastructure (SLC9000 + Percepxion)
 license:
@@ -27,5 +27,6 @@ build_ignore:
   - .devcontainer
   - .venv
   - ansible-creator.log
+  - .ansible
 dependencies:
   ansible.netcommon: ">=5.0.0"
