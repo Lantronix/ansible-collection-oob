@@ -4,6 +4,18 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.12
+=======
+
+Release Summary
+---------------
+
+Addresses Red Hat Automation Hub review findings from v1.0.11 certification.
+Adds ``build_ignore`` to ``galaxy.yml`` to exclude development artifacts
+(``.pytest_cache``, ``ansible.cfg``, ``validate/``, old tarballs, and
+dev-environment files) from the published collection tarball. No functional
+changes to modules, plugins, or roles.
+
 v1.0.11
 =======
 
