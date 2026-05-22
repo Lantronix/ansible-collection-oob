@@ -1,6 +1,6 @@
 namespace: lantronix
 name: oob
-version: 1.0.12
+version: 1.0.13
 readme: README.md
 description: Ansible collection for Lantronix Out-of-Band infrastructure (SLC9000 + Percepxion)
 license:
