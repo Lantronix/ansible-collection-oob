@@ -33,6 +33,16 @@ options:
     type: str
     default: present
     choices: [present, absent]
+  project_tag:
+    description:
+      - Percepxion project tag to scope all operations.
+      - Overrides the C(percepxion_project_tag) inventory variable when set.
+    type: str
+  tenant_id:
+    description:
+      - Percepxion tenant ID for Project Admin operations.
+      - Overrides the C(percepxion_tenant_id) inventory variable when set.
+    type: str
 """
 
 EXAMPLES = r"""

@@ -40,6 +40,11 @@ options:
     type: str
     default: present
     choices: [present]
+  tenant_id:
+    description:
+      - Percepxion tenant ID for Project Admin operations.
+      - Overrides the C(percepxion_tenant_id) inventory variable when set.
+    type: str
 """
 
 EXAMPLES = r"""
