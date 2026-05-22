@@ -3,7 +3,7 @@ all:
     slc_devices:
       hosts:
         slc9k:
-          ansible_host: 192.0.2.1
+          ansible_host: 192.0.2.1           # Replace with your SLC 9000 IP or hostname
           ansible_user: sysadmin
           ansible_password: "YOUR_SLC_PASSWORD_HERE"
           ansible_network_os: lantronix.oob.slc9
@@ -15,7 +15,7 @@ all:
       hosts:
         percepxion:
           ansible_host: api.gopercepxion.ai
-          ansible_user: your.username@example.com
+          ansible_user: "your.username@example.com"
           ansible_password: "YOUR_PERCEPXION_PASSWORD_HERE"
           ansible_network_os: lantronix.oob.percepxion
           ansible_connection: ansible.netcommon.httpapi

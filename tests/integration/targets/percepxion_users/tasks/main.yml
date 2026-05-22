@@ -1,15 +1,18 @@
 ---
 # User management integration test.
-# NOTE: Create/delete require tenant_admin role. The sandbox credential (your.username@example.com)
-# is project_admin, so CRUD endpoints return 404. This test validates the idempotency
-# read path only. CRUD is covered by unit tests.
+# NOTE: Create/delete require tenant_admin role. If the test credential is project_admin,
+# CRUD endpoints return 404. This test validates the idempotency read path only.
+# CRUD is covered by unit tests.
 # tenant_id must be passed explicitly -- connection.get_tenant_id() returns None in module context.
 # NOTE: search_string on /v2/user/search filters on name/email, not username.
 # The module now fetches all users and filters client-side for idempotency checks.
+#
+# Set percepxion_test_existing_user in integration_config.yml to a username
+# that already exists in your tenant for the idempotency check to pass.
 
-- name: Check existing user (ansible_test_user) with state=present -- expect changed=false
+- name: Check existing user with state=present -- expect changed=false
   lantronix.oob.percepxion_users:
-    username: "ansible_test_user"
+    username: "{{ percepxion_test_existing_user }}"
     tenant_id: "{{ percepxion_tenant_id }}"
     state: present
   register: existing_result
@@ -18,7 +21,7 @@
   ansible.builtin.assert:
     that:
       - existing_result.changed is false
-      - existing_result.username == 'ansible_test_user'
+      - existing_result.username == percepxion_test_existing_user
     success_msg: "percepxion_users correctly reported changed=false for existing user"
     fail_msg: "Unexpected result for existing user: {{ existing_result }}"
 
