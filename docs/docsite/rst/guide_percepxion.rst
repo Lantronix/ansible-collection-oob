@@ -30,8 +30,8 @@ inventory:
        ansible_httpapi_use_ssl: true
        ansible_user: "{{ vault_percepxion_user }}"
        ansible_password: "{{ vault_percepxion_password }}"
-       percepxion_project_tag: "MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b"  # optional
-       percepxion_tenant_id: "34f5c98e-7a12-4b01-965f-d4239f67e770"             # optional, Project Admin only
+       percepxion_project_tag: "MYSTQ_PT_your-project-uuid-here"  # optional
+       percepxion_tenant_id: "your-tenant-id-here"                # optional, Project Admin only
 
 Authentication
 --------------
@@ -57,7 +57,7 @@ them automatically. To operate across multiple projects, loop over inventory
 groups rather than passing project identifiers as module arguments.
 
 The ``project_tag`` value is Percepxion's internal project identifier, format
-is ``MYSTQ_PT_<UUID>`` (e.g. ``MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b``).
+is ``MYSTQ_PT_<UUID>`` (e.g. ``MYSTQ_PT_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx``).
 It is **not** a human-readable name. To find your project tag, inspect a device
 already assigned to the project:
 
