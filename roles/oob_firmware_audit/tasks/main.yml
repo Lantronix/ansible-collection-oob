@@ -4,12 +4,12 @@
     smart_group_id: "{{ oob_firmware_audit_smart_group_id }}"
     firmware_version: "{{ oob_firmware_audit_target_version }}"
     state: check
-  register: _firmware_check
+  register: oob_firmware_audit_result
 
 - name: Report non-compliant devices
   ansible.builtin.debug:
-    msg: "Non-compliant: {{ _firmware_check.non_compliant_devices | map(attribute='device_name') | list }}"
-  when: _firmware_check.non_compliant_devices | length > 0
+    msg: "Non-compliant: {{ oob_firmware_audit_result.non_compliant_devices | map(attribute='device_name') | list }}"
+  when: oob_firmware_audit_result.non_compliant_devices | length > 0
 
 - name: Trigger firmware update (when remediate=true)
   lantronix.oob.percepxion_firmware:
@@ -18,4 +18,4 @@
     state: update
   when:
     - oob_firmware_audit_remediate | bool
-    - _firmware_check.non_compliant_devices | length > 0
+    - oob_firmware_audit_result.non_compliant_devices | length > 0

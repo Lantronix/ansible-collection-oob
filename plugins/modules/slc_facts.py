@@ -93,8 +93,8 @@ slc_facts:
       description: Configured device hostname.
       type: str
       sample: slc9k-lab
-    description:
-      description: User-configured device description.
+    site_tag:
+      description: User-configured site tag / device description.
       type: str
       sample: Lab console server
 """

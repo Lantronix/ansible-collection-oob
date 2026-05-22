@@ -4,8 +4,8 @@ __metaclass__ = type
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_users
 
-EXISTING_USERS = {"users": [{"username": "netops", "role": "admin"}]}
-EMPTY_USERS = {"users": []}
+EXISTING_USERS = {"result": [{"username": "netops", "role": "admin"}]}
+EMPTY_USERS = {"result": []}
 
 
 def run_module(params, check_mode=False, existing=None):

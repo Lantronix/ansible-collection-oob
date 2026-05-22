@@ -4,8 +4,8 @@ __metaclass__ = type
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_config
 
-EXISTING_CONTENT = {"search_results": [{"content_id": "c-001", "name": "baseline-config", "type": "config"}]}
-NO_CONTENT = {"search_results": []}
+EXISTING_CONTENT = {"result": [{"id": "c-001", "name": "baseline-config", "type": "config"}]}
+NO_CONTENT = {"result": []}
 
 
 def run_module(params, check_mode=False, search_result=None):

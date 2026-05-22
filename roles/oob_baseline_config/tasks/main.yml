@@ -4,16 +4,14 @@
     hostname: "{{ oob_baseline_config_hostname }}"
   when: oob_baseline_config_hostname | length > 0
 
-- name: Build baseline commands list
-  ansible.builtin.set_fact:
-    _oob_baseline_commands: >-
-      {{ (oob_baseline_config_ntp_servers | map('regex_replace', '^', 'set ntp server ') | list) +
-         ([('set logging host ' + oob_baseline_config_syslog_host)] if oob_baseline_config_syslog_host else []) }}
-
 - name: Apply baseline config via batch commands
   lantronix.oob.slc_config:
     action: batch
-    commands: "{{ _oob_baseline_commands }}"
+    commands: >-
+      {{
+        (oob_baseline_config_ntp_servers | map('regex_replace', '^', 'set ntp server ') | list) +
+        (['set logging host ' + oob_baseline_config_syslog_host] if oob_baseline_config_syslog_host else [])
+      }}
   when: oob_baseline_config_ntp_servers | length > 0 or oob_baseline_config_syslog_host | length > 0
 
 - name: Save configuration

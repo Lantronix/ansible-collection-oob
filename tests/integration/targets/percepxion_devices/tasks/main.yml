@@ -21,17 +21,18 @@
     success_msg: "total_results: {{ devices_result.total_results }}"
     fail_msg: "total_results missing or invalid: {{ devices_result }}"
 
-- name: Search by known device name (SLC9000-RH)
+- name: Search by known device name (SLC8000-RH)
   lantronix.oob.percepxion_devices:
-    search_string: "SLC9000-RH"
+    search_string: "SLC8000-RH"
+    tenant_id: "{{ percepxion_tenant_id }}"
   register: search_result
 
 - name: Verify search returns at least one result
   ansible.builtin.assert:
     that:
       - search_result.devices | length > 0
-    success_msg: "SLC9000-RH found in device list"
-    fail_msg: "SLC9000-RH not found — verify sandbox has this device registered"
+    success_msg: "SLC8000-RH found in device list"
+    fail_msg: "SLC8000-RH not found, verify sandbox has this device registered"
 
 - name: Search with explicit limit
   lantronix.oob.percepxion_devices:

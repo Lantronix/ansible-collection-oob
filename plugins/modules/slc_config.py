@@ -14,7 +14,8 @@ description:
   - Provides four configuration actions on an SLC9000 device.
   - C(get) retrieves the current running configuration as CLI commands. Read-only.
   - C(compare) shows a diff between running and saved configuration. Read-only.
-  - C(save) persists running configuration to flash. Always C(changed=True).
+  - C(save) calls POST /config/save with an empty config_record list (confirms the endpoint
+    is reachable and returns success). Always C(changed=True).
   - C(batch) executes a list of CLI configuration commands. Always C(changed=True).
 notes:
   - C(save) and C(batch) are non-idempotent. Each invocation counts as a change
@@ -95,7 +96,9 @@ def main():
             result = client.get_config_commands()
         except AnsibleLantronixError as exc:
             module.fail_json(msg=str(exc))
-        module.exit_json(changed=False, commands=result.get("commands", []))
+        raw = result.get("commands", "")
+        commands = raw.splitlines() if isinstance(raw, str) else list(raw)
+        module.exit_json(changed=False, commands=commands)
         return
 
     if action == "compare":

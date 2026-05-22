@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Pre-push secret scanner. Blocks pushes that introduce credentials or personal paths.
+# Install: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+REMOTE="$1"
+REMOTE_URL="$2"
+
+# Only scan when pushing to external (non-local) remotes
+if [[ "$REMOTE_URL" == //* ]] || [[ "$REMOTE_URL" == file://* ]]; then
+    exit 0
+fi
+
+# Patterns that should never appear in committed files
+BANNED_PATTERNS=(
+    # Private credentials and secrets (vault template vars like {{ vault_x }} are allowed)
+    'ansible_password:\s*"[^"{][^"YOUR][^"]{3,}"'
+    'ansible_password:\s*'"'"'[^'"'"'{][^'"'"'YOUR][^'"'"']{3,}'"'"
+    'password\s*=\s*[A-Za-z0-9+/]{8,}'
+    # Real UUIDs in inventory (placeholder format is 'your-...-here')
+    'tenant_id:\s*"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+    # Absolute home directory paths
+    '/home/[a-z_][a-z0-9_-]*/ansible'
+    # RFC 1918 lab IPs in non-comment lines
+    'ansible_host:\s*192\.168\.'
+    'ansible_host:\s*10\.'
+)
+
+FAILED=0
+ERRORS=()
+
+while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+    # Skip branch deletions
+    if [[ "$LOCAL_SHA" == "0000000000000000000000000000000000000000" ]]; then
+        continue
+    fi
+
+    # Determine range of commits to scan
+    if [[ "$REMOTE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+        RANGE="$LOCAL_SHA"
+        DIFF_CMD="git show --stat $LOCAL_SHA"
+    else
+        RANGE="$REMOTE_SHA..$LOCAL_SHA"
+        DIFF_CMD="git log --stat $RANGE"
+    fi
+
+    # Get all files changed in the push range
+    CHANGED_FILES=$(git diff --name-only "$REMOTE_SHA" "$LOCAL_SHA" 2>/dev/null || git show --name-only --format="" "$LOCAL_SHA" 2>/dev/null)
+
+    for PATTERN in "${BANNED_PATTERNS[@]}"; do
+        # Search the full content of changed files at the new SHA
+        while IFS= read -r FILE; do
+            [[ -z "$FILE" ]] && continue
+            CONTENT=$(git show "${LOCAL_SHA}:${FILE}" 2>/dev/null) || continue
+            if echo "$CONTENT" | grep -qE "$PATTERN"; then
+                MATCH=$(echo "$CONTENT" | grep -nE "$PATTERN" | head -3)
+                ERRORS+=("SECRET in $FILE (pushed to $REMOTE_URL):" "$MATCH")
+                FAILED=1
+            fi
+        done <<< "$CHANGED_FILES"
+    done
+done
+
+if [[ $FAILED -ne 0 ]]; then
+    echo ""
+    echo "PUSH BLOCKED: Potential secrets detected."
+    echo "---------------------------------------"
+    for LINE in "${ERRORS[@]}"; do
+        echo "  $LINE"
+    done
+    echo ""
+    echo "Fix the issues above, then push again."
+    echo "If this is a false positive, check .githooks/pre-push to adjust patterns."
+    echo ""
+    exit 1
+fi
+
+exit 0

@@ -3,18 +3,18 @@
   lantronix.oob.percepxion_devices:
     search_string: "{{ oob_fleet_inventory_search_string | default(omit) }}"
     limit: "{{ oob_fleet_inventory_limit }}"
-  register: _percepxion_inventory
+  register: oob_fleet_inventory_result
 
 - name: Write dynamic inventory file
   ansible.builtin.copy:
     dest: "{{ oob_fleet_inventory_output_path }}"
-    mode: '0644'
+    mode: "0644"
     content: |
       all:
         children:
           oob_devices:
             hosts:
-      {% for device in _percepxion_inventory.devices %}
+      {% for device in oob_fleet_inventory_result.devices %}
               {{ device.device_name }}:
                 ansible_host: "{{ device.ip_address | default('') }}"
                 percepxion_device_id: "{{ device.device_id }}"

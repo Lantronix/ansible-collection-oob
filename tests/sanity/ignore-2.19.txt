@@ -1,6 +1,7 @@
 plugins/httpapi/percepxion.py validate-modules:missing-gplv3-license
 plugins/httpapi/slc9.py validate-modules:missing-gplv3-license
 plugins/modules/slc_facts.py validate-modules:missing-gplv3-license
+plugins/modules/percepxion_facts.py validate-modules:missing-gplv3-license
 plugins/modules/slc_users.py validate-modules:missing-gplv3-license
 plugins/modules/slc_network.py validate-modules:missing-gplv3-license
 plugins/modules/slc_system.py validate-modules:missing-gplv3-license
@@ -8,7 +9,6 @@ plugins/modules/slc_device_ports.py validate-modules:missing-gplv3-license
 plugins/modules/slc_firmware.py validate-modules:missing-gplv3-license
 plugins/modules/slc_config.py validate-modules:missing-gplv3-license
 plugins/modules/slc_managed_devices.py validate-modules:missing-gplv3-license
-plugins/modules/percepxion_facts.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_devices.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_projects.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_users.py validate-modules:missing-gplv3-license

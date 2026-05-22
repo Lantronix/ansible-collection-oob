@@ -1,6 +1,6 @@
 # lantronix.oob Ansible Collection
 
-Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC 9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
+Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
 
 ## Installation
 
@@ -16,7 +16,7 @@ pip install requests
 
 ## Requirements
 
-- ansible-core >= 2.14
+- ansible-core >= 2.16
 - ansible.netcommon >= 5.0.0
 - Python 3.9+
 - Python `requests` library
@@ -25,12 +25,12 @@ pip install requests
 
 | Platform | Connection Plugin | API |
 |---|---|---|
-| SLC 9000 (firmware R8+) | `lantronix.oob.slc9` | REST API v2 (OpenAPI 3.1.0) |
+| SLC9000 (firmware R8+) | `lantronix.oob.slc9` | REST API v2 (OpenAPI 3.1.0) |
 | Percepxion 6.12+ | `lantronix.oob.percepxion` | OpenAPI 3.0.1 |
 
 ## Modules
 
-### SLC 9000 Device Modules
+### SLC9000 Device Modules
 
 | Module | What it does |
 |---|---|
@@ -71,7 +71,7 @@ pip install requests
 
 ## Quick Start
 
-### SLC 9000
+### SLC9000
 
 ```yaml
 # inventory.yml
@@ -116,8 +116,8 @@ percepxion:
     ansible_httpapi_use_ssl: true
     ansible_user: "{{ vault_percepxion_user }}"
     ansible_password: "{{ vault_percepxion_password }}"
-    percepxion_project_tag: "MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b"  # optional, scopes all ops to project
-    percepxion_tenant_id: "34f5c98e-7a12-4b01-965f-d4239f67e770"             # optional, Project Admin only
+    percepxion_project_tag: "prod-datacenter-east"   # optional, scopes all ops to project
+    percepxion_tenant_id: "34f5c98e-..."             # optional, Project Admin only
 ```
 
 ```yaml
@@ -139,7 +139,7 @@ percepxion:
 
 This collection includes two httpapi connection plugins:
 
-- **`lantronix.oob.slc9`**, authenticates to SLC 9000 REST API v2 via session token
+- **`lantronix.oob.slc9`**, authenticates to SLC9000 REST API v2 via session token
 - **`lantronix.oob.percepxion`**, authenticates to Percepxion API with Bearer token and CSRF token handling
 
 Both plugins handle login, token management, and error translation automatically. You do not call them directly; set `ansible_network_os` in your inventory.
@@ -149,59 +149,44 @@ Both plugins handle login, token management, and error translation automatically
 The Percepxion API supports multi-project and multi-tenant deployments. Set these as inventory connection variables, all Percepxion modules inherit them automatically:
 
 ```yaml
-percepxion_project_tag: "MYSTQ_PT_edfad92e-e313-4d7e-91fe-ae4df2dcac8b"  # scope all ops to this project
-percepxion_tenant_id: "34f5c98e-7a12-4b01-965f-d4239f67e770"              # required only for Project Admins
-```
-
-The `project_tag` value is Percepxion's internal identifier for a project, format is `MYSTQ_PT_<UUID>`. To find yours, inspect a device already assigned to the project:
-
-```yaml
-- name: Discover project_tag from an assigned device
-  lantronix.oob.percepxion_devices:
-    state: query
-    filters:
-      search_string: "my-device-name"
-  register: result
-
-- debug:
-    msg: "project_tag = {{ result.devices[0].project_tag }}"
+percepxion_project_tag: "prod-east"       # scope all ops to this project
+percepxion_tenant_id: "uuid-here"         # required only for Project Admins
 ```
 
 To operate across multiple projects, loop over inventory groups rather than module arguments.
-
-## Status
-
-v1.0.0. Red Hat Technology Partner application submitted April 2026.
-
-| Component | Status |
-|---|---|
-| All 20 modules | Complete |
-| Unit tests (85 tests, 22 files) | Complete, CI passing |
-| Both httpapi plugins | Complete |
-| 4 example roles | Complete |
-| Integration tests (20 targets) | Complete |
-| CHANGELOG.rst | Complete |
-| Red Hat certification | Application submitted, targeting Q4 2026 |
-| Galaxy community release | Repo live at github.com/Lantronix/ansible-collection-oob |
 
 ## Contributing
 
 Bug reports and pull requests welcome. Please open an issue before submitting a PR for significant changes.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and commit conventions.
+See [CONTRIBUTING.md](https://github.com/Lantronix/ansible-collection-oob/blob/main/CONTRIBUTING.md) for development setup, coding standards, and commit conventions.
 
 ```bash
 mkdir -p ansible_collections/lantronix
-git clone https://github.com/lantronix/ansible-collection-oob ansible_collections/lantronix/oob
+git clone https://github.com/Lantronix/ansible-collection-oob ansible_collections/lantronix/oob
 cd ansible_collections/lantronix/oob
 
 # Sanity tests
-ansible-test sanity --python 3.11
+ansible-test sanity --python 3.12
 
 # Unit tests
-ansible-test units --python 3.11
+ansible-test units --python 3.12
 ```
+
+## Changelog
+
+See [CHANGELOG.rst](https://github.com/Lantronix/ansible-collection-oob/blob/main/CHANGELOG.rst) for release history.
+
+## Support
+
+This collection is maintained by the Lantronix OOB product team.
+
+**Red Hat Automation Hub users:** Open a support request via the [collection page on Automation Hub](https://console.redhat.com/ansible/automation-hub/repo/published/lantronix/oob) using the "Create issue" link. This ensures your request is routed through the appropriate Red Hat support channels.
+
+**Community support:** Open an issue on [GitHub](https://github.com/Lantronix/ansible-collection-oob/issues). Pull requests are welcome, please open an issue before submitting a PR for significant changes.
+
+**Product support:** Visit [https://www.lantronix.com/support/](https://www.lantronix.com/support/).
 
 ## License
 
-Apache 2.0. See [LICENSE](LICENSE) for details.
+Apache 2.0. See [LICENSE](https://github.com/Lantronix/ansible-collection-oob/blob/main/LICENSE) for details.

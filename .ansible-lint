@@ -1,9 +1,7 @@
+profile: production
 exclude_paths:
+  - changelogs/
+  - tests/
+  - validate/
   - .github/
   - docs/
-  - tests/integration/
-  - tests/unit/
-  - tests/sanity/
-  - .gitignore
-  - CHANGELOG.rst
-  - CONTRIBUTING.md

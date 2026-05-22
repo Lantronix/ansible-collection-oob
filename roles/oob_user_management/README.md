@@ -1,27 +1,18 @@
 # oob_user_management
 
-Ensures local user accounts are configured on SLC devices.
+Manages local user accounts across SLC9000 devices. Applies a defined user list idempotently, adding, updating, or removing accounts as needed.
 
 ## Requirements
 
 - `lantronix.oob.slc_users` module
-- SLC device connection configured in inventory (`ansible_network_os: lantronix.oob.slc9`)
+- SLC9000 connection configured in inventory (`ansible_network_os: lantronix.oob.slc9`)
 
 ## Role Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `oob_user_management_users` | `[]` | List of user objects to configure |
-| `oob_user_management_target_group` | `""` | Optional inventory group to target (informational) |
-
-Each user object supports:
-
-| Key | Required | Description |
-|---|---|---|
-| `username` | yes | Login name |
-| `password` | no | Password (omitted if not set) |
-| `role` | no | `admin` or `user` (default: `user`) |
-| `state` | no | `present` or `absent` (default: `present`) |
+| `oob_user_management_users` | `[]` | List of user objects to manage. Each entry supports `username`, `password`, `role` (`user` or `admin`), and `state` (`present` or `absent`). |
+| `oob_user_management_target_group` | `""` | Optional label for the target device group. Informational only. |
 
 ## Example Playbook
 
@@ -35,6 +26,11 @@ Each user object supports:
           - username: netops
             password: "{{ vault_netops_password }}"
             role: admin
+            state: present
           - username: readonly
+            password: "{{ vault_readonly_password }}"
             role: user
+            state: present
+          - username: olduser
+            state: absent
 ```

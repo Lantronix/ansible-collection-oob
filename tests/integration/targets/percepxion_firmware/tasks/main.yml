@@ -6,6 +6,7 @@
 - name: Pre-clean - ensure firmware test smart group does not exist
   lantronix.oob.percepxion_smart_groups:
     name: "ansible-firmware-test-group"
+    tenant_id: "{{ percepxion_tenant_id }}"
     state: absent
   ignore_errors: true  # noqa: ignore-errors
 
@@ -17,8 +18,8 @@
     - name: Create temporary smart group for firmware compliance check
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-firmware-test-group"
-        criteria:
-          name_filter: "SLC9000-RH"
+        query_string: "name_filter=SLC9000-RH"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: sg_result
 
@@ -36,6 +37,7 @@
       lantronix.oob.percepxion_firmware:
         smart_group_id: "{{ sg_result.group_id }}"
         firmware_version: "9.7.0.0R8"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: check
       register: fw_result
 
@@ -63,5 +65,6 @@
     - name: Cleanup - remove temporary smart group
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-firmware-test-group"
+        tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       ignore_errors: true  # noqa: ignore-errors

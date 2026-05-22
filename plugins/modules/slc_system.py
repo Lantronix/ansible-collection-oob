@@ -100,7 +100,7 @@ def main():
     identity_changed = False
     if desired_hostname is not None and current.get("hostname") != desired_hostname:
         identity_changed = True
-    if desired_description is not None and current.get("description") != desired_description:
+    if desired_description is not None and current.get("site_tag", "") != desired_description:
         identity_changed = True
 
     if identity_changed and not module.check_mode:
@@ -125,8 +125,8 @@ def main():
 
     module.exit_json(
         changed=changed,
-        hostname=desired_hostname or current.get("hostname", ""),
-        description=desired_description or current.get("description", ""),
+        hostname=desired_hostname if desired_hostname is not None else current.get("hostname", ""),
+        description=desired_description if desired_description is not None else current.get("site_tag", ""),
         rebooted=rebooted,
     )
 

@@ -221,10 +221,14 @@ class PercepxionClient:
         return self._post("/v1/audit/user/search", self._scope({"limit": limit}))
 
     def download_device_log(self, device_id, log_type="access"):
-        return self._post("/v1/storage/file/devicelog/download", self._scope({
-            "device_id": device_id,
-            "log_type": log_type,
-        }))
+        """POST /v1/storage/file/devicelog/download -- returns raw log text (text/plain)."""
+        try:
+            resp = self.session.post(self._url("/v1/storage/file/devicelog/download"),
+                                     json=self._scope({"device_id": device_id, "log_type": log_type}))
+            resp.raise_for_status()
+            return resp.text
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
 
     # --- Telemetry ---
 
@@ -236,10 +240,10 @@ class PercepxionClient:
 
     def get_telemetry_history(self, device_id, metric, start_time, end_time):
         return self._post("/v1/storage/telemetry/history", self._scope({
-            "device_id": device_id,
-            "metric": metric,
-            "start_time": start_time,
-            "end_time": end_time,
+            "device_id": [device_id],
+            "name": metric,
+            "from_date": start_time,
+            "to_date": end_time,
         }))
 
     # --- Users ---

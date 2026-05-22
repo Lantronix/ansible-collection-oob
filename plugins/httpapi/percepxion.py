@@ -123,6 +123,12 @@ class HttpApi(HttpApiBase):
         self._ensure_logged_in()
         return (self.connection._auth or {}).get("x-csrf-token")
 
+    def get_tenant_id(self):
+        return self.get_option("percepxion_tenant_id") or None
+
+    def get_project_tag(self):
+        return self.get_option("percepxion_project_tag") or None
+
     def handle_httperror(self, exc):
         if not hasattr(exc, "code"):
             return False

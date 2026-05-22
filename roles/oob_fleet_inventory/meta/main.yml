@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: oob_fleet_inventory
+  author: Lantronix Product Team
+  description: Queries Percepxion for all managed devices and writes a dynamic Ansible inventory file.
+  company: Lantronix
+  license: Apache-2.0
+  min_ansible_version: "2.16"

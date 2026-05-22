@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+import time
+
 try:
     import requests
     HAS_REQUESTS = True
@@ -55,6 +57,24 @@ class SLC9Client:
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
 
+    def _put(self, path, data=None):
+        try:
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.put(self._url(path), **kwargs)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+
+    def _patch(self, path, data=None):
+        try:
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.patch(self._url(path), **kwargs)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+
     # --- System ---
 
     def get_system_version(self):
@@ -70,23 +90,44 @@ class SLC9Client:
         return self._get("/system/identity")
 
     def set_system_identity(self, hostname=None, description=None):
-        """POST /system/identity -- update hostname or description."""
+        """POST /system/identity -- update hostname or description.
+
+        The device reloads a subsystem after applying identity changes, which
+        causes the HTTP connection to drop before a response is sent. We catch
+        that ConnectionError and verify success with a follow-up GET.
+
+        The API field for description is 'site_tag'; this method maps the
+        'description' parameter to that key in the request payload.
+        """
         payload = {}
         if hostname is not None:
             payload["hostname"] = hostname
         if description is not None:
-            payload["description"] = description
-        return self._post("/system/identity", payload)
+            payload["site_tag"] = description
+        try:
+            # Use a short timeout: the device drops the TCP connection (active close
+            # or read timeout) immediately after applying identity changes, before
+            # sending an HTTP response. Either ConnectionError or ReadTimeout is expected.
+            resp = self.session.post(self._url("/system/identity"), json=payload, timeout=5)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+            # Device closes the connection after applying identity changes.
+            # Wait briefly for the subsystem reload, then verify via GET.
+            time.sleep(2)
+            return self.get_system_identity()
 
     # --- Users ---
 
-    def get_users(self):
-        """GET /users/sysadmin -- list local user accounts."""
+    def get_sysadmin(self):
+        """GET /users/sysadmin -- return sysadmin user attributes."""
         return self._get("/users/sysadmin")
 
-    def set_users(self, payload):
-        """POST /users/sysadmin -- create or update a user account."""
-        return self._post("/users/sysadmin", payload)
+    def set_sysadmin_password(self, new_password):
+        """PATCH /users/sysadmin -- change the sysadmin account password."""
+        return self._patch("/users/sysadmin", {"new_password": new_password})
 
     # --- Network ---
 
@@ -95,8 +136,8 @@ class SLC9Client:
         return self._get("/network/interfaces")
 
     def set_network_interfaces(self, payload):
-        """POST /network/interfaces -- update interface config."""
-        return self._post("/network/interfaces", payload)
+        """PUT /network/interfaces -- update interface config."""
+        return self._put("/network/interfaces", payload)
 
     # --- Ports ---
 
@@ -148,9 +189,13 @@ class SLC9Client:
         """GET /config/compare -- diff running vs saved config."""
         return self._get("/config/compare")
 
-    def save_config(self):
-        """POST /config/save -- persist running config to flash."""
-        return self._post("/config/save")
+    def save_config(self, config_record=None):
+        """POST /config/save -- save one or more config groups to flash.
+
+        Pass a list of config group dicts (see ConfigSaveRequest schema).
+        An empty list is valid and returns 200 with 0 groups saved.
+        """
+        return self._post("/config/save", {"config_record": config_record or []})
 
     def post_config_batch(self, commands):
         """POST /config/batch -- execute a list of CLI config commands."""
