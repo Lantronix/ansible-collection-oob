@@ -1,0 +1,83 @@
+---
+- name: slc_system | setup | read baseline description
+  lantronix.oob.slc_system:
+    state: get
+  register: baseline_system
+  delegate_to: slc9000-write
+
+- name: slc_system | setup | record baseline description
+  ansible.builtin.set_fact:
+    baseline_description: "{{ baseline_system.system.description | default('') }}"
+
+- name: slc_system | check_mode | set description
+  lantronix.oob.slc_system:
+    description: "integration-test-ci"
+  check_mode: true
+  register: result_check
+  delegate_to: slc9000-write
+
+- name: slc_system | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "slc_system | check_mode | correct: changed=true"
+    fail_msg: "slc_system | check_mode | FAIL"
+
+- name: slc_system | create | set description
+  lantronix.oob.slc_system:
+    description: "integration-test-ci"
+  register: result_create
+  delegate_to: slc9000-write
+
+- name: slc_system | create | verify
+  ansible.builtin.assert:
+    that:
+      - result_create.changed == true
+    success_msg: "slc_system | create | correct: changed=true"
+    fail_msg: "slc_system | create | FAIL"
+
+- name: slc_system | idempotency | re-apply same description
+  lantronix.oob.slc_system:
+    description: "integration-test-ci"
+  register: result_idempotent
+  delegate_to: slc9000-write
+
+- name: slc_system | idempotency | verify
+  ansible.builtin.assert:
+    that:
+      - result_idempotent.changed == false
+    success_msg: "slc_system | idempotency | correct: changed=false"
+    fail_msg: "slc_system | idempotency | FAIL"
+
+- name: slc_system | modify | change description
+  lantronix.oob.slc_system:
+    description: "integration-test-ci-modified"
+  register: result_modify
+  delegate_to: slc9000-write
+
+- name: slc_system | modify | verify
+  ansible.builtin.assert:
+    that:
+      - result_modify.changed == true
+    success_msg: "slc_system | modify | correct: changed=true"
+    fail_msg: "slc_system | modify | FAIL"
+
+- name: slc_system | delete | restore baseline description
+  lantronix.oob.slc_system:
+    description: "{{ baseline_description }}"
+  register: result_delete
+  delegate_to: slc9000-write
+
+- name: slc_system | delete | verify
+  ansible.builtin.assert:
+    that:
+      - result_delete.changed == true
+    success_msg: "slc_system | delete | correct: changed=true on revert"
+    fail_msg: "slc_system | delete | FAIL"
+
+# UNTESTED STATES:
+# - hostname change: POST /system/identity causes TCP drop and subsystem restart.
+#   Deferred to manual lab test; would break subsequent integration test tasks.
+# - description persistence: site_tag may not persist after REST API write in firmware 9.7.0.0R9.
+#   If idempotency step fails, it indicates a firmware limitation, not a module bug.
+# - invalid hostname: characters outside [a-zA-Z0-9-] rejected by device. Not tested.

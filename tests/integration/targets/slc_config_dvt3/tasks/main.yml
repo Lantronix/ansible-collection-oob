@@ -1,0 +1,83 @@
+---
+- name: slc_config | check_mode | batch ntp server add
+  lantronix.oob.slc_config:
+    state: batch
+    commands:
+      - "ntp server 192.0.2.100"
+  check_mode: true
+  register: result_check
+  delegate_to: slc9000-write
+
+- name: slc_config | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "slc_config | check_mode | correct"
+    fail_msg: "slc_config | check_mode | FAIL"
+
+- name: slc_config | create | add test ntp server
+  lantronix.oob.slc_config:
+    state: batch
+    commands:
+      - "ntp server 192.0.2.100"
+  register: result_create
+  delegate_to: slc9000-write
+
+- name: slc_config | create | verify
+  ansible.builtin.assert:
+    that:
+      - result_create.changed == true
+    success_msg: "slc_config | create | correct"
+    fail_msg: "slc_config | create | FAIL"
+
+- name: slc_config | idempotency | apply same ntp server
+  lantronix.oob.slc_config:
+    state: batch
+    commands:
+      - "ntp server 192.0.2.100"
+  register: result_idempotent
+  delegate_to: slc9000-write
+
+- name: slc_config | idempotency | verify
+  ansible.builtin.assert:
+    that:
+      - result_idempotent.changed == false
+    success_msg: "slc_config | idempotency | correct"
+    fail_msg: "slc_config | idempotency | FAIL"
+
+- name: slc_config | modify | add a second ntp server
+  lantronix.oob.slc_config:
+    state: batch
+    commands:
+      - "ntp server 192.0.2.101"
+  register: result_modify
+  delegate_to: slc9000-write
+
+- name: slc_config | modify | verify
+  ansible.builtin.assert:
+    that:
+      - result_modify.changed == true
+    success_msg: "slc_config | modify | correct"
+    fail_msg: "slc_config | modify | FAIL"
+
+- name: slc_config | delete | remove test ntp servers
+  lantronix.oob.slc_config:
+    state: batch
+    commands:
+      - "no ntp server 192.0.2.100"
+      - "no ntp server 192.0.2.101"
+  register: result_delete
+  delegate_to: slc9000-write
+
+- name: slc_config | delete | verify
+  ansible.builtin.assert:
+    that:
+      - result_delete.changed == true
+    success_msg: "slc_config | delete | correct"
+    fail_msg: "slc_config | delete | FAIL"
+
+# UNTESTED STATES:
+# - factory_reset: POST /config/factory_reset wipes the device. Cannot test in CI.
+# - batch command that fails mid-apply: partial config state after failed command is undocumented.
+# - action=save idempotency: save always returns changed=true; idempotency is not applicable by design.
+# - save with config_record: specifying individual config groups to save not tested.

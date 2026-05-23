@@ -1,0 +1,90 @@
+---
+- name: slc_network | setup | read current network config
+  lantronix.oob.slc_network:
+    state: get
+  register: baseline_network
+  delegate_to: slc9000-write
+
+- name: slc_network | setup | record baseline eth1 mtu
+  ansible.builtin.set_fact:
+    baseline_mtu: "{{ baseline_network.network.interfaces | selectattr('name', 'equalto', 'eth1') | map(attribute='mtu') | first | default(1500) }}"
+
+- name: slc_network | check_mode | set eth1 mtu to 1400
+  lantronix.oob.slc_network:
+    interfaces:
+      - name: eth1
+        mtu: 1400
+  check_mode: true
+  register: result_check
+  delegate_to: slc9000-write
+
+- name: slc_network | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "slc_network | check_mode | correct"
+    fail_msg: "slc_network | check_mode | FAIL"
+
+- name: slc_network | create | apply mtu=1400 on eth1
+  lantronix.oob.slc_network:
+    interfaces:
+      - name: eth1
+        mtu: 1400
+  register: result_create
+  delegate_to: slc9000-write
+
+- name: slc_network | create | verify
+  ansible.builtin.assert:
+    that:
+      - result_create.changed == true
+    success_msg: "slc_network | create | correct"
+    fail_msg: "slc_network | create | FAIL"
+
+- name: slc_network | idempotency | re-apply mtu=1400
+  lantronix.oob.slc_network:
+    interfaces:
+      - name: eth1
+        mtu: 1400
+  register: result_idempotent
+  delegate_to: slc9000-write
+
+- name: slc_network | idempotency | verify
+  ansible.builtin.assert:
+    that:
+      - result_idempotent.changed == false
+    success_msg: "slc_network | idempotency | correct"
+    fail_msg: "slc_network | idempotency | FAIL"
+
+- name: slc_network | modify | change mtu to 1350
+  lantronix.oob.slc_network:
+    interfaces:
+      - name: eth1
+        mtu: 1350
+  register: result_modify
+  delegate_to: slc9000-write
+
+- name: slc_network | modify | verify
+  ansible.builtin.assert:
+    that:
+      - result_modify.changed == true
+    success_msg: "slc_network | modify | correct"
+    fail_msg: "slc_network | modify | FAIL"
+
+- name: slc_network | delete | restore baseline mtu
+  lantronix.oob.slc_network:
+    interfaces:
+      - name: eth1
+        mtu: "{{ baseline_mtu | int }}"
+  register: result_delete
+  delegate_to: slc9000-write
+
+- name: slc_network | delete | verify
+  ansible.builtin.assert:
+    that:
+      - result_delete.changed == true
+    success_msg: "slc_network | delete | correct"
+    fail_msg: "slc_network | delete | FAIL"
+
+# UNTESTED STATES:
+# - management IP change: changing eth0 IP breaks the API connection mid-test. Cannot test in CI.
+# - DHCP vs static transition: switching eth1 from static to DHCP or vice versa not tested.

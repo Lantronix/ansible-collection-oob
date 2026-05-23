@@ -1,0 +1,49 @@
+---
+# slc_users manages the sysadmin account password.
+# Idempotency is N/A: the device API does not expose the current password hash.
+# Every PATCH with new_password reports changed=true. This is documented behavior.
+
+- name: slc_users | check_mode | change password (no actual change)
+  lantronix.oob.slc_users:
+    new_password: "TestPass1234!"
+  check_mode: true
+  register: result_check
+  delegate_to: slc9000-write
+
+- name: slc_users | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "slc_users | check_mode | correct: changed=true"
+    fail_msg: "slc_users | check_mode | FAIL"
+
+- name: slc_users | create | change password to test value
+  lantronix.oob.slc_users:
+    new_password: "TestPass1234!"
+  register: result_create
+  delegate_to: slc9000-write
+
+- name: slc_users | create | verify
+  ansible.builtin.assert:
+    that:
+      - result_create.changed == true
+    success_msg: "slc_users | create | correct: changed=true"
+    fail_msg: "slc_users | create | FAIL"
+
+- name: slc_users | restore | revert to baseline password
+  lantronix.oob.slc_users:
+    new_password: "{{ slc_dvt3_password }}"
+  register: result_restore
+  delegate_to: slc9000-write
+
+- name: slc_users | restore | verify
+  ansible.builtin.assert:
+    that:
+      - result_restore.changed == true
+    success_msg: "slc_users | restore | correct: changed=true on revert"
+    fail_msg: "slc_users | restore | FAIL"
+
+# UNTESTED STATES:
+# - idempotency: N/A. API returns no password hash for comparison.
+#   The module always reports changed=true when new_password is provided.
+# - password complexity rejection: device rejects passwords below minimum complexity. Not verified.
