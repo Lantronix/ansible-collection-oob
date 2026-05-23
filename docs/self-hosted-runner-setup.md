@@ -17,6 +17,7 @@ Follow the GitHub Actions self-hosted runner installation guide for your
 repository. Then install the Ansible dependencies:
 
 ```bash
+sudo apt install -y gettext  # provides envsubst, used by the workflow for config injection
 pip install ansible-core requests
 ansible-galaxy collection install ansible.netcommon
 ```
