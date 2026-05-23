@@ -1,0 +1,85 @@
+---
+# percepxion_aoob_session: establishes CLI console sessions via Percepxion.
+# Uses device_id (UUID), not hostname. device_id looked up from percepxion_devices.
+# session_id returned on open, required for close.
+
+- name: percepxion_aoob_session | tier4-gate | check Cisco C3560G reachability
+  ansible.builtin.command:
+    cmd: "{{ cisco_console_command }}"
+    stdin: "show version\nexit\n"
+  register: tier4_gate
+  ignore_errors: true
+  delegate_to: localhost
+  vars:
+    ansible_connection: local
+
+- name: percepxion_aoob_session | tier4-gate | set fact
+  ansible.builtin.set_fact:
+    cisco_available: "{{ tier4_gate.rc == 0 }}"
+
+- name: percepxion_aoob_session | tier4-gate | skip notice
+  ansible.builtin.debug:
+    msg: "Cisco C3560G unreachable, AOOB session tests will be skipped"
+  when: not cisco_available
+
+- name: percepxion_aoob_session | tier4 | look up DVT3 device_id
+  lantronix.oob.percepxion_devices:
+    search_string: "{{ slc_dvt3_hostname }}"
+    limit: 1
+  register: px_dvt3_device
+  delegate_to: percepxion-write
+  when: cisco_available
+
+- name: percepxion_aoob_session | tier4 | assert DVT3 visible in Cisco Live project
+  ansible.builtin.assert:
+    that:
+      - px_dvt3_device.devices | length == 1
+    success_msg: "percepxion_aoob_session | tier4 | DVT3 device visible in Percepxion"
+    fail_msg: "percepxion_aoob_session | tier4 | FAIL: DVT3 not found in Percepxion project"
+  when: cisco_available
+
+- name: percepxion_aoob_session | tier4 | set device_id
+  ansible.builtin.set_fact:
+    dvt3_device_id: "{{ px_dvt3_device.devices[0].device_id }}"
+  when: cisco_available and px_dvt3_device.devices | length == 1
+
+- name: percepxion_aoob_session | tier4 | open AOOB session
+  lantronix.oob.percepxion_aoob_session:
+    device_id: "{{ dvt3_device_id }}"
+    state: present
+  register: session_result
+  delegate_to: percepxion-write
+  when: cisco_available and dvt3_device_id is defined
+
+- name: percepxion_aoob_session | tier4 | assert session opened
+  ansible.builtin.assert:
+    that:
+      - session_result.changed == true
+      - session_result.session_id is defined
+      - session_result.session_id | length > 0
+    success_msg: "percepxion_aoob_session | tier4 | AOOB session established, session_id={{ session_result.session_id }}"
+    fail_msg: "percepxion_aoob_session | tier4 | FAIL: session did not return session_id"
+  when: cisco_available and dvt3_device_id is defined
+
+- name: percepxion_aoob_session | tier4 | close AOOB session
+  lantronix.oob.percepxion_aoob_session:
+    device_id: "{{ dvt3_device_id }}"
+    session_id: "{{ session_result.session_id }}"
+    state: absent
+  register: close_result
+  delegate_to: percepxion-write
+  when: cisco_available and dvt3_device_id is defined and session_result.session_id is defined
+
+- name: percepxion_aoob_session | tier4 | assert session closed
+  ansible.builtin.assert:
+    that:
+      - close_result.changed == true
+    success_msg: "percepxion_aoob_session | tier4 | session closed cleanly"
+    fail_msg: "percepxion_aoob_session | tier4 | FAIL: session close did not report changed"
+  when: cisco_available and dvt3_device_id is defined and session_result.session_id is defined
+
+# UNTESTED STATES:
+# - session to offline device: Percepxion behavior when SLC9000 is unreachable during AOOB request.
+# - session timeout mid-transfer: behavior when device closes session mid-command.
+# - concurrent sessions: two simultaneous AOOB sessions to the same port.
+# - session_id expiry: behavior when state=absent called with expired session_id.
