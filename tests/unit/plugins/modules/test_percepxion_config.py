@@ -1,14 +1,27 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+import hashlib
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_config
 
-EXISTING_CONTENT = {"result": [{"id": "c-001", "name": "baseline-config", "type": "config"}]}
+
+def _hash(data):
+    if not data:
+        return ""
+    return "sha256:" + hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def _existing(data="set hostname x", content_type="config"):
+    return {"result": [{"id": "c-001", "name": "baseline-config", "type": content_type, "description": _hash(data)}]}
+
+
 NO_CONTENT = {"result": []}
+# Fixture for an item created outside this module (no hash in description)
+EXISTING_UNMANAGED = {"result": [{"id": "c-001", "name": "baseline-config", "type": "config", "description": "user description"}]}
 
 
-def run_module(params, check_mode=False, search_result=None, download_data=""):
+def run_module(params, check_mode=False, search_result=None):
     result = search_result if search_result is not None else NO_CONTENT
     with patch("ansible_collections.lantronix.oob.plugins.modules.percepxion_config.AnsibleModule") as mock_mod:
         with patch("ansible_collections.lantronix.oob.plugins.modules.percepxion_config.Connection") as mock_conn_cls:
@@ -16,7 +29,6 @@ def run_module(params, check_mode=False, search_result=None, download_data=""):
                 instance = MagicMock()
                 instance.search_content.return_value = result
                 instance.create_content.return_value = {"id": "c-002"}
-                instance.download_content.return_value = download_data
                 instance.delete_content.return_value = {}
                 mock_cls.return_value = instance
 
@@ -41,14 +53,13 @@ def test_creates_when_missing():
     m, client, mock_cls = run_module({"name": "baseline-config", "content_type": "config", "data": "set hostname x", "state": "present"})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
-    client.create_content.assert_called_once_with("baseline-config", "config", "set hostname x")
+    client.create_content.assert_called_once_with("baseline-config", "config", "set hostname x", description=_hash("set hostname x"))
 
 
-def test_no_change_when_exists():
+def test_no_change_when_exists_same_data():
     m, client, mock_cls = run_module(
         {"name": "baseline-config", "content_type": "config", "data": "set hostname x", "state": "present"},
-        search_result=EXISTING_CONTENT,
-        download_data="set hostname x",
+        search_result=_existing("set hostname x"),
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
@@ -59,33 +70,30 @@ def test_no_change_when_exists():
 def test_update_when_data_changes():
     m, client, mock_cls = run_module(
         {"name": "baseline-config", "content_type": "config", "data": "set hostname y", "state": "present"},
-        search_result=EXISTING_CONTENT,
-        download_data="set hostname x",
+        search_result=_existing("set hostname x"),
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.delete_content.assert_called_once_with("c-001")
-    client.create_content.assert_called_once_with("baseline-config", "config", "set hostname y")
+    client.create_content.assert_called_once_with("baseline-config", "config", "set hostname y", description=_hash("set hostname y"))
 
 
 def test_update_when_type_changes():
     m, client, mock_cls = run_module(
         {"name": "baseline-config", "content_type": "script", "data": "set hostname x", "state": "present"},
-        search_result=EXISTING_CONTENT,
-        download_data="set hostname x",
+        search_result=_existing("set hostname x", content_type="config"),
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.delete_content.assert_called_once_with("c-001")
-    client.create_content.assert_called_once_with("baseline-config", "script", "set hostname x")
+    client.create_content.assert_called_once_with("baseline-config", "script", "set hostname x", description=_hash("set hostname x"))
 
 
 def test_check_mode_blocks_update():
     m, client, mock_cls = run_module(
         {"name": "baseline-config", "content_type": "config", "data": "set hostname y", "state": "present"},
         check_mode=True,
-        search_result=EXISTING_CONTENT,
-        download_data="set hostname x",
+        search_result=_existing("set hostname x"),
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
@@ -96,7 +104,7 @@ def test_check_mode_blocks_update():
 def test_deletes_when_absent():
     m, client, mock_cls = run_module(
         {"name": "baseline-config", "content_type": "config", "data": None, "state": "absent"},
-        search_result=EXISTING_CONTENT,
+        search_result=_existing(),
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
@@ -111,6 +119,18 @@ def test_check_mode_blocks_create():
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_content.assert_not_called()
+
+
+def test_unmanaged_item_no_false_positive():
+    """Items without a hash in description (created outside this module) should not trigger updates."""
+    m, client, mock_cls = run_module(
+        {"name": "baseline-config", "content_type": "config", "data": "anything", "state": "present"},
+        search_result=EXISTING_UNMANAGED,
+    )
+    kwargs = m.exit_json.call_args[1]
+    assert kwargs["changed"] is False
+    client.create_content.assert_not_called()
+    client.delete_content.assert_not_called()
 
 
 def test_percepxion_config_passes_validate_certs_to_client():

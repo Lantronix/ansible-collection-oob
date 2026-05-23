@@ -69,10 +69,20 @@ content_id:
   type: str
 """
 
+import hashlib
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.connection import Connection
 from ansible_collections.lantronix.oob.plugins.module_utils.percepxion_client import PercepxionClient
 from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
+
+_HASH_PREFIX = "sha256:"
+
+
+def _content_hash(data):
+    if not data:
+        return ""
+    return _HASH_PREFIX + hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
 def _make_client(connection, module):
@@ -118,11 +128,13 @@ def main():
     desired_type = module.params.get("content_type", "config")
     desired_data = module.params.get("data", "")
 
+    desired_hash = _content_hash(desired_data)
+
     if state == "present" and name not in existing:
         changed = True
         if not module.check_mode:
             try:
-                r = client.create_content(name, desired_type, desired_data)
+                r = client.create_content(name, desired_type, desired_data, description=desired_hash)
                 content_id = r.get("id")
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
@@ -130,20 +142,18 @@ def main():
     elif state == "present" and name in existing:
         existing_item = existing[name]
         type_differs = existing_item.get("type") != desired_type
-        if not type_differs:
-            try:
-                current_data = client.download_content(existing_item["id"])
-            except AnsibleLantronixError as exc:
-                module.fail_json(msg=str(exc))
-            data_differs = current_data != desired_data
+        existing_hash = existing_item.get("description", "")
+        if existing_hash.startswith(_HASH_PREFIX):
+            data_differs = existing_hash != desired_hash
         else:
+            # Item not created by this module; skip data comparison to avoid false positives
             data_differs = False
         if type_differs or data_differs:
             changed = True
             if not module.check_mode:
                 try:
                     client.delete_content(existing_item["id"])
-                    r = client.create_content(name, desired_type, desired_data)
+                    r = client.create_content(name, desired_type, desired_data, description=desired_hash)
                     content_id = r.get("id")
                 except AnsibleLantronixError as exc:
                     module.fail_json(msg=str(exc))
