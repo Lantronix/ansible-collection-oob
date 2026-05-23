@@ -14,6 +14,7 @@
     search_string: "SLC9000"
     tenant_id: "{{ percepxion_tenant_id }}"
   register: devices_result
+  delegate_to: percepxion-primary
 
 - name: Fail early if no SLC9000 device found
   ansible.builtin.assert:
@@ -32,6 +33,7 @@
     state: present
   check_mode: true
   register: session_result
+  delegate_to: percepxion-primary
 
 - name: Verify module reports would-change in check_mode
   ansible.builtin.assert:
@@ -39,3 +41,10 @@
       - session_result.changed is true
     success_msg: "percepxion_aoob_session smoke test passed: check_mode correctly reports changed=true"
     fail_msg: "Expected changed=true in check_mode, got: {{ session_result }}"
+
+# UNTESTED STATES:
+# - live session without managed device: DVT lane uses check_mode only due to invalid device token.
+#   Live session tested in percepxion_aoob_session_dvt3 (Tier 4) against Cisco C3560G on port 1.
+# - session timeout: behavior when session expires before state=absent call is undocumented.
+# - concurrent sessions on same device: API behavior for multiple sessions is untested.
+# - CLI command within session: send_direct_cli_command path not tested via this module.

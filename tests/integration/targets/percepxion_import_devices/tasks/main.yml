@@ -1,7 +1,7 @@
 ---
 # percepxion_import_devices integration test.
 # Two paths tested:
-# 1. Idempotency: a device already in the tenant (SLC8000-RH) is skipped.
+# 1. Idempotency: a device already in the tenant is skipped.
 # 2. check_mode: a fake serial shows as "would register" without hitting the API.
 # tenant_id must be passed explicitly -- connection.get_tenant_id() returns None.
 
@@ -10,9 +10,10 @@
 - name: Import already-registered device (expect skipped)
   lantronix.oob.percepxion_import_devices:
     devices:
-      - serial: "SLC8000-RH"
+      - serial: "{{ slc_dvt_serial }}"
     tenant_id: "{{ percepxion_tenant_id }}"
   register: skip_result
+  delegate_to: percepxion-primary
 
 - name: Verify already-registered device is skipped (changed=false)
   ansible.builtin.assert:
@@ -20,8 +21,8 @@
       - skip_result.skipped | length > 0
       - skip_result.registered | length == 0
       - skip_result.changed is false
-    success_msg: "Import idempotency correct: SLC8000-RH was skipped (already registered)"
-    fail_msg: "Expected SLC8000-RH to be skipped: registered={{ skip_result.registered }}, skipped={{ skip_result.skipped }}"
+    success_msg: "Import idempotency correct: device was skipped (already registered)"
+    fail_msg: "Expected device to be skipped: registered={{ skip_result.registered }}, skipped={{ skip_result.skipped }}"
 
 # --- CHECK_MODE PATH (would-register) ---
 
@@ -33,6 +34,7 @@
     tenant_id: "{{ percepxion_tenant_id }}"
   check_mode: true
   register: checkmode_result
+  delegate_to: percepxion-primary
 
 - name: Verify check_mode reports would-change for new device
   ansible.builtin.assert:
@@ -42,3 +44,9 @@
       - checkmode_result.skipped | length == 0
     success_msg: "check_mode correctly reports changed=true for unregistered device"
     fail_msg: "Unexpected check_mode result: {{ checkmode_result }}"
+
+# UNTESTED STATES:
+# - real device registration: requires factory-fresh device serial not yet in tenant; excluded from CI.
+# - bulk import (multiple devices): tested in check_mode only with a single fake serial.
+# - serial already in a different tenant: cross-tenant conflict behavior undocumented.
+# - state=absent (delete): no delete path exists in this module; removal requires percepxion_projects.

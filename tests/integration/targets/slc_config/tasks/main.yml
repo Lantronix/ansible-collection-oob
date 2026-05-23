@@ -6,6 +6,7 @@
   lantronix.oob.slc_config:
     action: get
   register: get_result
+  delegate_to: slc9000
 
 - name: Assert commands is a list
   ansible.builtin.assert:
@@ -40,6 +41,7 @@
     action: compare
   register: compare_result
   ignore_errors: true
+  delegate_to: slc9000
 
 - name: Assert compare structure when endpoint is available
   ansible.builtin.assert:
@@ -57,6 +59,7 @@
   lantronix.oob.slc_config:
     action: save
   register: save_result
+  delegate_to: slc9000
 
 - name: Assert save reported changed
   ansible.builtin.assert:
@@ -64,3 +67,9 @@
       - save_result.changed is true
     success_msg: "Config save correctly reported changed=true"
     fail_msg: "Expected changed=true for action=save, got changed={{ save_result.changed }}"
+
+# UNTESTED STATES:
+# - action=batch real write: applies arbitrary CLI config commands; tested in check_mode only due to device state risk.
+# - action=batch error path: invalid command syntax or permission error response format undocumented in API spec.
+# - action=save idempotency: save always returns changed=true; idempotency is not applicable by design.
+# - action=compare on firmware without saved baseline: endpoint may return 404; handled by ignore_errors in Tier 1.

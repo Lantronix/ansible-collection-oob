@@ -12,9 +12,31 @@
     tenant_id: "{{ percepxion_tenant_id }}"
     state: absent
   ignore_errors: true  # noqa: ignore-errors
+  delegate_to: percepxion-primary
 
 - name: Percepxion smart groups CRUD test
   block:
+
+    # --- CHECK MODE ---
+
+    - name: percepxion_smart_groups | check_mode | create smart group
+      lantronix.oob.percepxion_smart_groups:
+        name: "ansible-test-sg"
+        query_string: "firmware_version=9.7.0.0R8"
+        tenant_id: "{{ percepxion_tenant_id }}"
+        state: present
+      check_mode: true
+      register: result_check
+      delegate_to: percepxion-write
+      when: percepxion_host is defined and percepxion_host | length > 0
+
+    - name: percepxion_smart_groups | check_mode | verify
+      ansible.builtin.assert:
+        that:
+          - result_check.changed == true
+        success_msg: "percepxion_smart_groups | check_mode | correct"
+        fail_msg: "percepxion_smart_groups | check_mode | FAIL"
+      when: percepxion_host is defined and percepxion_host | length > 0
 
     # --- CREATE ---
 
@@ -25,6 +47,7 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: create_result
+      delegate_to: percepxion-primary
 
     - name: Verify creation reported changed
       ansible.builtin.assert:
@@ -49,6 +72,7 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: idempotent_create
+      delegate_to: percepxion-primary
 
     - name: Verify idempotent create reports no change
       ansible.builtin.assert:
@@ -56,6 +80,26 @@
           - idempotent_create.changed is false
         success_msg: "Idempotent create correctly reported changed=false"
         fail_msg: "Expected changed=false on repeat create, got: {{ idempotent_create.changed }}"
+
+    # --- MODIFY (Tier 2 / DVT3 only) ---
+
+    - name: percepxion_smart_groups | modify | change query_string
+      lantronix.oob.percepxion_smart_groups:
+        name: "ansible-test-sg"
+        query_string: "firmware_version=9.7.0.0R9"
+        tenant_id: "{{ percepxion_tenant_id }}"
+        state: present
+      register: result_modify
+      delegate_to: percepxion-write
+      when: percepxion_host is defined and percepxion_host | length > 0
+
+    - name: percepxion_smart_groups | modify | B-2 regression - query_string change must report changed
+      ansible.builtin.assert:
+        that:
+          - result_modify.changed is true
+        success_msg: "percepxion_smart_groups | modify | correct: query_string change reported changed=true"
+        fail_msg: "BUG B-2: percepxion_smart_groups uses name-only idempotency - query_string change silently ignored"
+      when: percepxion_host is defined and percepxion_host | length > 0
 
     # --- DELETE ---
 
@@ -65,6 +109,7 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       register: delete_result
+      delegate_to: percepxion-primary
 
     - name: Verify deletion reported changed
       ansible.builtin.assert:
@@ -81,6 +126,7 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       register: idempotent_delete
+      delegate_to: percepxion-primary
 
     - name: Verify idempotent delete reports no change
       ansible.builtin.assert:
@@ -96,3 +142,10 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       ignore_errors: true  # noqa: ignore-errors
+      delegate_to: percepxion-primary
+
+# UNTESTED STATES:
+# - query_string modify on existing group: BUG B-2, module uses name-only idempotency; query_string changes
+#   are silently ignored. Regression test added in percepxion_smart_groups Tier 2 modify step to catch this bug.
+# - device_ids parameter: static membership (device_ids list) not tested; only query_string tested.
+# - smart group used by firmware job: behavior when deleting a group with active jobs is undocumented.

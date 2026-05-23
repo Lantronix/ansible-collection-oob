@@ -4,6 +4,7 @@
 - name: List devices (default limit)
   lantronix.oob.percepxion_devices:
   register: devices_result
+  delegate_to: percepxion-primary
 
 - name: Verify devices key is a list
   ansible.builtin.assert:
@@ -21,23 +22,25 @@
     success_msg: "total_results: {{ devices_result.total_results }}"
     fail_msg: "total_results missing or invalid: {{ devices_result }}"
 
-- name: Search by known device name (SLC8000-RH)
+- name: Search by known device name
   lantronix.oob.percepxion_devices:
-    search_string: "SLC8000-RH"
+    search_string: "{{ slc_dvt_hostname }}"
     tenant_id: "{{ percepxion_tenant_id }}"
   register: search_result
+  delegate_to: percepxion-primary
 
 - name: Verify search returns at least one result
   ansible.builtin.assert:
     that:
       - search_result.devices | length > 0
-    success_msg: "SLC8000-RH found in device list"
-    fail_msg: "SLC8000-RH not found, verify sandbox has this device registered"
+    success_msg: "{{ slc_dvt_hostname }} found in device list"
+    fail_msg: "{{ slc_dvt_hostname }} not found, verify sandbox has this device registered"
 
 - name: Search with explicit limit
   lantronix.oob.percepxion_devices:
     limit: 1
   register: limited_result
+  delegate_to: percepxion-primary
 
 - name: Verify limit is honoured
   ansible.builtin.assert:
@@ -45,3 +48,8 @@
       - limited_result.devices | length <= 1
     success_msg: "Limit=1 returned {{ limited_result.devices | length }} device(s)"
     fail_msg: "Limit=1 returned more than 1 device: {{ limited_result.devices | length }}"
+
+# UNTESTED STATES:
+# - search with no results: empty devices list assumed; total_results=0 not verified.
+# - search_string matching partial device names: wildcard behavior undocumented.
+# - org_id filter: org_id parameter exists but is not tested (sandbox org structure required).

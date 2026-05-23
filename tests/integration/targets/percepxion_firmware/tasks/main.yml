@@ -9,6 +9,7 @@
     tenant_id: "{{ percepxion_tenant_id }}"
     state: absent
   ignore_errors: true  # noqa: ignore-errors
+  delegate_to: percepxion-primary
 
 - name: Percepxion firmware compliance test
   block:
@@ -18,10 +19,11 @@
     - name: Create temporary smart group for firmware compliance check
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-firmware-test-group"
-        query_string: "name_filter=SLC9000-RH"
+        query_string: "name_filter={{ slc_dvt_hostname }}"
         tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: sg_result
+      delegate_to: percepxion-primary
 
     - name: Verify smart group created
       ansible.builtin.assert:
@@ -40,6 +42,7 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: check
       register: fw_result
+      delegate_to: percepxion-primary
 
     - name: Verify compliance result returns expected keys
       ansible.builtin.assert:
@@ -68,3 +71,10 @@
         tenant_id: "{{ percepxion_tenant_id }}"
         state: absent
       ignore_errors: true  # noqa: ignore-errors
+      delegate_to: percepxion-primary
+
+# UNTESTED STATES:
+# - state=update real trigger: firmware update excluded from CI (non-idempotent, 10+ min runtime, device risk).
+#   check_mode only tested in percepxion_firmware_dvt3.
+# - compliance check with no compliant devices: all devices non-compliant response format assumed.
+# - firmware version string format validation: module accepts any string; invalid versions not verified.

@@ -4,6 +4,7 @@
 - name: Gather facts
   lantronix.oob.percepxion_facts:
   register: facts_result
+  delegate_to: percepxion-primary
 
 - name: Verify percepxion_facts key is present
   ansible.builtin.assert:
@@ -19,3 +20,7 @@
       - facts_result.percepxion_facts.total_devices | int >= 0
     success_msg: "total_devices: {{ facts_result.percepxion_facts.total_devices }}"
     fail_msg: "total_devices missing or invalid: {{ facts_result.percepxion_facts }}"
+
+# UNTESTED STATES:
+# - empty tenant: total_devices=0 behavior not tested (all lab tenants have at least one device).
+# - additional facts fields: only total_devices asserted; other fields in percepxion_facts dict are not validated.

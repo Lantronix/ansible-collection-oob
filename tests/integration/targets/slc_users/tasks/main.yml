@@ -8,6 +8,7 @@
 - name: Get sysadmin account attributes
   lantronix.oob.slc_users:
   register: result
+  delegate_to: slc9000
 
 - name: Assert sysadmin key is returned
   ansible.builtin.assert:
@@ -53,6 +54,7 @@
     new_password: "CheckModeTestPassword123!"
   check_mode: true
   register: check_result
+  delegate_to: slc9000
 
 - name: Assert check_mode password change reports changed
   ansible.builtin.assert:
@@ -60,3 +62,9 @@
       - check_result.changed is true
     success_msg: "check_mode password change correctly reported changed=true"
     fail_msg: "Expected changed=true in check_mode, got changed={{ check_result.changed }}"
+
+# UNTESTED STATES:
+# - real password change: excluded from DVT lane (would lock out test credential).
+#   DVT3 write tested in slc_users_dvt3 with a dedicated test password and immediate revert.
+# - incorrect current password: error response format for wrong password PATCH is undocumented.
+# - password complexity rejection: behavior when new_password fails device complexity policy is untested.

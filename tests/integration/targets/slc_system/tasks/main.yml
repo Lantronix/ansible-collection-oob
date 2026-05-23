@@ -15,6 +15,7 @@
 - name: Gather current facts to capture original hostname
   lantronix.oob.slc_facts:
   register: initial_facts
+  delegate_to: slc9000
 
 # --- Idempotency: hostname already correct, should report no change ---
 
@@ -24,6 +25,7 @@
     state: present
   check_mode: true
   register: hostname_noop
+  delegate_to: slc9000
 
 - name: Assert same-hostname set reports changed=false
   ansible.builtin.assert:
@@ -47,6 +49,7 @@
     state: present
   check_mode: true
   register: hostname_change
+  delegate_to: slc9000
 
 - name: Assert different hostname reports changed=true
   ansible.builtin.assert:
@@ -63,6 +66,7 @@
     state: present
   check_mode: true
   register: desc_change
+  delegate_to: slc9000
 
 - name: Assert description change detected
   ansible.builtin.assert:
@@ -70,3 +74,10 @@
       - desc_change.changed is true
     success_msg: "Description change correctly detected (would-change)"
     fail_msg: "Expected changed=true for description change, got changed={{ desc_change.changed }}"
+
+# UNTESTED STATES:
+# - state=reboot: excluded from CI (would terminate the test session and fail all subsequent tests).
+# - description (site_tag) persistence: POST /system/identity with site_tag triggers subsystem restart
+#   and the value reverts in firmware 9.7.0.0R9. Cannot be validated via API roundtrip on this firmware.
+# - hostname change: causes TCP drop and subsystem restart on DVT3; deferred to manual lab test.
+# - hostname with special characters: behavior for hostnames with underscores, dots is untested.

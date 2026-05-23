@@ -6,6 +6,7 @@
 - name: Get device list to find a device ID for telemetry test
   lantronix.oob.percepxion_devices:
   register: devices_result
+  delegate_to: percepxion-primary
 
 - name: Fail early if no devices available
   ansible.builtin.assert:
@@ -26,6 +27,7 @@
       - cpu
       - memory
   register: stats_result
+  delegate_to: percepxion-primary
 
 - name: Verify stats dict returned
   ansible.builtin.assert:
@@ -52,6 +54,7 @@
     end_time: "2026-12-31T23:59:59Z"
   register: history_result
   when: devices_result.devices | length > 0
+  delegate_to: percepxion-primary
 
 - name: Verify history dict returned (empty points valid for fresh tenant)
   ansible.builtin.assert:
@@ -60,3 +63,8 @@
       - history_result.history is mapping
     fail_msg: "percepxion_telemetry did not return history dict for time range query: {{ history_result }}"
   when: devices_result.devices | length > 0
+
+# UNTESTED STATES:
+# - metrics list with invalid metric name: API behavior for unrecognized metric strings is undocumented.
+# - historical query with no data in range: empty history dict assumed for time ranges before device enrollment.
+# - device with no telemetry enabled: behavior for devices with telemetry collection disabled is untested.

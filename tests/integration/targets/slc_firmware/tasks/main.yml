@@ -1,5 +1,5 @@
 ---
-# Read-only firmware status check. state=update is NOT tested here —
+# Read-only firmware status check. state=update is NOT tested here --
 # triggering a firmware update on a shared lab device would disrupt
 # all other integration tests.
 
@@ -7,6 +7,7 @@
   lantronix.oob.slc_firmware:
     state: check
   register: result
+  delegate_to: slc9000
 
 - name: Assert firmware dict is returned
   ansible.builtin.assert:
@@ -51,4 +52,12 @@
     that:
       - result.changed is false
     success_msg: "Firmware check correctly reported changed=false"
-    fail_msg: "Firmware check reported changed=true — state=check should be read-only"
+    fail_msg: "Firmware check reported changed=true -- state=check should be read-only"
+
+# UNTESTED STATES:
+# - state=update real trigger: firmware update excluded from CI by policy (device disruption risk, 10+ min runtime).
+# - mid-update status: /firmware/update_status returns plain-text log during active update.
+#   Fixed in v1.0.16 (ValueError fallback to {"status": "in_progress"}). Testing requires racing the status
+#   check against an active update job, deferred due to device disruption risk.
+# - failed-update status: /firmware/update_status behavior after a failed update job is undocumented.
+# - alternate bank state: update always writes to alternate bank; booting from alternate bank is not tested.

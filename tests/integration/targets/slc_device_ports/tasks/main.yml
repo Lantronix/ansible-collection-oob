@@ -4,6 +4,7 @@
 - name: Query all device ports
   lantronix.oob.slc_device_ports:
   register: all_ports
+  delegate_to: slc9000
 
 - name: Assert ports is a list
   ansible.builtin.assert:
@@ -21,6 +22,7 @@
     port_id: port1
   register: single_port
   failed_when: false
+  delegate_to: slc9000
 
 - name: Assert port1 query returned valid data or was not found
   ansible.builtin.assert:
@@ -42,6 +44,7 @@
   lantronix.oob.slc_device_ports:
     gather_connections: true
   register: ports_with_conns
+  delegate_to: slc9000
 
 - name: Assert connections key is returned when gather_connections is true
   ansible.builtin.assert:
@@ -59,3 +62,8 @@
       - ports_with_conns.ports is iterable
     success_msg: "Ports still returned alongside connections"
     fail_msg: "result.ports missing when gather_connections=true"
+
+# UNTESTED STATES:
+# - port config write: /ports is GET-only in API v2; writes require CLI (batch) or Tier 4 managed device context.
+# - port_id not found: 404 response format assumed but not verified against a genuinely missing port ID.
+# - active connection on queried port: behavior when port_id has an active console session is unknown.

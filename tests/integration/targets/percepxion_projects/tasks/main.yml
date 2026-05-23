@@ -12,6 +12,7 @@
     tenant_id: "{{ percepxion_tenant_id }}"
     limit: 1
   register: devices_result
+  delegate_to: percepxion-primary
 
 - name: Fail early if no devices available
   ansible.builtin.assert:
@@ -30,6 +31,7 @@
     state: absent
   check_mode: true
   register: absent_result
+  delegate_to: percepxion-primary
 
 - name: Verify module returned device_id
   ansible.builtin.assert:
@@ -38,3 +40,9 @@
       - absent_result.device_id is defined
     success_msg: "percepxion_projects smoke test passed: device_id={{ absent_result.device_id }}"
     fail_msg: "percepxion_projects module did not return device_id: {{ absent_result }}"
+
+# UNTESTED STATES:
+# - state=present (device assignment): /v3/device/assign requires org-level serial+name; no sub-project
+#   reassignment REST endpoint available in Percepxion 6.12. CRUD lives in unit tests.
+# - state=absent real unassign: real unassign not tested (check_mode only) to avoid losing DVT device enrollment.
+# - device_id not in any project: module behavior when device has no project assignment is not documented.

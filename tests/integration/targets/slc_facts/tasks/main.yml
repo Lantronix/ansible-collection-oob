@@ -2,6 +2,7 @@
 - name: Gather facts from SLC9000
   lantronix.oob.slc_facts:
   register: result
+  delegate_to: slc9000
 
 - name: Verify model field is present and non-empty
   ansible.builtin.assert:
@@ -42,3 +43,7 @@
       - result.slc_facts.hostname | length > 0
     success_msg: "Hostname: {{ result.slc_facts.hostname }}"
     fail_msg: "slc_facts.hostname not returned or empty"
+
+# UNTESTED STATES:
+# - partial response: behavior when /system/status or /system/identity returns an error mid-gather is not tested.
+# - temperature field absent: some SLC models may not report temperature in /system/status.

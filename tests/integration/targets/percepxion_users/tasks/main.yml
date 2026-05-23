@@ -16,6 +16,7 @@
     tenant_id: "{{ percepxion_tenant_id }}"
     state: present
   register: existing_result
+  delegate_to: percepxion-primary
 
 - name: Verify existing user reports changed=false
   ansible.builtin.assert:
@@ -31,6 +32,7 @@
     tenant_id: "{{ percepxion_tenant_id }}"
     state: absent
   register: absent_result
+  delegate_to: percepxion-primary
 
 - name: Verify absent user reports changed=false
   ansible.builtin.assert:
@@ -39,3 +41,10 @@
       - absent_result.username == 'ansible-test-nonexistent@ansible.local'
     success_msg: "percepxion_users correctly reported changed=false for absent user"
     fail_msg: "Unexpected result for absent user: {{ absent_result }}"
+
+# UNTESTED STATES:
+# - real create (state=present, new user): requires tenant_admin role; CI credential is project_admin (returns 404).
+#   CRUD lives in unit tests.
+# - real delete (state=absent, existing user): excluded (requires tenant_admin, same constraint).
+# - user with no email (username-only): module searches by username client-side; no-email behavior untested.
+# - role assignment on create: role parameter exists but not tested in integration.

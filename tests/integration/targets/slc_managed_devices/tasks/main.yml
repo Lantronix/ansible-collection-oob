@@ -4,6 +4,7 @@
 - name: Get all managed devices (no filter)
   lantronix.oob.slc_managed_devices:
   register: all_devices
+  delegate_to: slc9000
 
 - name: Assert managed_devices is a list
   ansible.builtin.assert:
@@ -31,7 +32,7 @@
     that:
       - all_devices.changed is false
     success_msg: "Managed devices query correctly reported changed=false"
-    fail_msg: "Managed devices query reported changed=true — should be read-only"
+    fail_msg: "Managed devices query reported changed=true -- should be read-only"
 
 # --- FILTER by status=managed ---
 
@@ -39,6 +40,7 @@
   lantronix.oob.slc_managed_devices:
     filter_status: managed
   register: managed_only
+  delegate_to: slc9000
 
 - name: Assert filtered result is a list
   ansible.builtin.assert:
@@ -57,3 +59,8 @@
     fail_msg: "Device {{ item.name }} has unexpected status={{ item.status }} in managed filter"
   loop: "{{ managed_only.managed_devices }}"
   when: managed_only.managed_devices | length > 0
+
+# UNTESTED STATES:
+# - write path: /managed_devices is GET-only in API v2; no attribute modification available via module.
+# - filter_status with no matching devices: empty list response format assumed.
+# - device in error state: status values beyond managed/discovered/unmanaged are not documented.
