@@ -115,16 +115,38 @@ def main():
     changed = False
     content_id = None
 
+    desired_type = module.params.get("content_type", "config")
+    desired_data = module.params.get("data", "")
+
     if state == "present" and name not in existing:
         changed = True
         if not module.check_mode:
             try:
-                result = client.create_content(
-                    name, module.params.get("content_type", "config"), module.params.get("data", "")
-                )
-                content_id = result.get("id")
+                r = client.create_content(name, desired_type, desired_data)
+                content_id = r.get("id")
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
+
+    elif state == "present" and name in existing:
+        existing_item = existing[name]
+        type_differs = existing_item.get("type") != desired_type
+        if not type_differs:
+            try:
+                current_data = client.download_content(existing_item["id"])
+            except AnsibleLantronixError as exc:
+                module.fail_json(msg=str(exc))
+            data_differs = current_data != desired_data
+        else:
+            data_differs = False
+        if type_differs or data_differs:
+            changed = True
+            if not module.check_mode:
+                try:
+                    client.delete_content(existing_item["id"])
+                    r = client.create_content(name, desired_type, desired_data)
+                    content_id = r.get("id")
+                except AnsibleLantronixError as exc:
+                    module.fail_json(msg=str(exc))
 
     elif state == "absent" and name in existing:
         changed = True

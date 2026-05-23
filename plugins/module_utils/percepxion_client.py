@@ -175,6 +175,15 @@ class PercepxionClient:
     def update_content(self, content_id, updates):
         return self._post("/v3/content/update", self._scope(dict(content_id=content_id, **updates)))
 
+    def download_content(self, file_id):
+        """Fetch the raw text body of a content file for idempotency comparison."""
+        try:
+            resp = self.session.get(self._url("/v3/content/download/{0}".format(file_id)))
+            resp.raise_for_status()
+            return resp.text
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+
     def delete_content(self, content_id):
         return self._post("/v3/content/delete", self._scope({"id": [content_id]}))
 

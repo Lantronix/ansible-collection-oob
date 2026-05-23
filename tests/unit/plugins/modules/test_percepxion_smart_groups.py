@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import percepxion_smart_groups
 
 EXISTING_GROUP = {"search_result": [{"id": "grp-001", "name": "dc1-servers"}]}
+EXISTING_GROUP_WITH_QS = {"search_result": [{"id": "grp-001", "name": "dc1-servers", "query_string": "tag=dc1"}]}
 NO_GROUPS = {"search_result": []}
 
 
@@ -15,7 +16,7 @@ def run_module(params, check_mode=False, search_result=None):
             with patch("ansible_collections.lantronix.oob.plugins.modules.percepxion_smart_groups.PercepxionClient") as mock_cls:
                 instance = MagicMock()
                 instance.search_smart_groups.return_value = result
-                instance.create_smart_group.return_value = {"group_id": "grp-002"}
+                instance.create_smart_group.return_value = {"id": "grp-002"}
                 instance.delete_smart_group.return_value = {}
                 mock_cls.return_value = instance
 
@@ -50,6 +51,40 @@ def test_no_change_when_exists():
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
+    client.create_smart_group.assert_not_called()
+
+
+def test_no_change_when_query_string_matches():
+    m, client, mock_cls = run_module(
+        {"name": "dc1-servers", "query_string": "tag=dc1", "device_ids": None, "state": "present"},
+        search_result=EXISTING_GROUP_WITH_QS,
+    )
+    kwargs = m.exit_json.call_args[1]
+    assert kwargs["changed"] is False
+    client.delete_smart_group.assert_not_called()
+    client.create_smart_group.assert_not_called()
+
+
+def test_update_when_query_string_changes():
+    m, client, mock_cls = run_module(
+        {"name": "dc1-servers", "query_string": "tag=dc2", "device_ids": None, "state": "present"},
+        search_result=EXISTING_GROUP_WITH_QS,
+    )
+    kwargs = m.exit_json.call_args[1]
+    assert kwargs["changed"] is True
+    client.delete_smart_group.assert_called_once_with("grp-001")
+    client.create_smart_group.assert_called_once_with("dc1-servers", query_string="tag=dc2", device_ids=None)
+
+
+def test_check_mode_blocks_update():
+    m, client, mock_cls = run_module(
+        {"name": "dc1-servers", "query_string": "tag=dc2", "device_ids": None, "state": "present"},
+        check_mode=True,
+        search_result=EXISTING_GROUP_WITH_QS,
+    )
+    kwargs = m.exit_json.call_args[1]
+    assert kwargs["changed"] is True
+    client.delete_smart_group.assert_not_called()
     client.create_smart_group.assert_not_called()
 
 

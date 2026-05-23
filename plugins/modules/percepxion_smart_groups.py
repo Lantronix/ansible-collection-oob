@@ -115,18 +115,36 @@ def main():
     changed = False
     group_id = None
 
+    desired_qs = module.params.get("query_string") or ""
+
     if state == "present" and name not in existing:
         changed = True
         if not module.check_mode:
             try:
-                result = client.create_smart_group(
+                r = client.create_smart_group(
                     name,
                     query_string=module.params.get("query_string"),
                     device_ids=module.params.get("device_ids"),
                 )
-                group_id = result.get("id")
+                group_id = r.get("id")
             except AnsibleLantronixError as exc:
                 module.fail_json(msg=str(exc))
+
+    elif state == "present" and name in existing:
+        current_qs = existing[name].get("query_string") or ""
+        if current_qs != desired_qs:
+            changed = True
+            if not module.check_mode:
+                try:
+                    client.delete_smart_group(existing[name]["id"])
+                    r = client.create_smart_group(
+                        name,
+                        query_string=module.params.get("query_string"),
+                        device_ids=module.params.get("device_ids"),
+                    )
+                    group_id = r.get("id")
+                except AnsibleLantronixError as exc:
+                    module.fail_json(msg=str(exc))
 
     elif state == "absent" and name in existing:
         changed = True
