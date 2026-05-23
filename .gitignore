@@ -6,3 +6,4 @@ tests/output/
 tests/integration/integration_config.yml
 *.tar.gz
 .ansible/
+docs/superpowers/

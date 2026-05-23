@@ -162,8 +162,20 @@ class SLC9Client:
         return self._get("/firmware/status")
 
     def get_firmware_update_status(self):
-        """GET /firmware/update_status -- ongoing update progress."""
-        return self._get("/firmware/update_status")
+        """GET /firmware/update_status -- ongoing update progress.
+
+        Returns a plain-text log (not JSON) while an update is in progress.
+        Falls back to a structured dict with status=in_progress in that case.
+        """
+        try:
+            resp = self.session.get(self._url("/firmware/update_status"))
+            resp.raise_for_status()
+            try:
+                return resp.json()
+            except ValueError:
+                return {"status": "in_progress", "progress": 0, "message": resp.text}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
 
     def trigger_firmware_update(self, file_url, md5_key, reboot_after_update=False, description=""):
         """POST /firmware/update -- start a firmware update from URL.

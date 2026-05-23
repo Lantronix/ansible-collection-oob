@@ -4,6 +4,61 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.15
+=======
+
+Release Summary
+---------------
+
+Certification fix. Excludes ``.ansible/`` from the published collection tarball
+via ``build_ignore`` in ``galaxy.yml`` and reverts inadvertent executable bits
+set on module files in v1.0.14. No functional changes to modules, plugins,
+or roles.
+
+Bugfixes
+--------
+
+- ``galaxy.yml``: added ``.ansible/`` to ``build_ignore`` so
+  ``ansible-test sanity`` output cached in the dev environment is not bundled
+  into the Automation Hub tarball.
+- ``plugins/modules/*.py``: reverted executable bit set in v1.0.14.
+  Red Hat certification sanity requires module files to be non-executable
+  (``shebang`` check enforces this).
+
+v1.0.14
+=======
+
+Release Summary
+---------------
+
+Certification fix. Sets the executable bit on module files and expands
+``build_ignore`` shebang entries to cover ansible-core 2.16 through 2.18.
+
+Bugfixes
+--------
+
+- ``plugins/modules/*.py``: set executable bit so the ``shebang`` sanity
+  check passes on the Red Hat certification pipeline (reverted in v1.0.15
+  after discovering the check requires the opposite).
+- ``galaxy.yml``: added ``build_ignore`` entries for sanity test output
+  directories under ansible-core 2.16, 2.17, and 2.18 paths.
+
+v1.0.13
+=======
+
+Release Summary
+---------------
+
+Sanity CI fix. Adds ``build_ignore`` entries for ansible-core 2.16, 2.17,
+and 2.18 shebang ignore files so ``ansible-test sanity`` passes cleanly
+across all targeted ansible-core versions.
+
+Bugfixes
+--------
+
+- ``galaxy.yml``: added ``build_ignore`` entries for shebang ignore files
+  generated under ansible-core 2.16, 2.17, and 2.18 test output paths.
+
 v1.0.12
 =======
 
