@@ -1,5 +1,15 @@
-[slc_devices]
-slc9k ansible_host={{ slc9_host }} ansible_user={{ slc9_username }} ansible_password={{ slc9_password }} ansible_network_os=lantronix.oob.slc9 ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=false
+# DVT, read-only lane, Tier 1 targets
+[slc_dvt]
+slc9000 ansible_host={{ slc_dvt_host }} ansible_user={{ slc_dvt_username }} ansible_password={{ slc_dvt_password }} ansible_network_os=lantronix.oob.slc9 ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=false
 
-[percepxion_platform]
-percepxion ansible_host={{ percepxion_host }} ansible_user={{ percepxion_username }} ansible_password={{ percepxion_password }} ansible_network_os=lantronix.oob.percepxion ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=true
+# DVT3, write lane, Tier 2 and Tier 4 targets
+[slc_dvt3]
+slc9000-write ansible_host={{ slc_dvt3_host }} ansible_user={{ slc_dvt3_username }} ansible_password={{ slc_dvt3_password }} ansible_network_os=lantronix.oob.slc9 ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=false
+
+# Percepxion, primary project, read-only (DVT lane)
+[percepxion_dvt]
+percepxion-primary ansible_host={{ percepxion_dvt_host }} ansible_user={{ percepxion_dvt_username }} ansible_password={{ percepxion_dvt_password }} ansible_network_os=lantronix.oob.percepxion ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=true
+
+# Percepxion, Cisco Live project, write lane (DVT3)
+[percepxion_dvt3]
+percepxion-write ansible_host={{ percepxion_host }} ansible_user={{ percepxion_username }} ansible_password={{ percepxion_password }} ansible_network_os=lantronix.oob.percepxion ansible_connection=ansible.netcommon.httpapi ansible_httpapi_use_ssl=true ansible_httpapi_validate_certs=true
