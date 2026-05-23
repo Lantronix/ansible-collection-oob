@@ -1,0 +1,26 @@
+---
+# percepxion_import_devices registers new device serials into the tenant.
+# Real registration requires a factory-fresh serial; check_mode only in CI.
+
+- name: percepxion_import_devices | check_mode | register fake serial
+  lantronix.oob.percepxion_import_devices:
+    serials:
+      - serial: "CI-TEST-FAKE-SERIAL-001"
+        name: "ci-test-device"
+    state: present
+  check_mode: true
+  register: result_check
+  delegate_to: percepxion-write
+
+- name: percepxion_import_devices | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "percepxion_import_devices | check_mode | correct"
+    fail_msg: "percepxion_import_devices | check_mode | FAIL"
+
+# UNTESTED STATES:
+# - real device registration: requires factory-fresh device serial not yet in tenant; excluded from CI.
+# - bulk import (multiple devices): tested in check_mode only with a single fake serial.
+# - serial already in a different tenant: cross-tenant conflict behavior undocumented.
+# - state=absent (delete): no delete path exists in this module; removal requires percepxion_projects.

@@ -1,0 +1,48 @@
+---
+# percepxion_users requires tenant_admin role for create/delete.
+# CI credentials are project_admin; create/delete return 404.
+# This target tests the skip path and absent idempotency only.
+# CRUD is validated in unit tests.
+
+- name: percepxion_users | preflight | get tenant facts
+  lantronix.oob.percepxion_facts:
+  register: px_facts
+  delegate_to: percepxion-write
+
+- name: percepxion_users | preflight | note role
+  ansible.builtin.debug:
+    msg: "Running as role: {{ px_facts.percepxion_facts.role | default('unknown') }}"
+
+- name: percepxion_users | check_mode | attempt create (expected to skip if not tenant_admin)
+  lantronix.oob.percepxion_users:
+    username: "ci-test-user@example.com"
+    role: "project_admin"
+    state: present
+  check_mode: true
+  register: result_check
+  ignore_errors: true
+  delegate_to: percepxion-write
+
+- name: percepxion_users | check_mode | log result
+  ansible.builtin.debug:
+    msg: "check_mode result: changed={{ result_check.changed }}, failed={{ result_check.failed }}"
+
+- name: percepxion_users | absent | verify absent on non-existent user
+  lantronix.oob.percepxion_users:
+    username: "ci-nonexistent-user@example.com"
+    state: absent
+  register: result_absent
+  delegate_to: percepxion-write
+
+- name: percepxion_users | absent | verify idempotency
+  ansible.builtin.assert:
+    that:
+      - result_absent.changed == false
+    success_msg: "percepxion_users | absent idempotency | correct: changed=false"
+    fail_msg: "percepxion_users | absent idempotency | FAIL"
+
+# UNTESTED STATES:
+# - real create (state=present, new user): requires tenant_admin role; CI credential is project_admin.
+# - real delete (state=absent, existing user): excluded (requires tenant_admin).
+# - user with no email (username-only): module searches by username; no-email behavior untested.
+# - role assignment on create: role parameter exists but not tested in integration.

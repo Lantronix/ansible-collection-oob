@@ -1,0 +1,37 @@
+---
+# percepxion_projects assigns/unassigns devices to Percepxion sub-projects.
+# Real assignment (state=present) is check_mode only to avoid losing DVT3 enrollment.
+
+- name: percepxion_projects | setup | get current device list
+  lantronix.oob.percepxion_devices:
+    search_string: "{{ slc_dvt3_hostname }}"
+    limit: 1
+  register: dvt3_device
+  delegate_to: percepxion-write
+
+- name: percepxion_projects | setup | set device_id
+  ansible.builtin.set_fact:
+    dvt3_device_id: "{{ dvt3_device.devices[0].device_id }}"
+  when: dvt3_device.devices | length > 0
+
+- name: percepxion_projects | check_mode | assign to project
+  lantronix.oob.percepxion_projects:
+    device_id: "{{ dvt3_device_id }}"
+    state: present
+  check_mode: true
+  register: result_check
+  delegate_to: percepxion-write
+  when: dvt3_device_id is defined
+
+- name: percepxion_projects | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "percepxion_projects | check_mode | correct"
+    fail_msg: "percepxion_projects | check_mode | FAIL"
+  when: dvt3_device_id is defined
+
+# UNTESTED STATES:
+# - real device assignment: /v3/device/assign requires org-level serial and name. Not tested (check_mode only).
+# - state=absent real unassign: not tested (check_mode only) to avoid losing DVT3 enrollment.
+# - device_id not in any project: behavior when device has no project assignment is not documented.

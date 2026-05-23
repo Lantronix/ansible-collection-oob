@@ -1,0 +1,39 @@
+---
+# percepxion_firmware state=update is non-idempotent by design and excluded from live CI.
+# state=check (compliance report) is tested here.
+
+- name: percepxion_firmware | check_mode | trigger update (no actual update)
+  lantronix.oob.percepxion_firmware:
+    state: update
+    firmware_version: "9.7.0.0R11"
+  check_mode: true
+  register: result_check
+  delegate_to: percepxion-write
+
+- name: percepxion_firmware | check_mode | verify
+  ansible.builtin.assert:
+    that:
+      - result_check.changed == true
+    success_msg: "percepxion_firmware | check_mode | correct: changed=true in check_mode"
+    fail_msg: "percepxion_firmware | check_mode | FAIL"
+
+- name: percepxion_firmware | check | compliance report on write project
+  lantronix.oob.percepxion_firmware:
+    state: check
+    firmware_version: "9.7.0.0R11"
+  register: result_compliance
+  delegate_to: percepxion-write
+
+- name: percepxion_firmware | check | verify result fields
+  ansible.builtin.assert:
+    that:
+      - result_compliance.firmware_report is defined
+      - result_compliance.firmware_report is iterable
+      - result_compliance.changed == false
+    success_msg: "percepxion_firmware | check | compliance report returned {{ result_compliance.firmware_report | length }} devices"
+    fail_msg: "percepxion_firmware | check | FAIL: firmware_report missing or changed=true"
+
+# UNTESTED STATES:
+# - state=update real trigger: excluded from CI (non-idempotent, 10+ min runtime, device disruption risk).
+# - compliance check with no compliant devices: all-non-compliant response format assumed.
+# - firmware version string format validation: module accepts any string; invalid versions not verified.

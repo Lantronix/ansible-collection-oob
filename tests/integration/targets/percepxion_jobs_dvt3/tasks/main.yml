@@ -1,0 +1,30 @@
+---
+# percepxion_jobs queries and manages job groups.
+# state=query is tested here; state=present create requires full operation payload
+# that is not available in the DVT3 Cisco Live project without a valid template.
+
+- name: percepxion_jobs | query | list all jobs
+  lantronix.oob.percepxion_jobs:
+    state: query
+  register: result_query
+  delegate_to: percepxion-write
+
+- name: percepxion_jobs | query | verify result is iterable
+  ansible.builtin.assert:
+    that:
+      - result_query.jobs is defined
+      - result_query.jobs is iterable
+    success_msg: "percepxion_jobs | query | returned {{ result_query.jobs | length }} job groups"
+    fail_msg: "percepxion_jobs | query | FAIL: jobs key missing or not iterable"
+
+- name: percepxion_jobs | query | changed is false (read-only)
+  ansible.builtin.assert:
+    that:
+      - result_query.changed == false
+    success_msg: "percepxion_jobs | query | correct: changed=false"
+    fail_msg: "percepxion_jobs | query | FAIL: changed should be false"
+
+# UNTESTED STATES:
+# - state=present (create job group): requires full operation payload. CRUD lives in unit tests.
+# - state=absent (delete job group): delete path not tested (no create in CI).
+# - job group with actual device operation results: job_logs fields not asserted beyond is iterable.
