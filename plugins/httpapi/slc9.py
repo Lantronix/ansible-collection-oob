@@ -92,15 +92,39 @@ class HttpApi(HttpApiBase):
         self.connection._auth = {"X-auth-token": token}
 
     def logout(self):
-        try:
-            self.connection.send(
-                "/api/v2/user/login",
-                None,
-                method="DELETE",
-                headers=self.connection._auth or {},
+        # Use raw socket (like login) so mini_httpd can handle the DELETE even
+        # when the Ansible connection layer is already being torn down.
+        auth = self.connection._auth or {}
+        token = auth.get("X-auth-token")
+        if token:
+            host = self.connection.get_option("host")
+            verify = self.connection.get_option("validate_certs")
+
+            request = (
+                b"DELETE /api/v2/user/login HTTP/1.1\r\n"
+                + ("Host: {0}\r\n".format(host)).encode()
+                + ("X-auth-token: {0}\r\n".format(token)).encode()
+                + b"Content-Length: 0\r\n"
+                + b"Connection: close\r\n"
+                + b"\r\n"
             )
-        except Exception:
-            pass
+
+            ctx = ssl.create_default_context()
+            if not verify:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+
+            try:
+                raw_sock = socket.create_connection((host, 443), timeout=10)
+                tls_sock = ctx.wrap_socket(raw_sock, server_hostname=host)
+                tls_sock.sendall(request)
+                while True:
+                    if not tls_sock.recv(4096):
+                        break
+                tls_sock.close()
+            except Exception:
+                pass
+
         self.connection._auth = None
 
     def get_token(self):
