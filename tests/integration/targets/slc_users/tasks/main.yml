@@ -65,6 +65,6 @@
 
 # UNTESTED STATES:
 # - real password change: excluded from read-only lane (would lock out test credential).
-#   Write lane tested in slc_users_dvt3 with a dedicated test password and immediate revert.
+#   Write lane tested in slc_users_write with a dedicated test password and immediate revert.
 # - incorrect current password: error response format for wrong password PATCH is undocumented.
 # - password complexity rejection: behavior when new_password fails device complexity policy is untested.

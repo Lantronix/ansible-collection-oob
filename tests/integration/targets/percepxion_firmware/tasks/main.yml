@@ -75,6 +75,6 @@
 
 # UNTESTED STATES:
 # - state=update real trigger: firmware update excluded from CI (non-idempotent, 10+ min runtime, device risk).
-#   check_mode only tested in percepxion_firmware_dvt3.
+#   check_mode only tested in percepxion_firmware_write.
 # - compliance check with no compliant devices: all devices non-compliant response format assumed.
 # - firmware version string format validation: module accepts any string; invalid versions not verified.

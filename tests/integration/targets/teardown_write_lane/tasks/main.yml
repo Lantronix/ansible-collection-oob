@@ -7,7 +7,7 @@
 
 - name: Skip teardown if no snapshot exists
   ansible.builtin.debug:
-    msg: "teardown_dvt3 | No snapshot artifact found. Skipping restore."
+    msg: "teardown_write_lane | No snapshot artifact found. Skipping restore."
   when: not snapshot_stat.stat.exists
 
 - name: Read config snapshot
@@ -29,22 +29,22 @@
   ansible.builtin.assert:
     that:
       - restore_result is not failed
-    success_msg: "teardown_dvt3 | restore | write-lane config restored successfully"
-    fail_msg: "teardown_dvt3 | restore | Config restore failed, write-lane device may need manual reset"
+    success_msg: "teardown_write_lane | restore | write-lane config restored successfully"
+    fail_msg: "teardown_write_lane | restore | Config restore failed, write-lane device may need manual reset"
   when: snapshot_stat.stat.exists
 
 - name: Verify write-lane hostname matches expected value
   lantronix.oob.slc_facts:
-  register: dvt3_facts_post
+  register: write_lane_facts
   delegate_to: slc9000-write
   when: snapshot_stat.stat.exists
 
 - name: Assert hostname matches baseline
   ansible.builtin.assert:
     that:
-      - dvt3_facts_post.slc_facts.hostname == slc_write_hostname
-    success_msg: "teardown_dvt3 | verify | Hostname confirmed: {{ dvt3_facts_post.slc_facts.hostname }}"
-    fail_msg: "teardown_dvt3 | verify | Hostname mismatch: got {{ dvt3_facts_post.slc_facts.hostname }}, expected {{ slc_write_hostname }}"
+      - write_lane_facts.slc_facts.hostname == slc_write_hostname
+    success_msg: "teardown_write_lane | verify | Hostname confirmed: {{ write_lane_facts.slc_facts.hostname }}"
+    fail_msg: "teardown_write_lane | verify | Hostname mismatch: got {{ write_lane_facts.slc_facts.hostname }}, expected {{ slc_write_hostname }}"
   when: snapshot_stat.stat.exists
 
 # UNTESTED STATES:

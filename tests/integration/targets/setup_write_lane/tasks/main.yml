@@ -2,20 +2,20 @@
 - name: Pull write-lane config snapshot
   lantronix.oob.slc_config:
     action: get
-  register: dvt3_config_snapshot
+  register: write_lane_snapshot
   delegate_to: slc9000-write
 
 - name: Assert snapshot retrieved
   ansible.builtin.assert:
     that:
-      - dvt3_config_snapshot is not failed
-      - dvt3_config_snapshot.commands is defined
-    success_msg: "setup_dvt3 | snapshot | write-lane config captured successfully"
-    fail_msg: "setup_dvt3 | snapshot | Failed to capture write-lane config"
+      - write_lane_snapshot is not failed
+      - write_lane_snapshot.commands is defined
+    success_msg: "setup_write_lane | snapshot | write-lane config captured successfully"
+    fail_msg: "setup_write_lane | snapshot | Failed to capture write-lane config"
 
 - name: Save snapshot as CI artifact
   ansible.builtin.copy:
-    content: "{{ dvt3_config_snapshot.commands | join('\n') }}"
+    content: "{{ write_lane_snapshot.commands | join('\n') }}"
     dest: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp', true) }}/write_lane_config_snapshot.txt"
     mode: "0600"
   delegate_to: localhost
@@ -38,5 +38,5 @@
   when: not managed_device_available
 
 # UNTESTED STATES:
-# - Write-lane device unreachable at suite start: setup_dvt3 will fail if slc_config fails.
+# - Write-lane device unreachable at suite start: setup_write_lane will fail if slc_config fails.
 #   teardown handles this case via snapshot artifact absence detection.

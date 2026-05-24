@@ -62,19 +62,19 @@ jobs:
           SLC_READ_USER: ${{ secrets.SLC9_USER }}
           SLC_READ_PASS: ${{ secrets.SLC9_PASSWORD }}
           SLC_READ_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
-          SLC_WRITE_HOST: ${{ secrets.SLC9K_DVT3_IP }}
-          SLC_WRITE_USER: ${{ secrets.SLC9K_DVT3_USER }}
-          SLC_WRITE_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
-          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
+          SLC_WRITE_HOST: ${{ secrets.SLC9K_WRITE_IP }}
+          SLC_WRITE_USER: ${{ secrets.SLC9K_WRITE_USER }}
+          SLC_WRITE_PASS: ${{ secrets.SLC9K_WRITE_PASSWORD }}
+          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_WRITE_HOSTNAME }}
           PX_READ_HOST: ${{ secrets.PX_API_BASE }}
           PX_READ_USER: ${{ secrets.PX_PROJECT_USER }}
           PX_READ_PASS: ${{ secrets.PX_PROJECT_PASSWORD }}
-          PX_HOST: ${{ secrets.PX_API_BASE_DVT3 }}
-          PX_URL: ${{ secrets.PX_URL_DVT3 }}
-          PX_USER: ${{ secrets.PX_PROJECT_USER_DVT3 }}
-          PX_PASS: ${{ secrets.PX_PROJECT_PASSWORD_DVT3 }}
-          PX_PORTAL: ${{ secrets.PX_PORTAL_NAME_DVT3 }}
-          PX_ORG: ${{ secrets.PX_ORG_NAME_DVT3 }}
+          PX_HOST: ${{ secrets.PX_WRITE_API_BASE }}
+          PX_URL: ${{ secrets.PX_WRITE_URL }}
+          PX_USER: ${{ secrets.PX_WRITE_USER }}
+          PX_PASS: ${{ secrets.PX_WRITE_PASSWORD }}
+          PX_PORTAL: ${{ secrets.PX_WRITE_PORTAL }}
+          PX_ORG: ${{ secrets.PX_WRITE_ORG }}
           MANAGED_DEVICE_HOST: ${{ secrets.MANAGED_DEVICE_IP }}
           MANAGED_DEVICE_USER: ${{ secrets.MANAGED_DEVICE_USERNAME }}
           MANAGED_DEVICE_PASS: ${{ secrets.MANAGED_DEVICE_PASSWORD }}
@@ -187,16 +187,16 @@ jobs:
           SLC_READ_USER: ${{ secrets.SLC9_USER }}
           SLC_READ_PASS: ${{ secrets.SLC9_PASSWORD }}
           SLC_READ_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
-          SLC_WRITE_HOST: ${{ secrets.SLC9K_DVT3_IP }}
-          SLC_WRITE_USER: ${{ secrets.SLC9K_DVT3_USER }}
-          SLC_WRITE_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
-          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
-          PX_HOST: ${{ secrets.PX_API_BASE_DVT3 }}
-          PX_URL: ${{ secrets.PX_URL_DVT3 }}
-          PX_USER: ${{ secrets.PX_PROJECT_USER_DVT3 }}
-          PX_PASS: ${{ secrets.PX_PROJECT_PASSWORD_DVT3 }}
-          PX_PORTAL: ${{ secrets.PX_PORTAL_NAME_DVT3 }}
-          PX_ORG: ${{ secrets.PX_ORG_NAME_DVT3 }}
+          SLC_WRITE_HOST: ${{ secrets.SLC9K_WRITE_IP }}
+          SLC_WRITE_USER: ${{ secrets.SLC9K_WRITE_USER }}
+          SLC_WRITE_PASS: ${{ secrets.SLC9K_WRITE_PASSWORD }}
+          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_WRITE_HOSTNAME }}
+          PX_HOST: ${{ secrets.PX_WRITE_API_BASE }}
+          PX_URL: ${{ secrets.PX_WRITE_URL }}
+          PX_USER: ${{ secrets.PX_WRITE_USER }}
+          PX_PASS: ${{ secrets.PX_WRITE_PASSWORD }}
+          PX_PORTAL: ${{ secrets.PX_WRITE_PORTAL }}
+          PX_ORG: ${{ secrets.PX_WRITE_ORG }}
           MANAGED_DEVICE_HOST: ${{ secrets.MANAGED_DEVICE_IP }}
           MANAGED_DEVICE_USER: ${{ secrets.MANAGED_DEVICE_USERNAME }}
           MANAGED_DEVICE_PASS: ${{ secrets.MANAGED_DEVICE_PASSWORD }}
@@ -253,10 +253,10 @@ jobs:
       - name: Write integration_config.yml from secrets
         working-directory: ansible_collections/lantronix/oob
         env:
-          SLC_WRITE_HOST: ${{ secrets.SLC9K_DVT3_IP }}
-          SLC_WRITE_USER: ${{ secrets.SLC9K_DVT3_USER }}
-          SLC_WRITE_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
-          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
+          SLC_WRITE_HOST: ${{ secrets.SLC9K_WRITE_IP }}
+          SLC_WRITE_USER: ${{ secrets.SLC9K_WRITE_USER }}
+          SLC_WRITE_PASS: ${{ secrets.SLC9K_WRITE_PASSWORD }}
+          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_WRITE_HOSTNAME }}
         run: |
           cat > tests/integration/integration_config.yml << 'ENDOFCONFIG'
           slc_write_host: "${SLC_WRITE_HOST}"

@@ -43,16 +43,16 @@ Navigate to: **Settings -> Secrets and variables -> Actions -> New repository se
 
 | Secret | Description |
 |---|---|
-| `SLC9K_DVT3_IP` | SLC9000 write-lane device IP |
-| `SLC9K_DVT3_USER` | SLC9000 write-lane username |
-| `SLC9K_DVT3_PASSWORD` | SLC9000 write-lane password |
-| `SLC9K_DVT3_HOSTNAME` | Write-lane expected hostname |
-| `PX_API_BASE_DVT3` | Percepxion API base URL (write project) |
-| `PX_URL_DVT3` | Percepxion web UI URL (write project) |
-| `PX_PROJECT_USER_DVT3` | Percepxion username (write project) |
-| `PX_PROJECT_PASSWORD_DVT3` | Percepxion password (write project) |
-| `PX_PORTAL_NAME_DVT3` | Percepxion portal name |
-| `PX_ORG_NAME_DVT3` | Percepxion organization name |
+| `SLC9K_WRITE_IP` | SLC9000 write-lane device IP |
+| `SLC9K_WRITE_USER` | SLC9000 write-lane username |
+| `SLC9K_WRITE_PASSWORD` | SLC9000 write-lane password |
+| `SLC9K_WRITE_HOSTNAME` | Write-lane expected hostname |
+| `PX_WRITE_API_BASE` | Percepxion API base URL (write project) |
+| `PX_WRITE_URL` | Percepxion web UI URL (write project) |
+| `PX_WRITE_USER` | Percepxion username (write project) |
+| `PX_WRITE_PASSWORD` | Percepxion password (write project) |
+| `PX_WRITE_PORTAL` | Percepxion portal name |
+| `PX_WRITE_ORG` | Percepxion organization name |
 
 ### Managed Device (Optional -- Tier 4 Tests)
 
@@ -64,7 +64,7 @@ Navigate to: **Settings -> Secrets and variables -> Actions -> New repository se
 | `MANAGED_DEVICE_CONSOLE_COMMAND` | SSH command reaching the device via console server port 1 |
 
 If the managed device secrets are not set, the reachability check
-in `setup_dvt3` will fail. The Tier 4 tests will be skipped cleanly.
+in `setup_write_lane` will fail. The Tier 4 tests will be skipped cleanly.
 
 ## Running Manually
 
