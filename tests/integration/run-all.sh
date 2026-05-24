@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run all integration targets in the standard DVT → DVT3 sequence.
-# Usage: bash tests/integration/run-all.sh [dvt|dvt3|all]
+# Run all integration targets in the standard DVT → write sequence.
+# Usage: bash tests/integration/run-all.sh [dvt|write|all]
 # Default: all
 #
-# DVT lane  - read-only targets against 192.168.100.75 and api.gopercepxion.ai
-# DVT3 lane - write targets against 192.168.100.76 and api.percepxion.ai
-#             (runs setup_dvt3 first, teardown_dvt3 last)
+# DVT lane   - read-only targets against slc9000 and percepxion-primary
+# Write lane - write targets against slc9000-write and percepxion-write
+#              (runs setup_write_lane first, teardown_write_lane last)
 
 set -uo pipefail
 
@@ -35,23 +35,21 @@ DVT_TARGETS=(
     percepxion_aoob_session
 )
 
-DVT3_TARGETS=(
-    setup_dvt3
-    slc_config_dvt3
-    slc_managed_devices_dvt3
-    slc_network_dvt3
-    slc_system_dvt3
-    slc_users_dvt3
-    percepxion_firmware_dvt3
-    percepxion_import_devices_dvt3
-    percepxion_jobs_dvt3
-    percepxion_projects_dvt3
-    percepxion_users_dvt3
-    percepxion_aoob_session_dvt3
-    slc_device_ports_dvt3
-    slc_users_dvt3
-    percepxion_users_dvt3
-    teardown_dvt3
+WRITE_TARGETS=(
+    setup_write_lane
+    slc_config_write
+    slc_managed_devices_write
+    slc_network_write
+    slc_system_write
+    slc_users_write
+    slc_device_ports_write
+    percepxion_firmware_write
+    percepxion_import_devices_write
+    percepxion_jobs_write
+    percepxion_projects_write
+    percepxion_users_write
+    percepxion_aoob_session_write
+    teardown_write_lane
 )
 
 PASS=()
@@ -81,13 +79,13 @@ if [[ "${LANE}" == "dvt" || "${LANE}" == "all" ]]; then
     done
 fi
 
-if [[ "${LANE}" == "dvt3" || "${LANE}" == "all" ]]; then
+if [[ "${LANE}" == "write" || "${LANE}" == "all" ]]; then
     echo ""
-    echo "=== DVT3 LANE (write) ==="
-    for t in "${DVT3_TARGETS[@]}"; do
+    echo "=== WRITE LANE ==="
+    for t in "${WRITE_TARGETS[@]}"; do
         run_target "${t}"
-        if [[ "${t}" == "setup_dvt3" && " ${FAIL[*]} " == *" setup_dvt3 "* ]]; then
-            echo "=== ABORT: setup_dvt3 failed, skipping remaining DVT3 targets ==="
+        if [[ "${t}" == "setup_write_lane" && " ${FAIL[*]} " == *" setup_write_lane "* ]]; then
+            echo "=== ABORT: setup_write_lane failed, skipping remaining write targets ==="
             break
         fi
     done

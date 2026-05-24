@@ -14,12 +14,8 @@ options: {}
 """
 
 import json
-try:
-    import requests as _requests
-    HAS_REQUESTS = True
-except ImportError:
-    HAS_REQUESTS = False
-    _requests = None  # type: ignore
+import socket
+import ssl
 from ansible.plugins.httpapi import HttpApiBase
 from ansible.module_utils.connection import ConnectionError
 
@@ -28,29 +24,70 @@ class HttpApi(HttpApiBase):
     """HttpApi plugin for SLC9000 REST API v2."""
 
     def login(self, username, password):
-        # Use requests directly to avoid netcommon injecting Authorization: Basic
-        # when _auth is None, which can interfere with token-based auth.
-        if not HAS_REQUESTS:
-            raise ConnectionError("The requests Python library is required for this plugin.")
+        # mini_httpd on SLC9000 cannot handle HTTP requests where headers and
+        # body arrive in separate TCP writes. requests/http.client always split
+        # them. We use raw sockets with a single sendall() to keep the full
+        # request in one TLS record.
         host = self.connection.get_option("host")
         verify = self.connection.get_option("validate_certs")
-        url = "https://{0}/api/v2/user/login".format(host)
+
+        body_bytes = json.dumps(
+            {"username": username, "password": password},
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+        request = (
+            b"POST /api/v2/user/login HTTP/1.1\r\n"
+            + ("Host: {0}\r\n".format(host)).encode()
+            + b"Content-Type: application/json\r\n"
+            + ("Content-Length: {0}\r\n".format(len(body_bytes))).encode()
+            + b"Connection: close\r\n"
+            + b"\r\n"
+            + body_bytes
+        )
+
+        ctx = ssl.create_default_context()
+        if not verify:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
         try:
-            resp = _requests.post(
-                url,
-                json={"username": username, "password": password},
-                headers={"Content-Type": "application/json"},
-                verify=verify,
-                timeout=30,
-            )
-            resp.raise_for_status()
-            body = resp.json()
+            raw_sock = socket.create_connection((host, 443), timeout=30)
+            tls_sock = ctx.wrap_socket(raw_sock, server_hostname=host)
+            tls_sock.sendall(request)
+            response = b""
+            while True:
+                chunk = tls_sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+            tls_sock.close()
         except Exception as exc:
             raise ConnectionError("SLC9000 login failed: {0}".format(str(exc)))
 
-        token = body.get("token")
+        # Parse status line
+        status_line = response.split(b"\r\n", 1)[0]
+        try:
+            status_code = int(status_line.split(b" ", 2)[1])
+        except (IndexError, ValueError):
+            raise ConnectionError("SLC9000 login failed: malformed HTTP response")
+
+        header_end = response.find(b"\r\n\r\n")
+        resp_body = response[header_end + 4:] if header_end != -1 else b""
+
+        if status_code != 200:
+            raise ConnectionError(
+                "SLC9000 login failed: HTTP {0} from {1}".format(status_code, host)
+            )
+
+        try:
+            parsed = json.loads(resp_body)
+        except ValueError:
+            raise ConnectionError("SLC9000 login failed: non-JSON response from {0}".format(host))
+
+        token = parsed.get("token")
         if not token:
-            raise ConnectionError("SLC9000 login failed: no token in response")
+            raise ConnectionError("SLC9000 login failed: no token in response from {0}".format(host))
 
         self.connection._auth = {"X-auth-token": token}
 

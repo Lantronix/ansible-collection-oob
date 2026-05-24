@@ -1,7 +1,7 @@
 ---
 - name: Check for config snapshot artifact
   ansible.builtin.stat:
-    path: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/write_lane_config_snapshot.txt"
+    path: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp', true) }}/write_lane_config_snapshot.txt"
   register: snapshot_stat
   delegate_to: localhost
 
@@ -12,7 +12,7 @@
 
 - name: Read config snapshot
   ansible.builtin.slurp:
-    src: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/write_lane_config_snapshot.txt"
+    src: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp', true) }}/write_lane_config_snapshot.txt"
   register: snapshot_content
   when: snapshot_stat.stat.exists
   delegate_to: localhost
