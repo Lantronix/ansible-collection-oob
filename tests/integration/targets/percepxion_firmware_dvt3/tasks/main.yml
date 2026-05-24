@@ -1,39 +1,68 @@
 ---
-# percepxion_firmware state=update is non-idempotent by design and excluded from live CI.
-# state=check (compliance report) is tested here.
+# percepxion_firmware: state=check compliance report tested here.
+# state=update is excluded from live CI (non-idempotent, 10+ min runtime, device disruption risk).
+# check_mode exercises the change path without triggering a real update.
+# A temp smart group is created for the duration of this test and removed in the always block.
 
-- name: percepxion_firmware | check_mode | trigger update (no actual update)
-  lantronix.oob.percepxion_firmware:
-    state: update
-    firmware_version: "9.7.0.0R11"
-  check_mode: true
-  register: result_check
+- name: percepxion_firmware | setup | create temp smart group
+  lantronix.oob.percepxion_smart_groups:
+    name: "ansible-test-firmware-sg"
+    query_string: "product_family=SLC"
+    tenant_id: "{{ percepxion_tenant_id }}"
+    state: present
+  register: setup_sg
   delegate_to: percepxion-write
 
-- name: percepxion_firmware | check_mode | verify
-  ansible.builtin.assert:
-    that:
-      - result_check.changed == true
-    success_msg: "percepxion_firmware | check_mode | correct: changed=true in check_mode"
-    fail_msg: "percepxion_firmware | check_mode | FAIL"
+- name: percepxion_firmware | setup | store group_id
+  ansible.builtin.set_fact:
+    firmware_test_group_id: "{{ setup_sg.group_id }}"
 
-- name: percepxion_firmware | check | compliance report on write project
-  lantronix.oob.percepxion_firmware:
-    state: check
-    firmware_version: "9.7.0.0R11"
-  register: result_compliance
-  delegate_to: percepxion-write
+- name: percepxion_firmware | run tests
+  block:
 
-- name: percepxion_firmware | check | verify result fields
-  ansible.builtin.assert:
-    that:
-      - result_compliance.firmware_report is defined
-      - result_compliance.firmware_report is iterable
-      - result_compliance.changed == false
-    success_msg: "percepxion_firmware | check | compliance report returned {{ result_compliance.firmware_report | length }} devices"
-    fail_msg: "percepxion_firmware | check | FAIL: firmware_report missing or changed=true"
+    - name: percepxion_firmware | check_mode | trigger update (no actual update)
+      lantronix.oob.percepxion_firmware:
+        smart_group_id: "{{ firmware_test_group_id }}"
+        firmware_version: "9.7.0.0R11"
+        state: update
+      check_mode: true
+      register: result_check
+      delegate_to: percepxion-write
+
+    - name: percepxion_firmware | check_mode | verify changed=true
+      ansible.builtin.assert:
+        that:
+          - result_check.changed == true
+        success_msg: "percepxion_firmware | check_mode | correct: changed=true in check_mode"
+        fail_msg: "percepxion_firmware | check_mode | FAIL"
+
+    - name: percepxion_firmware | check | compliance report on write project
+      lantronix.oob.percepxion_firmware:
+        smart_group_id: "{{ firmware_test_group_id }}"
+        firmware_version: "9.7.0.0R11"
+        state: check
+      register: result_compliance
+      delegate_to: percepxion-write
+
+    - name: percepxion_firmware | check | verify result fields
+      ansible.builtin.assert:
+        that:
+          - result_compliance.compliant_devices is defined
+          - result_compliance.non_compliant_devices is defined
+          - result_compliance.changed == false
+        success_msg: "percepxion_firmware | check | compliance report: compliant={{ result_compliance.compliant_devices | length }}, non_compliant={{ result_compliance.non_compliant_devices | length }}"
+        fail_msg: "percepxion_firmware | check | FAIL: expected fields missing or changed=true"
+
+  always:
+    - name: percepxion_firmware | cleanup | delete temp smart group
+      lantronix.oob.percepxion_smart_groups:
+        name: "ansible-test-firmware-sg"
+        tenant_id: "{{ percepxion_tenant_id }}"
+        state: absent
+      ignore_errors: true  # noqa: ignore-errors
+      delegate_to: percepxion-write
 
 # UNTESTED STATES:
 # - state=update real trigger: excluded from CI (non-idempotent, 10+ min runtime, device disruption risk).
-# - compliance check with no compliant devices: all-non-compliant response format assumed.
+# - compliance check with all-compliant devices: new smart group has no firmware job logs (empty result assumed).
 # - firmware version string format validation: module accepts any string; invalid versions not verified.

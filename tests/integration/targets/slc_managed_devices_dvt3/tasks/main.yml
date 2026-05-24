@@ -23,7 +23,6 @@
 
 - name: slc_managed_devices | tier4 | get managed device list
   lantronix.oob.slc_managed_devices:
-    state: get
   register: managed_devices
   delegate_to: slc9000-write
   when: cisco_available
@@ -37,24 +36,24 @@
     fail_msg: "slc_managed_devices | tier4 | FAIL: empty managed device list"
   when: cisco_available
 
-- name: slc_managed_devices | tier4 | find Cisco on port 1
+- name: slc_managed_devices | tier4 | find Cisco on port
   ansible.builtin.set_fact:
-    cisco_device_record: "{{ managed_devices.managed_devices | selectattr('port', 'equalto', cisco_port) | list }}"
+    cisco_device_record: "{{ managed_devices.managed_devices | selectattr('port_id', 'equalto', 'port' ~ cisco_port) | list }}"
   when: cisco_available
 
-- name: slc_managed_devices | tier4 | assert Cisco appears on port 1
+- name: slc_managed_devices | tier4 | assert Cisco appears on expected port
   ansible.builtin.assert:
     that:
       - cisco_device_record | length == 1
-    success_msg: "slc_managed_devices | tier4 | Cisco C3560G found on port {{ cisco_port }}"
-    fail_msg: "slc_managed_devices | tier4 | FAIL: no device found on port {{ cisco_port }}"
+    success_msg: "slc_managed_devices | tier4 | Cisco C3560G found on port{{ cisco_port }}"
+    fail_msg: "slc_managed_devices | tier4 | FAIL: no device found on port{{ cisco_port }}"
   when: cisco_available
 
 - name: slc_managed_devices | tier4 | assert device attributes
   ansible.builtin.assert:
     that:
-      - cisco_device_record[0].port is defined
-      - cisco_device_record[0].connection_state is defined
+      - cisco_device_record[0].port_id is defined
+      - cisco_device_record[0].status is defined
     success_msg: "slc_managed_devices | tier4 | device attributes verified"
     fail_msg: "slc_managed_devices | tier4 | FAIL: device attributes missing"
   when: cisco_available

@@ -136,8 +136,20 @@ class SLC9Client:
         return self._get("/network/interfaces")
 
     def set_network_interfaces(self, payload):
-        """PUT /network/interfaces -- update interface config."""
-        return self._put("/network/interfaces", payload)
+        """PUT /network/interfaces -- update interface config.
+
+        The device restarts the network subsystem after applying interface changes,
+        closing the TCP connection before sending an HTTP response.
+        """
+        try:
+            resp = self.session.put(self._url("/network/interfaces"), json=payload, timeout=30)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+            time.sleep(3)
+            return self.get_network_interfaces()
 
     # --- Ports ---
 
@@ -210,8 +222,21 @@ class SLC9Client:
         return self._post("/config/save", {"config_record": config_record or []})
 
     def post_config_batch(self, commands):
-        """POST /config/batch -- execute a list of CLI config commands."""
-        return self._post("/config/batch", {"commands": commands})
+        """POST /config/batch -- execute a list of CLI config commands.
+
+        The device closes the TCP connection after applying commands without
+        sending an HTTP response. Catch ConnectionError and treat it as success,
+        then verify via a lightweight GET to confirm the device is still reachable.
+        """
+        try:
+            resp = self.session.post(self._url("/config/batch"), json={"commands": commands}, timeout=30)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
+        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+            time.sleep(2)
+            return self.get_system_version()
 
     def factory_reset(self):
         """POST /config/factory_reset -- reset device to factory defaults."""

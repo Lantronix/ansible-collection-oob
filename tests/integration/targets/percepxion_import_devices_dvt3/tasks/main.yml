@@ -4,7 +4,7 @@
 
 - name: percepxion_import_devices | check_mode | register fake serial
   lantronix.oob.percepxion_import_devices:
-    serials:
+    devices:
       - serial: "CI-TEST-FAKE-SERIAL-001"
         name: "ci-test-device"
     state: present

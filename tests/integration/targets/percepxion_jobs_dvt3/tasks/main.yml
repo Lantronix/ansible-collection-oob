@@ -1,23 +1,25 @@
 ---
 # percepxion_jobs queries and manages job groups.
 # state=query is tested here; state=present create requires full operation payload
-# that is not available in the DVT3 Cisco Live project without a valid template.
+# not available in the DVT3 Cisco Live project without a valid template.
+# A non-existent name is used for query: the module returns empty job_logs (changed=false).
 
-- name: percepxion_jobs | query | list all jobs
+- name: percepxion_jobs | query | query job logs for non-existent group
   lantronix.oob.percepxion_jobs:
+    name: "ci-query-nonexistent"
     state: query
   register: result_query
   delegate_to: percepxion-write
 
-- name: percepxion_jobs | query | verify result is iterable
+- name: percepxion_jobs | query | verify job_logs is defined and iterable
   ansible.builtin.assert:
     that:
-      - result_query.jobs is defined
-      - result_query.jobs is iterable
-    success_msg: "percepxion_jobs | query | returned {{ result_query.jobs | length }} job groups"
-    fail_msg: "percepxion_jobs | query | FAIL: jobs key missing or not iterable"
+      - result_query.job_logs is defined
+      - result_query.job_logs is iterable
+    success_msg: "percepxion_jobs | query | returned {{ result_query.job_logs | length }} log entries"
+    fail_msg: "percepxion_jobs | query | FAIL: job_logs key missing or not iterable"
 
-- name: percepxion_jobs | query | changed is false (read-only)
+- name: percepxion_jobs | query | verify changed=false (read-only)
   ansible.builtin.assert:
     that:
       - result_query.changed == false
@@ -27,4 +29,5 @@
 # UNTESTED STATES:
 # - state=present (create job group): requires full operation payload. CRUD lives in unit tests.
 # - state=absent (delete job group): delete path not tested (no create in CI).
-# - job group with actual device operation results: job_logs fields not asserted beyond is iterable.
+# - query with a real job group name: job_logs fields not asserted beyond is iterable.
+# - query on a group with actual firmware/backup log entries: non-empty response not verified.

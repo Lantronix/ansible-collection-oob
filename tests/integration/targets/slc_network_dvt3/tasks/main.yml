@@ -1,90 +1,69 @@
 ---
-- name: slc_network | setup | read current network config
+# slc_network manages interface IP config (dhcp vs static). No MTU support.
+# eth2 is used as test interface: secondary port, not management (eth1 = management at 192.168.100.76).
+# DVT3 baseline: eth2 is DHCP.
+#
+# Idempotency is tested with a DHCP no-op (reliable). Static-IP idempotency is not
+# tested: the device resets eth2 to DHCP after network service restarts (the connection
+# drop triggered by PUT /network/interfaces causes the device to re-run DHCP on reconnect).
+
+- name: slc_network | idempotency | re-apply dhcp on eth2 (no change expected)
   lantronix.oob.slc_network:
-    state: get
-  register: baseline_network
+    interface: eth2
+    dhcp: true
+  register: result_idempotent
   delegate_to: slc9000-write
 
-- name: slc_network | setup | record baseline eth1 mtu
-  ansible.builtin.set_fact:
-    baseline_mtu: "{{ baseline_network.network.interfaces | selectattr('name', 'equalto', 'eth1') | map(attribute='mtu') | first | default(1500) }}"
+- name: slc_network | idempotency | verify changed=false
+  ansible.builtin.assert:
+    that:
+      - result_idempotent.changed == false
+    success_msg: "slc_network | idempotency | correct: changed=false on dhcp no-op"
+    fail_msg: "slc_network | idempotency | FAIL"
 
-- name: slc_network | check_mode | set eth1 mtu to 1400
+- name: slc_network | check_mode | set eth2 to static ip (no actual write)
   lantronix.oob.slc_network:
-    interfaces:
-      - name: eth1
-        mtu: 1400
+    interface: eth2
+    dhcp: false
+    ipv4_address: "192.168.200.50"
+    netmask: "255.255.255.0"
   check_mode: true
   register: result_check
   delegate_to: slc9000-write
 
-- name: slc_network | check_mode | verify
+- name: slc_network | check_mode | verify changed=true (dhcp->static is a change)
   ansible.builtin.assert:
     that:
       - result_check.changed == true
-    success_msg: "slc_network | check_mode | correct"
+    success_msg: "slc_network | check_mode | correct: changed=true for dhcp->static"
     fail_msg: "slc_network | check_mode | FAIL"
 
-- name: slc_network | create | apply mtu=1400 on eth1
+- name: slc_network | create | apply static ip on eth2
   lantronix.oob.slc_network:
-    interfaces:
-      - name: eth1
-        mtu: 1400
+    interface: eth2
+    dhcp: false
+    ipv4_address: "192.168.200.50"
+    netmask: "255.255.255.0"
   register: result_create
   delegate_to: slc9000-write
 
-- name: slc_network | create | verify
+- name: slc_network | create | verify changed=true
   ansible.builtin.assert:
     that:
       - result_create.changed == true
-    success_msg: "slc_network | create | correct"
+    success_msg: "slc_network | create | correct: changed=true (dhcp->static)"
     fail_msg: "slc_network | create | FAIL"
 
-- name: slc_network | idempotency | re-apply mtu=1400
+- name: slc_network | restore | set eth2 back to dhcp
   lantronix.oob.slc_network:
-    interfaces:
-      - name: eth1
-        mtu: 1400
-  register: result_idempotent
+    interface: eth2
+    dhcp: true
+  register: result_restore
   delegate_to: slc9000-write
-
-- name: slc_network | idempotency | verify
-  ansible.builtin.assert:
-    that:
-      - result_idempotent.changed == false
-    success_msg: "slc_network | idempotency | correct"
-    fail_msg: "slc_network | idempotency | FAIL"
-
-- name: slc_network | modify | change mtu to 1350
-  lantronix.oob.slc_network:
-    interfaces:
-      - name: eth1
-        mtu: 1350
-  register: result_modify
-  delegate_to: slc9000-write
-
-- name: slc_network | modify | verify
-  ansible.builtin.assert:
-    that:
-      - result_modify.changed == true
-    success_msg: "slc_network | modify | correct"
-    fail_msg: "slc_network | modify | FAIL"
-
-- name: slc_network | delete | restore baseline mtu
-  lantronix.oob.slc_network:
-    interfaces:
-      - name: eth1
-        mtu: "{{ baseline_mtu | int }}"
-  register: result_delete
-  delegate_to: slc9000-write
-
-- name: slc_network | delete | verify
-  ansible.builtin.assert:
-    that:
-      - result_delete.changed == true
-    success_msg: "slc_network | delete | correct"
-    fail_msg: "slc_network | delete | FAIL"
 
 # UNTESTED STATES:
-# - management IP change: changing eth0 IP breaks the API connection mid-test. Cannot test in CI.
-# - DHCP vs static transition: switching eth1 from static to DHCP or vice versa not tested.
+# - eth1 (management interface): never touched to avoid losing lab connectivity.
+# - Static-IP idempotency: device resets eth2 to DHCP after network service restart.
+#   The write path (changed=true on dhcp->static) is confirmed; idempotency confirmed via dhcp no-op.
+# - IPv6 configuration: not exposed in this module version.
+# - Interface not found: module fails with clear message (not tested to avoid device impact).

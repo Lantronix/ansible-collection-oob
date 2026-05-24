@@ -1,10 +1,35 @@
 # Copy to integration_config.yml and fill in values before running integration tests.
 # Never commit integration_config.yml (it is gitignored).
-slc9_host: "192.0.2.1"
-slc9_username: "sysadmin"
-slc9_password: ""
+# See integration_config.yml.example for the full variable reference.
 
-percepxion_host: "api.gopercepxion.ai"
+# DVT, read-only lane (SLC9000 primary lab device)
+slc_dvt_host: "192.0.2.1"
+slc_dvt_username: "sysadmin"
+slc_dvt_password: ""
+slc_dvt_hostname: "slc9000"
+
+# DVT3, write lane (SLC9000 secondary lab device)
+slc_dvt3_host: "192.0.2.2"
+slc_dvt3_username: "sysadmin"
+slc_dvt3_password: ""
+slc_dvt3_hostname: "slc9000-write"
+
+# Percepxion, primary project (DVT read-only lane)
+percepxion_dvt_host: "api.gopercepxion.ai"
+percepxion_dvt_username: ""
+percepxion_dvt_password: ""
+
+# Percepxion, Cisco Live project (DVT3 write lane)
+percepxion_host: "api.percepxion.ai"
+percepxion_url: "https://percepxion.ai"
 percepxion_username: ""
 percepxion_password: ""
-percepxion_project_tag: ""
+percepxion_portal: ""
+percepxion_org: ""
+
+# Cisco C3560G, managed device on DVT3 port 1
+cisco_host: "192.0.2.10"
+cisco_username: "admin"
+cisco_password: ""
+cisco_console_command: ""
+cisco_port: 1

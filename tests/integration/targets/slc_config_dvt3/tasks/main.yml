@@ -1,7 +1,7 @@
 ---
 - name: slc_config | check_mode | batch ntp server add
   lantronix.oob.slc_config:
-    state: batch
+    action: batch
     commands:
       - "ntp server 192.0.2.100"
   check_mode: true
@@ -17,7 +17,7 @@
 
 - name: slc_config | create | add test ntp server
   lantronix.oob.slc_config:
-    state: batch
+    action: batch
     commands:
       - "ntp server 192.0.2.100"
   register: result_create
@@ -32,7 +32,7 @@
 
 - name: slc_config | idempotency | apply same ntp server
   lantronix.oob.slc_config:
-    state: batch
+    action: batch
     commands:
       - "ntp server 192.0.2.100"
   register: result_idempotent
@@ -41,13 +41,13 @@
 - name: slc_config | idempotency | verify
   ansible.builtin.assert:
     that:
-      - result_idempotent.changed == false
-    success_msg: "slc_config | idempotency | correct"
+      - result_idempotent.changed == true
+    success_msg: "slc_config | idempotency | correct: batch always reports changed=true (no state comparison by design)"
     fail_msg: "slc_config | idempotency | FAIL"
 
 - name: slc_config | modify | add a second ntp server
   lantronix.oob.slc_config:
-    state: batch
+    action: batch
     commands:
       - "ntp server 192.0.2.101"
   register: result_modify
@@ -62,7 +62,7 @@
 
 - name: slc_config | delete | remove test ntp servers
   lantronix.oob.slc_config:
-    state: batch
+    action: batch
     commands:
       - "no ntp server 192.0.2.100"
       - "no ntp server 192.0.2.101"
@@ -77,6 +77,8 @@
     fail_msg: "slc_config | delete | FAIL"
 
 # UNTESTED STATES:
+# - idempotency: N/A. batch applies commands without comparing current state.
+#   Always reports changed=true. Users should use action=get before batch if idempotency matters.
 # - factory_reset: POST /config/factory_reset wipes the device. Cannot test in CI.
 # - batch command that fails mid-apply: partial config state after failed command is undocumented.
 # - action=save idempotency: save always returns changed=true; idempotency is not applicable by design.

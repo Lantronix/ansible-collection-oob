@@ -1,6 +1,7 @@
 ---
 # percepxion_projects assigns/unassigns devices to Percepxion sub-projects.
-# Real assignment (state=present) is check_mode only to avoid losing DVT3 enrollment.
+# Real assignment/unassignment is never executed to avoid losing DVT3 enrollment.
+# check_mode exercises the change-detection path; idempotency is verified separately.
 
 - name: percepxion_projects | setup | get current device list
   lantronix.oob.percepxion_devices:
@@ -9,29 +10,48 @@
   register: dvt3_device
   delegate_to: percepxion-write
 
-- name: percepxion_projects | setup | set device_id
+- name: percepxion_projects | setup | set device facts
   ansible.builtin.set_fact:
     dvt3_device_id: "{{ dvt3_device.devices[0].device_id }}"
+    dvt3_current_project_tag: "{{ dvt3_device.devices[0].project_tag }}"
   when: dvt3_device.devices | length > 0
 
-- name: percepxion_projects | check_mode | assign to project
+- name: percepxion_projects | check_mode | unassign (no actual write, expected change)
   lantronix.oob.percepxion_projects:
     device_id: "{{ dvt3_device_id }}"
-    state: present
+    state: absent
   check_mode: true
   register: result_check
   delegate_to: percepxion-write
   when: dvt3_device_id is defined
 
-- name: percepxion_projects | check_mode | verify
+- name: percepxion_projects | check_mode | verify changed=true
   ansible.builtin.assert:
     that:
       - result_check.changed == true
-    success_msg: "percepxion_projects | check_mode | correct"
+    success_msg: "percepxion_projects | check_mode | correct: changed=true for state=absent"
     fail_msg: "percepxion_projects | check_mode | FAIL"
+  when: dvt3_device_id is defined
+
+- name: percepxion_projects | idempotency | re-assign to current project (no actual write, no change expected)
+  lantronix.oob.percepxion_projects:
+    device_id: "{{ dvt3_device_id }}"
+    project_tag: "{{ dvt3_current_project_tag }}"
+    state: present
+  check_mode: true
+  register: result_idempotent
+  delegate_to: percepxion-write
+  when: dvt3_device_id is defined
+
+- name: percepxion_projects | idempotency | verify changed=false
+  ansible.builtin.assert:
+    that:
+      - result_idempotent.changed == false
+    success_msg: "percepxion_projects | idempotency | correct: changed=false (already in project)"
+    fail_msg: "percepxion_projects | idempotency | FAIL"
   when: dvt3_device_id is defined
 
 # UNTESTED STATES:
 # - real device assignment: /v3/device/assign requires org-level serial and name. Not tested (check_mode only).
-# - state=absent real unassign: not tested (check_mode only) to avoid losing DVT3 enrollment.
+# - state=absent real unassign: not tested to avoid losing DVT3 enrollment.
 # - device_id not in any project: behavior when device has no project assignment is not documented.

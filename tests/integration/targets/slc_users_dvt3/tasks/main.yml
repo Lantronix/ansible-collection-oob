@@ -2,6 +2,9 @@
 # slc_users manages the sysadmin account password.
 # Idempotency is N/A: the device API does not expose the current password hash.
 # Every PATCH with new_password reports changed=true. This is documented behavior.
+#
+# DVT3 baseline: allowreuse=enabled, reusehistory=0 (set via WebUI 2026-05-23).
+# Direct restore to baseline password works without cycling intermediates.
 
 - name: slc_users | check_mode | change password (no actual change)
   lantronix.oob.slc_users:

@@ -1,7 +1,7 @@
 ---
 - name: Pull DVT3 config snapshot
   lantronix.oob.slc_config:
-    state: get
+    action: get
   register: dvt3_config_snapshot
   delegate_to: slc9000-write
 
@@ -16,7 +16,7 @@
 - name: Save snapshot as CI artifact
   ansible.builtin.copy:
     content: "{{ dvt3_config_snapshot.commands | join('\n') }}"
-    dest: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/dvt3_config_snapshot.txt"
+    dest: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp', true) }}/dvt3_config_snapshot.txt"
     mode: "0600"
   delegate_to: localhost
 

@@ -19,7 +19,7 @@
 
 - name: Restore DVT3 config from snapshot
   lantronix.oob.slc_config:
-    state: batch
+    action: batch
     commands: "{{ (snapshot_content.content | b64decode).split('\n') | select | list }}"
   register: restore_result
   when: snapshot_stat.stat.exists
