@@ -107,7 +107,7 @@ jobs:
           envsubst < tests/integration/integration_config.yml > /tmp/ic.yml && mv /tmp/ic.yml tests/integration/integration_config.yml
       - name: Run write-lane setup
         working-directory: ansible_collections/lantronix/oob
-        run: ansible-test integration setup_dvt3 --python 3.11
+        run: ansible-test integration setup_write_lane --python 3.11
       - name: Upload config snapshot
         uses: actions/upload-artifact@v4
         with:
@@ -228,12 +228,12 @@ jobs:
         working-directory: ansible_collections/lantronix/oob
         run: |
           ansible-test integration \
-            slc_system_dvt3 slc_users_dvt3 slc_config_dvt3 slc_network_dvt3 \
-            slc_device_ports_dvt3 slc_managed_devices_dvt3 \
+            slc_system_write slc_users_write slc_config_write slc_network_write \
+            slc_device_ports_write slc_managed_devices_write \
             percepxion_config percepxion_smart_groups \
-            percepxion_users_dvt3 percepxion_projects_dvt3 \
-            percepxion_import_devices_dvt3 percepxion_jobs_dvt3 \
-            percepxion_firmware_dvt3 percepxion_aoob_session_dvt3 \
+            percepxion_users_write percepxion_projects_write \
+            percepxion_import_devices_write percepxion_jobs_write \
+            percepxion_firmware_write percepxion_aoob_session_write \
             --python 3.11
 
   teardown_write_lane:
@@ -267,4 +267,4 @@ jobs:
           envsubst < tests/integration/integration_config.yml > /tmp/ic.yml && mv /tmp/ic.yml tests/integration/integration_config.yml
       - name: Run write-lane teardown
         working-directory: ansible_collections/lantronix/oob
-        run: ansible-test integration teardown_dvt3 --python 3.11
+        run: ansible-test integration teardown_write_lane --python 3.11

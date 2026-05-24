@@ -13,11 +13,11 @@ Release Summary
 Functional validation release. Adds a comprehensive four-tier integration
 test system across all 20 modules. Tier 1/2 targets updated with explicit
 ``delegate_to:`` directives and ``UNTESTED STATES`` coverage documentation.
-Four new SLC write-lane targets (``slc_system_dvt3``, ``slc_users_dvt3``,
-``slc_config_dvt3``, ``slc_network_dvt3``) exercise full CRUD cycles against
+Four new SLC write-lane targets (``slc_system_write``, ``slc_users_write``,
+``slc_config_write``, ``slc_network_write``) exercise full CRUD cycles against
 the write lane. Five new Percepxion write-lane targets and three Tier 4
-physical-device targets (``slc_device_ports_dvt3``, ``slc_managed_devices_dvt3``,
-``percepxion_aoob_session_dvt3``) validate managed-device and AOOB session
+physical-device targets (``slc_device_ports_write``, ``slc_managed_devices_write``,
+``percepxion_aoob_session_write``) validate managed-device and AOOB session
 flows against a console-connected managed device. Bug regression tests B-1
 (``percepxion_config`` name-only idempotency) and B-2 (``percepxion_smart_groups``
 ``query_string`` idempotency) added inline to existing targets.
@@ -36,33 +36,33 @@ Minor Changes
   hostnames and serial numbers with inventory variable references
   (``{{ slc_read_hostname }}``, ``{{ slc_read_serial }}``) so tests run without
   exposing lab device identifiers.
-- New ``slc_system_dvt3`` target: full write cycle, baseline read, check_mode,
+- New ``slc_system_write`` target: full write cycle, baseline read, check_mode,
   description set, idempotency, modify, revert, against the write lane.
-- New ``slc_users_dvt3`` target: password change cycle (check_mode → change →
+- New ``slc_users_write`` target: password change cycle (check_mode → change →
   revert) using ``TestPass1234!`` as the intermediate value.
-- New ``slc_config_dvt3`` target: NTP server batch cycle (check_mode → add
+- New ``slc_config_write`` target: NTP server batch cycle (check_mode → add
   192.0.2.100 → idempotency → add 192.0.2.101 → remove both) using RFC 5737
   documentation-range IPs to avoid touching live NTP infrastructure.
-- New ``slc_network_dvt3`` target: MTU cycle on eth1 (check_mode mtu=1400 →
+- New ``slc_network_write`` target: MTU cycle on eth1 (check_mode mtu=1400 →
   set → idempotency → modify mtu=1350 → restore baseline).
-- New ``percepxion_users_dvt3`` target: role preflight via ``percepxion_facts``,
+- New ``percepxion_users_write`` target: role preflight via ``percepxion_facts``,
   check_mode create (role-constraint smoke test), absent idempotency on
   non-existent user.
-- New ``percepxion_projects_dvt3`` target: device lookup by write-lane hostname,
+- New ``percepxion_projects_write`` target: device lookup by write-lane hostname,
   check_mode project assignment.
-- New ``percepxion_import_devices_dvt3`` target: check_mode with synthetic
+- New ``percepxion_import_devices_write`` target: check_mode with synthetic
   serial ``CI-TEST-FAKE-SERIAL-001``; verifies check_mode reporting without
   touching device registry.
-- New ``percepxion_jobs_dvt3`` target: ``state: query`` smoke test asserting
+- New ``percepxion_jobs_write`` target: ``state: query`` smoke test asserting
   ``jobs`` key is iterable and ``changed=false``.
-- New ``percepxion_firmware_dvt3`` target: check_mode ``state: update`` and
+- New ``percepxion_firmware_write`` target: check_mode ``state: update`` and
   ``state: check`` compliance report against write lane.
-- New ``slc_device_ports_dvt3`` target (Tier 4): managed device reachability
+- New ``slc_device_ports_write`` target (Tier 4): managed device reachability
   gate; structural comparison of port 1 (device connected) vs port 2 (empty).
-- New ``slc_managed_devices_dvt3`` target (Tier 4): asserts managed device
+- New ``slc_managed_devices_write`` target (Tier 4): asserts managed device
   appears in the managed device list on the expected port with required
   attributes (``port``, ``connection_state``).
-- New ``percepxion_aoob_session_dvt3`` target (Tier 4): full open/close AOOB
+- New ``percepxion_aoob_session_write`` target (Tier 4): full open/close AOOB
   session cycle; device_id looked up dynamically via ``percepxion_devices``;
   ``session_id`` verified on open and passed to close.
 - ``percepxion_config`` integration test: added check_mode block and B-1
