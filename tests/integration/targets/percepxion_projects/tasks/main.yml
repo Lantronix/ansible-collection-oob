@@ -44,5 +44,5 @@
 # UNTESTED STATES:
 # - state=present (device assignment): /v3/device/assign requires org-level serial+name; no sub-project
 #   reassignment REST endpoint available in Percepxion 6.12. CRUD lives in unit tests.
-# - state=absent real unassign: real unassign not tested (check_mode only) to avoid losing DVT device enrollment.
+# - state=absent real unassign: real unassign not tested (check_mode only) to avoid losing device enrollment.
 # - device_id not in any project: module behavior when device has no project assignment is not documented.

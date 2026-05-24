@@ -24,7 +24,7 @@
 
 - name: Search by known device name
   lantronix.oob.percepxion_devices:
-    search_string: "{{ slc_dvt_hostname }}"
+    search_string: "{{ slc_read_hostname }}"
     tenant_id: "{{ percepxion_tenant_id }}"
   register: search_result
   delegate_to: percepxion-primary
@@ -33,8 +33,8 @@
   ansible.builtin.assert:
     that:
       - search_result.devices | length > 0
-    success_msg: "{{ slc_dvt_hostname }} found in device list"
-    fail_msg: "{{ slc_dvt_hostname }} not found, verify sandbox has this device registered"
+    success_msg: "{{ slc_read_hostname }} found in device list"
+    fail_msg: "{{ slc_read_hostname }} not found, verify sandbox has this device registered"
 
 - name: Search with explicit limit
   lantronix.oob.percepxion_devices:

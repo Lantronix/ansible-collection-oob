@@ -2,8 +2,8 @@
 # CRUD cycle for percepxion_config.
 # check_mode and read-path (search/absent idempotency) always run.
 # Write-path (create/modify/delete) runs only when the account has write access.
-# The DVT primary account (api.gopercepxion.ai/ryan.hogg) is read-only for content;
-# full CRUD is expected to pass only in the DVT3 lane with a write-capable account.
+# The read-only lane account is read-only for content;
+# full CRUD is expected to pass only in the write lane with a write-capable account.
 
 # Pre-clean: remove test config if left from a prior failed run
 - name: Pre-clean - ensure test config does not exist
@@ -35,7 +35,7 @@
         success_msg: "percepxion_config | check_mode | correct"
         fail_msg: "percepxion_config | check_mode | FAIL"
 
-    # --- CREATE (may fail in read-only DVT environment) ---
+    # --- CREATE (may fail in read-only lane environment) ---
 
     - name: Create test config
       lantronix.oob.percepxion_config:
@@ -149,7 +149,7 @@
 
 # UNTESTED STATES:
 # - Full CRUD: write-path tests only run when account has content write access.
-#   DVT primary (api.gopercepxion.ai/ryan.hogg) is read-only for content; add write-capable
+#   Read-only lane account is read-only for content; add write-capable
 #   credentials to run the full CRUD path.
 # - data modify on existing object (B-1 regression): guarded by create success.
 # - content_type values beyond "config": "script" and other types assumed to behave identically.

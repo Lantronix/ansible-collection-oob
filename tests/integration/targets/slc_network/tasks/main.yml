@@ -34,8 +34,8 @@
     fail_msg: "Interface mismatch, expected eth1, got {{ result.interface }}"
 
 # UNTESTED STATES:
-# - real write (state=present without check_mode): network config write excluded from CI on DVT (connectivity risk).
-#   DVT3 write tested in slc_network_dvt3 with safe changes only (MTU on eth1).
-# - eth2 and additional interfaces: only eth1 tested in DVT lane.
+# - real write (state=present without check_mode): network config write excluded from CI on read lane (connectivity risk).
+#   Write lane tested in slc_network_dvt3 with safe changes only (MTU on eth1).
+# - eth2 and additional interfaces: only eth1 tested in read lane.
 # - DHCP vs static mode transitions: untested.
 # - IPv6 configuration: untested; API support for IPv6 not verified.

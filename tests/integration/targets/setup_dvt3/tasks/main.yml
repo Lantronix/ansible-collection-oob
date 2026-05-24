@@ -1,5 +1,5 @@
 ---
-- name: Pull DVT3 config snapshot
+- name: Pull write-lane config snapshot
   lantronix.oob.slc_config:
     action: get
   register: dvt3_config_snapshot
@@ -10,33 +10,33 @@
     that:
       - dvt3_config_snapshot is not failed
       - dvt3_config_snapshot.commands is defined
-    success_msg: "setup_dvt3 | snapshot | DVT3 config captured successfully"
-    fail_msg: "setup_dvt3 | snapshot | Failed to capture DVT3 config"
+    success_msg: "setup_dvt3 | snapshot | write-lane config captured successfully"
+    fail_msg: "setup_dvt3 | snapshot | Failed to capture write-lane config"
 
 - name: Save snapshot as CI artifact
   ansible.builtin.copy:
     content: "{{ dvt3_config_snapshot.commands | join('\n') }}"
-    dest: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp', true) }}/dvt3_config_snapshot.txt"
+    dest: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp', true) }}/write_lane_config_snapshot.txt"
     mode: "0600"
   delegate_to: localhost
 
-- name: Check Cisco C3560G reachability on DVT3 port 1
+- name: Check managed device reachability on write-lane port 1
   ansible.builtin.command:
-    cmd: "{{ cisco_console_command }}"
+    cmd: "{{ managed_device_console_command }}"
     stdin: "show version\nexit\n"
-  register: cisco_check
+  register: device_check
   ignore_errors: true
   delegate_to: localhost
 
-- name: Set cisco_port1_available fact
+- name: Set managed_device_available fact
   ansible.builtin.set_fact:
-    cisco_port1_available: "{{ cisco_check.rc == 0 }}"
+    managed_device_available: "{{ device_check.rc == 0 }}"
 
-- name: Warn if Cisco C3560G unreachable
+- name: Warn if managed device unreachable
   ansible.builtin.debug:
-    msg: "WARNING: Cisco C3560G unreachable on DVT3 port 1. Managed device tests (Tier 4) will be skipped."
-  when: not cisco_port1_available
+    msg: "WARNING: Managed device unreachable on write-lane port 1. Tier 4 tests will be skipped."
+  when: not managed_device_available
 
 # UNTESTED STATES:
-# - DVT3 device unreachable at suite start: setup_dvt3 will fail if slc_config fails.
-#   teardown_dvt3 handles this case via snapshot artifact absence detection.
+# - Write-lane device unreachable at suite start: setup_dvt3 will fail if slc_config fails.
+#   teardown handles this case via snapshot artifact absence detection.

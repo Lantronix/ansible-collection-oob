@@ -1,7 +1,7 @@
 ---
 # percepxion_jobs queries and manages job groups.
 # state=query is tested here; state=present create requires full operation payload
-# not available in the DVT3 Cisco Live project without a valid template.
+# not available in the write-lane Percepxion project without a valid template.
 # A non-existent name is used for query: the module returns empty job_logs (changed=false).
 
 - name: percepxion_jobs | query | query job logs for non-existent group

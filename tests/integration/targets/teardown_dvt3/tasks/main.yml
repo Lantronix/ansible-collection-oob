@@ -1,23 +1,23 @@
 ---
 - name: Check for config snapshot artifact
   ansible.builtin.stat:
-    path: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/dvt3_config_snapshot.txt"
+    path: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/write_lane_config_snapshot.txt"
   register: snapshot_stat
   delegate_to: localhost
 
 - name: Skip teardown if no snapshot exists
   ansible.builtin.debug:
-    msg: "teardown_dvt3 | No snapshot artifact found (setup_dvt3 may not have run). Skipping restore."
+    msg: "teardown_dvt3 | No snapshot artifact found. Skipping restore."
   when: not snapshot_stat.stat.exists
 
 - name: Read config snapshot
   ansible.builtin.slurp:
-    src: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/dvt3_config_snapshot.txt"
+    src: "{{ lookup('env', 'GITHUB_WORKSPACE') | default('/tmp') }}/write_lane_config_snapshot.txt"
   register: snapshot_content
   when: snapshot_stat.stat.exists
   delegate_to: localhost
 
-- name: Restore DVT3 config from snapshot
+- name: Restore write-lane config from snapshot
   lantronix.oob.slc_config:
     action: batch
     commands: "{{ (snapshot_content.content | b64decode).split('\n') | select | list }}"
@@ -29,11 +29,11 @@
   ansible.builtin.assert:
     that:
       - restore_result is not failed
-    success_msg: "teardown_dvt3 | restore | DVT3 config restored successfully"
-    fail_msg: "teardown_dvt3 | restore | Config restore failed, DVT3 may need manual reset"
+    success_msg: "teardown_dvt3 | restore | write-lane config restored successfully"
+    fail_msg: "teardown_dvt3 | restore | Config restore failed, write-lane device may need manual reset"
   when: snapshot_stat.stat.exists
 
-- name: Verify DVT3 hostname matches expected value
+- name: Verify write-lane hostname matches expected value
   lantronix.oob.slc_facts:
   register: dvt3_facts_post
   delegate_to: slc9000-write
@@ -42,9 +42,9 @@
 - name: Assert hostname matches baseline
   ansible.builtin.assert:
     that:
-      - dvt3_facts_post.slc_facts.hostname == slc_dvt3_hostname
+      - dvt3_facts_post.slc_facts.hostname == slc_write_hostname
     success_msg: "teardown_dvt3 | verify | Hostname confirmed: {{ dvt3_facts_post.slc_facts.hostname }}"
-    fail_msg: "teardown_dvt3 | verify | Hostname mismatch: got {{ dvt3_facts_post.slc_facts.hostname }}, expected {{ slc_dvt3_hostname }}"
+    fail_msg: "teardown_dvt3 | verify | Hostname mismatch: got {{ dvt3_facts_post.slc_facts.hostname }}, expected {{ slc_write_hostname }}"
   when: snapshot_stat.stat.exists
 
 # UNTESTED STATES:

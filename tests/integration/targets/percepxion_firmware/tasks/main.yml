@@ -19,7 +19,7 @@
     - name: Create temporary smart group for firmware compliance check
       lantronix.oob.percepxion_smart_groups:
         name: "ansible-firmware-test-group"
-        query_string: "name_filter={{ slc_dvt_hostname }}"
+        query_string: "name_filter={{ slc_read_hostname }}"
         tenant_id: "{{ percepxion_tenant_id }}"
         state: present
       register: sg_result

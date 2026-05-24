@@ -1,24 +1,24 @@
 # Copy this file to integration_config.yml and fill in real values,
 # OR use the vault-encrypted integration_config.vault.yml with ANSIBLE_VAULT_PASS set.
 
-# DVT, read-only lane (SLC9000 primary lab device)
-slc_dvt_host: "192.0.2.1"
-slc_dvt_username: "sysadmin"
-slc_dvt_password: "changeme"
-slc_dvt_hostname: "slc9000"
+# Read-only lane (SLC9000 primary lab device)
+slc_read_host: "192.0.2.1"
+slc_read_username: "sysadmin"
+slc_read_password: "changeme"
+slc_read_hostname: "slc9000"
 
-# DVT3, write lane (SLC9000 secondary lab device)
-slc_dvt3_host: "192.0.2.2"
-slc_dvt3_username: "sysadmin"
-slc_dvt3_password: "changeme"
-slc_dvt3_hostname: "slc9000-write"
+# Write lane (SLC9000 secondary lab device)
+slc_write_host: "192.0.2.2"
+slc_write_username: "sysadmin"
+slc_write_password: "changeme"
+slc_write_hostname: "slc9000-write"
 
-# Percepxion, primary project (DVT read-only lane)
-percepxion_dvt_host: "api.gopercepxion.ai"
-percepxion_dvt_username: "user@example.com"
-percepxion_dvt_password: "changeme"
+# Percepxion, primary project (read-only lane)
+percepxion_read_host: "api.gopercepxion.ai"
+percepxion_read_username: "user@example.com"
+percepxion_read_password: "changeme"
 
-# Percepxion, Cisco Live project (DVT3 write lane)
+# Percepxion, write project (write lane)
 percepxion_host: "api.gopercepxion.ai"
 percepxion_url: "https://gopercepxion.ai"
 percepxion_username: "user@example.com"
@@ -26,9 +26,9 @@ percepxion_password: "changeme"
 percepxion_portal: "my-portal"
 percepxion_org: "My Organization"
 
-# Cisco C3560G, managed device on DVT3 port 1
-cisco_host: "192.0.2.10"
-cisco_username: "admin"
-cisco_password: "changeme"
-cisco_console_command: "ssh admin@192.0.2.10"
-cisco_port: 1
+# Managed device connected via console server (optional, Tier 4 tests)
+managed_device_host: "192.0.2.10"
+managed_device_username: "admin"
+managed_device_password: "changeme"
+managed_device_console_command: "ssh admin@192.0.2.10"
+managed_device_port: 1

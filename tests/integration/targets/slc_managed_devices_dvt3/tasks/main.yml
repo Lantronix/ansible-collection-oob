@@ -1,10 +1,10 @@
 ---
 # slc_managed_devices: REST API /managed_devices is GET-only. No write path.
-# Tier 4 asserts Cisco C3560G appears in the managed device list.
+# Tier 4 asserts the managed device appears in the managed device list.
 
-- name: slc_managed_devices | tier4-gate | check Cisco C3560G reachability
+- name: slc_managed_devices | tier4-gate | check managed device reachability
   ansible.builtin.command:
-    cmd: "{{ cisco_console_command }}"
+    cmd: "{{ managed_device_console_command }}"
     stdin: "show version\nexit\n"
   register: tier4_gate
   ignore_errors: true
@@ -14,18 +14,18 @@
 
 - name: slc_managed_devices | tier4-gate | set fact
   ansible.builtin.set_fact:
-    cisco_available: "{{ tier4_gate.rc == 0 }}"
+    managed_device_available: "{{ tier4_gate.rc == 0 }}"
 
 - name: slc_managed_devices | tier4-gate | skip notice
   ansible.builtin.debug:
-    msg: "Cisco C3560G unreachable, managed device tests will be skipped"
-  when: not cisco_available
+    msg: "Managed device unreachable, managed device tests will be skipped"
+  when: not managed_device_available
 
 - name: slc_managed_devices | tier4 | get managed device list
   lantronix.oob.slc_managed_devices:
   register: managed_devices
   delegate_to: slc9000-write
-  when: cisco_available
+  when: managed_device_available
 
 - name: slc_managed_devices | tier4 | assert device list is non-empty
   ansible.builtin.assert:
@@ -34,31 +34,31 @@
       - managed_devices.changed == false
     success_msg: "slc_managed_devices | tier4 | {{ managed_devices.managed_devices | length }} managed device(s) found"
     fail_msg: "slc_managed_devices | tier4 | FAIL: empty managed device list"
-  when: cisco_available
+  when: managed_device_available
 
-- name: slc_managed_devices | tier4 | find Cisco on port
+- name: slc_managed_devices | tier4 | find managed device on port
   ansible.builtin.set_fact:
-    cisco_device_record: "{{ managed_devices.managed_devices | selectattr('port_id', 'equalto', 'port' ~ cisco_port) | list }}"
-  when: cisco_available
+    target_device_record: "{{ managed_devices.managed_devices | selectattr('port_id', 'equalto', 'port' ~ managed_device_port) | list }}"
+  when: managed_device_available
 
-- name: slc_managed_devices | tier4 | assert Cisco appears on expected port
+- name: slc_managed_devices | tier4 | assert managed device appears on expected port
   ansible.builtin.assert:
     that:
-      - cisco_device_record | length == 1
-    success_msg: "slc_managed_devices | tier4 | Cisco C3560G found on port{{ cisco_port }}"
-    fail_msg: "slc_managed_devices | tier4 | FAIL: no device found on port{{ cisco_port }}"
-  when: cisco_available
+      - target_device_record | length == 1
+    success_msg: "slc_managed_devices | tier4 | Managed device found on port{{ managed_device_port }}"
+    fail_msg: "slc_managed_devices | tier4 | FAIL: no device found on port{{ managed_device_port }}"
+  when: managed_device_available
 
 - name: slc_managed_devices | tier4 | assert device attributes
   ansible.builtin.assert:
     that:
-      - cisco_device_record[0].port_id is defined
-      - cisco_device_record[0].status is defined
+      - target_device_record[0].port_id is defined
+      - target_device_record[0].status is defined
     success_msg: "slc_managed_devices | tier4 | device attributes verified"
     fail_msg: "slc_managed_devices | tier4 | FAIL: device attributes missing"
-  when: cisco_available
+  when: managed_device_available
 
 # UNTESTED STATES:
 # - write path: /managed_devices is GET-only in API v2; no attribute modification available via module.
-# - multi-device serial bus: multiple devices sharing one port (daisy chain). DVT3 has one device on port 1.
+# - multi-device serial bus: multiple devices sharing one port (daisy chain). Write lane has one device on port 1.
 # - port with no device: managed device info for an empty port not verified.

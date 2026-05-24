@@ -2,9 +2,9 @@
 # Read-only: query all three audit log types and assert required fields.
 
 # Fetch a known device_id to use for the access log test.
-- name: Find {{ slc_dvt_hostname }} to get a device_id for access log test
+- name: Find {{ slc_read_hostname }} to get a device_id for access log test
   lantronix.oob.percepxion_devices:
-    search_string: "{{ slc_dvt_hostname }}"
+    search_string: "{{ slc_read_hostname }}"
     limit: 1
   register: device_lookup
   delegate_to: percepxion-primary

@@ -1,10 +1,10 @@
 ---
 # slc_device_ports: REST API /ports is GET-only. No write path exists.
-# This Tier 4 target does structural comparison between port 1 (Cisco connected) and port 2 (empty).
+# This Tier 4 target does structural comparison between port 1 (managed device connected) and port 2 (empty).
 
-- name: slc_device_ports | tier4-gate | check Cisco C3560G reachability
+- name: slc_device_ports | tier4-gate | check managed device reachability
   ansible.builtin.command:
-    cmd: "{{ cisco_console_command }}"
+    cmd: "{{ managed_device_console_command }}"
     stdin: "show version\nexit\n"
   register: tier4_gate
   ignore_errors: true
@@ -14,35 +14,35 @@
 
 - name: slc_device_ports | tier4-gate | set fact
   ansible.builtin.set_fact:
-    cisco_available: "{{ tier4_gate.rc == 0 }}"
+    managed_device_available: "{{ tier4_gate.rc == 0 }}"
 
 - name: slc_device_ports | tier4-gate | skip notice
   ansible.builtin.debug:
-    msg: "Cisco C3560G unreachable, Tier 4 managed device port tests will be skipped"
-  when: not cisco_available
+    msg: "Managed device unreachable, Tier 4 managed device port tests will be skipped"
+  when: not managed_device_available
 
-- name: slc_device_ports | tier4 | read port 1 config (Cisco connected)
+- name: slc_device_ports | tier4 | read port 1 config (managed device connected)
   lantronix.oob.slc_device_ports:
-    port_id: "port{{ cisco_port }}"
+    port_id: "port{{ managed_device_port }}"
   register: port1_config
   delegate_to: slc9000-write
-  when: cisco_available
+  when: managed_device_available
 
 - name: slc_device_ports | tier4 | assert port 1 data returned
   ansible.builtin.assert:
     that:
       - port1_config.ports is defined
       - port1_config.changed == false
-    success_msg: "slc_device_ports | tier4 | port {{ cisco_port }} config returned"
-    fail_msg: "slc_device_ports | tier4 | FAIL: port {{ cisco_port }} config missing"
-  when: cisco_available
+    success_msg: "slc_device_ports | tier4 | port {{ managed_device_port }} config returned"
+    fail_msg: "slc_device_ports | tier4 | FAIL: port {{ managed_device_port }} config missing"
+  when: managed_device_available
 
 - name: slc_device_ports | tier4 | read port 2 config (unconfigured reference)
   lantronix.oob.slc_device_ports:
     port_id: "port2"
   register: port2_config
   delegate_to: slc9000-write
-  when: cisco_available
+  when: managed_device_available
 
 - name: slc_device_ports | tier4 | structural comparison port 1 vs port 2
   ansible.builtin.assert:
@@ -51,9 +51,9 @@
       - port2_config.ports is defined
     success_msg: "slc_device_ports | tier4 | both ports returned data; structural comparison possible"
     fail_msg: "slc_device_ports | tier4 | FAIL: could not retrieve both port configs"
-  when: cisco_available
+  when: managed_device_available
 
 # UNTESTED STATES:
 # - port config write: /ports is GET-only in API v2; writes require CLI (batch).
 # - port in active session: modifications to a port in use may be rejected or silently dropped.
-# - baud rate change: risk of losing Cisco console. Deferred.
+# - baud rate change: risk of losing managed device console. Deferred.

@@ -11,7 +11,7 @@ on:
         required: false
         default: 'all'
         type: choice
-        options: [all, dvt, dvt3]
+        options: [all, read, write]
 
 jobs:
   sanity:
@@ -47,10 +47,10 @@ jobs:
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test units --python 3.11
 
-  setup_dvt3:
+  setup_write_lane:
     runs-on: self-hosted
     needs: unit
-    if: ${{ github.event.inputs.lane != 'dvt' }}
+    if: ${{ github.event.inputs.lane != 'read' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,67 +58,67 @@ jobs:
       - name: Write integration_config.yml from secrets
         working-directory: ansible_collections/lantronix/oob
         env:
-          SLC_DVT_HOST: ${{ secrets.SLC9_IP }}
-          SLC_DVT_USER: ${{ secrets.SLC9_USER }}
-          SLC_DVT_PASS: ${{ secrets.SLC9_PASSWORD }}
-          SLC_DVT_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
-          SLC_DVT3_HOST: ${{ secrets.SLC9K_DVT3_IP }}
-          SLC_DVT3_USER: ${{ secrets.SLC9K_DVT3_USER }}
-          SLC_DVT3_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
-          SLC_DVT3_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
-          PX_DVT_HOST: ${{ secrets.PX_API_BASE }}
-          PX_DVT_USER: ${{ secrets.PX_PROJECT_USER }}
-          PX_DVT_PASS: ${{ secrets.PX_PROJECT_PASSWORD }}
+          SLC_READ_HOST: ${{ secrets.SLC9_IP }}
+          SLC_READ_USER: ${{ secrets.SLC9_USER }}
+          SLC_READ_PASS: ${{ secrets.SLC9_PASSWORD }}
+          SLC_READ_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
+          SLC_WRITE_HOST: ${{ secrets.SLC9K_DVT3_IP }}
+          SLC_WRITE_USER: ${{ secrets.SLC9K_DVT3_USER }}
+          SLC_WRITE_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
+          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
+          PX_READ_HOST: ${{ secrets.PX_API_BASE }}
+          PX_READ_USER: ${{ secrets.PX_PROJECT_USER }}
+          PX_READ_PASS: ${{ secrets.PX_PROJECT_PASSWORD }}
           PX_HOST: ${{ secrets.PX_API_BASE_DVT3 }}
           PX_URL: ${{ secrets.PX_URL_DVT3 }}
           PX_USER: ${{ secrets.PX_PROJECT_USER_DVT3 }}
           PX_PASS: ${{ secrets.PX_PROJECT_PASSWORD_DVT3 }}
           PX_PORTAL: ${{ secrets.PX_PORTAL_NAME_DVT3 }}
           PX_ORG: ${{ secrets.PX_ORG_NAME_DVT3 }}
-          CISCO_HOST: ${{ secrets.CISCO_C3560G_IP }}
-          CISCO_USER: ${{ secrets.CISCO_C3560G_USERNAME }}
-          CISCO_PASS: ${{ secrets.CISCO_C3560G_PASSWORD }}
-          CISCO_CMD: ${{ secrets.CISCO_C3560G_CONSOLE_COMMAND }}
+          MANAGED_DEVICE_HOST: ${{ secrets.MANAGED_DEVICE_IP }}
+          MANAGED_DEVICE_USER: ${{ secrets.MANAGED_DEVICE_USERNAME }}
+          MANAGED_DEVICE_PASS: ${{ secrets.MANAGED_DEVICE_PASSWORD }}
+          MANAGED_DEVICE_CMD: ${{ secrets.MANAGED_DEVICE_CONSOLE_COMMAND }}
         run: |
           cat > tests/integration/integration_config.yml << 'ENDOFCONFIG'
-          slc_dvt_host: "${SLC_DVT_HOST}"
-          slc_dvt_username: "${SLC_DVT_USER}"
-          slc_dvt_password: "${SLC_DVT_PASS}"
-          slc_dvt_hostname: "${SLC_DVT_HOSTNAME}"
-          slc_dvt3_host: "${SLC_DVT3_HOST}"
-          slc_dvt3_username: "${SLC_DVT3_USER}"
-          slc_dvt3_password: "${SLC_DVT3_PASS}"
-          slc_dvt3_hostname: "${SLC_DVT3_HOSTNAME}"
-          percepxion_dvt_host: "${PX_DVT_HOST}"
-          percepxion_dvt_username: "${PX_DVT_USER}"
-          percepxion_dvt_password: "${PX_DVT_PASS}"
+          slc_read_host: "${SLC_READ_HOST}"
+          slc_read_username: "${SLC_READ_USER}"
+          slc_read_password: "${SLC_READ_PASS}"
+          slc_read_hostname: "${SLC_READ_HOSTNAME}"
+          slc_write_host: "${SLC_WRITE_HOST}"
+          slc_write_username: "${SLC_WRITE_USER}"
+          slc_write_password: "${SLC_WRITE_PASS}"
+          slc_write_hostname: "${SLC_WRITE_HOSTNAME}"
+          percepxion_read_host: "${PX_READ_HOST}"
+          percepxion_read_username: "${PX_READ_USER}"
+          percepxion_read_password: "${PX_READ_PASS}"
           percepxion_host: "${PX_HOST}"
           percepxion_url: "${PX_URL}"
           percepxion_username: "${PX_USER}"
           percepxion_password: "${PX_PASS}"
           percepxion_portal: "${PX_PORTAL}"
           percepxion_org: "${PX_ORG}"
-          cisco_host: "${CISCO_HOST}"
-          cisco_username: "${CISCO_USER}"
-          cisco_password: "${CISCO_PASS}"
-          cisco_console_command: "${CISCO_CMD}"
-          cisco_port: 1
+          managed_device_host: "${MANAGED_DEVICE_HOST}"
+          managed_device_username: "${MANAGED_DEVICE_USER}"
+          managed_device_password: "${MANAGED_DEVICE_PASS}"
+          managed_device_console_command: "${MANAGED_DEVICE_CMD}"
+          managed_device_port: 1
           ENDOFCONFIG
           envsubst < tests/integration/integration_config.yml > /tmp/ic.yml && mv /tmp/ic.yml tests/integration/integration_config.yml
-      - name: Run setup_dvt3
+      - name: Run write-lane setup
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test integration setup_dvt3 --python 3.11
       - name: Upload config snapshot
         uses: actions/upload-artifact@v4
         with:
-          name: dvt3-config-snapshot
-          path: /tmp/dvt3_config_snapshot.txt
+          name: write-lane-config-snapshot
+          path: /tmp/write_lane_config_snapshot.txt
           if-no-files-found: warn
 
-  integration_dvt:
+  integration_read:
     runs-on: self-hosted
     needs: unit
-    if: ${{ github.event.inputs.lane != 'dvt3' }}
+    if: ${{ github.event.inputs.lane != 'write' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -126,29 +126,29 @@ jobs:
       - name: Write integration_config.yml from secrets
         working-directory: ansible_collections/lantronix/oob
         env:
-          SLC_DVT_HOST: ${{ secrets.SLC9_IP }}
-          SLC_DVT_USER: ${{ secrets.SLC9_USER }}
-          SLC_DVT_PASS: ${{ secrets.SLC9_PASSWORD }}
-          SLC_DVT_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
-          PX_DVT_HOST: ${{ secrets.PX_API_BASE }}
-          PX_DVT_USER: ${{ secrets.PX_PROJECT_USER }}
-          PX_DVT_PASS: ${{ secrets.PX_PROJECT_PASSWORD }}
+          SLC_READ_HOST: ${{ secrets.SLC9_IP }}
+          SLC_READ_USER: ${{ secrets.SLC9_USER }}
+          SLC_READ_PASS: ${{ secrets.SLC9_PASSWORD }}
+          SLC_READ_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
+          PX_READ_HOST: ${{ secrets.PX_API_BASE }}
+          PX_READ_USER: ${{ secrets.PX_PROJECT_USER }}
+          PX_READ_PASS: ${{ secrets.PX_PROJECT_PASSWORD }}
         run: |
           cat > tests/integration/integration_config.yml << 'ENDOFCONFIG'
-          slc_dvt_host: "${SLC_DVT_HOST}"
-          slc_dvt_username: "${SLC_DVT_USER}"
-          slc_dvt_password: "${SLC_DVT_PASS}"
-          slc_dvt_hostname: "${SLC_DVT_HOSTNAME}"
-          percepxion_dvt_host: "${PX_DVT_HOST}"
-          percepxion_dvt_username: "${PX_DVT_USER}"
-          percepxion_dvt_password: "${PX_DVT_PASS}"
+          slc_read_host: "${SLC_READ_HOST}"
+          slc_read_username: "${SLC_READ_USER}"
+          slc_read_password: "${SLC_READ_PASS}"
+          slc_read_hostname: "${SLC_READ_HOSTNAME}"
+          percepxion_read_host: "${PX_READ_HOST}"
+          percepxion_read_username: "${PX_READ_USER}"
+          percepxion_read_password: "${PX_READ_PASS}"
           ENDOFCONFIG
           envsubst < tests/integration/integration_config.yml > /tmp/ic.yml && mv /tmp/ic.yml tests/integration/integration_config.yml
-      - name: Log DVT firmware version
+      - name: Log firmware version (read lane)
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test integration slc_facts --python 3.11
         continue-on-error: true
-      - name: Run DVT read-only integration tests
+      - name: Run read-only integration tests
         working-directory: ansible_collections/lantronix/oob
         run: |
           ansible-test integration \
@@ -167,10 +167,10 @@ jobs:
           grep -r "# UNTESTED STATES:" tests/integration/targets/ -A 3 \
             --include="main.yml" >> $GITHUB_STEP_SUMMARY || true
 
-  integration_dvt3:
+  integration_write:
     runs-on: self-hosted
-    needs: setup_dvt3
-    if: ${{ github.event.inputs.lane != 'dvt' }}
+    needs: setup_write_lane
+    if: ${{ github.event.inputs.lane != 'read' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -178,53 +178,53 @@ jobs:
       - name: Download config snapshot
         uses: actions/download-artifact@v4
         with:
-          name: dvt3-config-snapshot
+          name: write-lane-config-snapshot
           path: /tmp
       - name: Write integration_config.yml from secrets
         working-directory: ansible_collections/lantronix/oob
         env:
-          SLC_DVT_HOST: ${{ secrets.SLC9_IP }}
-          SLC_DVT_USER: ${{ secrets.SLC9_USER }}
-          SLC_DVT_PASS: ${{ secrets.SLC9_PASSWORD }}
-          SLC_DVT_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
-          SLC_DVT3_HOST: ${{ secrets.SLC9K_DVT3_IP }}
-          SLC_DVT3_USER: ${{ secrets.SLC9K_DVT3_USER }}
-          SLC_DVT3_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
-          SLC_DVT3_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
+          SLC_READ_HOST: ${{ secrets.SLC9_IP }}
+          SLC_READ_USER: ${{ secrets.SLC9_USER }}
+          SLC_READ_PASS: ${{ secrets.SLC9_PASSWORD }}
+          SLC_READ_HOSTNAME: ${{ secrets.SLC9_HOSTNAME }}
+          SLC_WRITE_HOST: ${{ secrets.SLC9K_DVT3_IP }}
+          SLC_WRITE_USER: ${{ secrets.SLC9K_DVT3_USER }}
+          SLC_WRITE_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
+          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
           PX_HOST: ${{ secrets.PX_API_BASE_DVT3 }}
           PX_URL: ${{ secrets.PX_URL_DVT3 }}
           PX_USER: ${{ secrets.PX_PROJECT_USER_DVT3 }}
           PX_PASS: ${{ secrets.PX_PROJECT_PASSWORD_DVT3 }}
           PX_PORTAL: ${{ secrets.PX_PORTAL_NAME_DVT3 }}
           PX_ORG: ${{ secrets.PX_ORG_NAME_DVT3 }}
-          CISCO_HOST: ${{ secrets.CISCO_C3560G_IP }}
-          CISCO_USER: ${{ secrets.CISCO_C3560G_USERNAME }}
-          CISCO_PASS: ${{ secrets.CISCO_C3560G_PASSWORD }}
-          CISCO_CMD: ${{ secrets.CISCO_C3560G_CONSOLE_COMMAND }}
+          MANAGED_DEVICE_HOST: ${{ secrets.MANAGED_DEVICE_IP }}
+          MANAGED_DEVICE_USER: ${{ secrets.MANAGED_DEVICE_USERNAME }}
+          MANAGED_DEVICE_PASS: ${{ secrets.MANAGED_DEVICE_PASSWORD }}
+          MANAGED_DEVICE_CMD: ${{ secrets.MANAGED_DEVICE_CONSOLE_COMMAND }}
         run: |
           cat > tests/integration/integration_config.yml << 'ENDOFCONFIG'
-          slc_dvt_host: "${SLC_DVT_HOST}"
-          slc_dvt_username: "${SLC_DVT_USER}"
-          slc_dvt_password: "${SLC_DVT_PASS}"
-          slc_dvt_hostname: "${SLC_DVT_HOSTNAME}"
-          slc_dvt3_host: "${SLC_DVT3_HOST}"
-          slc_dvt3_username: "${SLC_DVT3_USER}"
-          slc_dvt3_password: "${SLC_DVT3_PASS}"
-          slc_dvt3_hostname: "${SLC_DVT3_HOSTNAME}"
+          slc_read_host: "${SLC_READ_HOST}"
+          slc_read_username: "${SLC_READ_USER}"
+          slc_read_password: "${SLC_READ_PASS}"
+          slc_read_hostname: "${SLC_READ_HOSTNAME}"
+          slc_write_host: "${SLC_WRITE_HOST}"
+          slc_write_username: "${SLC_WRITE_USER}"
+          slc_write_password: "${SLC_WRITE_PASS}"
+          slc_write_hostname: "${SLC_WRITE_HOSTNAME}"
           percepxion_host: "${PX_HOST}"
           percepxion_url: "${PX_URL}"
           percepxion_username: "${PX_USER}"
           percepxion_password: "${PX_PASS}"
           percepxion_portal: "${PX_PORTAL}"
           percepxion_org: "${PX_ORG}"
-          cisco_host: "${CISCO_HOST}"
-          cisco_username: "${CISCO_USER}"
-          cisco_password: "${CISCO_PASS}"
-          cisco_console_command: "${CISCO_CMD}"
-          cisco_port: 1
+          managed_device_host: "${MANAGED_DEVICE_HOST}"
+          managed_device_username: "${MANAGED_DEVICE_USER}"
+          managed_device_password: "${MANAGED_DEVICE_PASS}"
+          managed_device_console_command: "${MANAGED_DEVICE_CMD}"
+          managed_device_port: 1
           ENDOFCONFIG
           envsubst < tests/integration/integration_config.yml > /tmp/ic.yml && mv /tmp/ic.yml tests/integration/integration_config.yml
-      - name: Run DVT3 write-lane integration tests
+      - name: Run write-lane integration tests
         working-directory: ansible_collections/lantronix/oob
         run: |
           ansible-test integration \
@@ -236,9 +236,9 @@ jobs:
             percepxion_firmware_dvt3 percepxion_aoob_session_dvt3 \
             --python 3.11
 
-  teardown_dvt3:
+  teardown_write_lane:
     runs-on: self-hosted
-    needs: [integration_dvt3]
+    needs: [integration_write]
     if: always()
     steps:
       - uses: actions/checkout@v4
@@ -247,24 +247,24 @@ jobs:
       - name: Download config snapshot
         uses: actions/download-artifact@v4
         with:
-          name: dvt3-config-snapshot
+          name: write-lane-config-snapshot
           path: /tmp
         continue-on-error: true
       - name: Write integration_config.yml from secrets
         working-directory: ansible_collections/lantronix/oob
         env:
-          SLC_DVT3_HOST: ${{ secrets.SLC9K_DVT3_IP }}
-          SLC_DVT3_USER: ${{ secrets.SLC9K_DVT3_USER }}
-          SLC_DVT3_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
-          SLC_DVT3_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
+          SLC_WRITE_HOST: ${{ secrets.SLC9K_DVT3_IP }}
+          SLC_WRITE_USER: ${{ secrets.SLC9K_DVT3_USER }}
+          SLC_WRITE_PASS: ${{ secrets.SLC9K_DVT3_PASSWORD }}
+          SLC_WRITE_HOSTNAME: ${{ secrets.SLC9K_DVT3_HOSTNAME }}
         run: |
           cat > tests/integration/integration_config.yml << 'ENDOFCONFIG'
-          slc_dvt3_host: "${SLC_DVT3_HOST}"
-          slc_dvt3_username: "${SLC_DVT3_USER}"
-          slc_dvt3_password: "${SLC_DVT3_PASS}"
-          slc_dvt3_hostname: "${SLC_DVT3_HOSTNAME}"
+          slc_write_host: "${SLC_WRITE_HOST}"
+          slc_write_username: "${SLC_WRITE_USER}"
+          slc_write_password: "${SLC_WRITE_PASS}"
+          slc_write_hostname: "${SLC_WRITE_HOSTNAME}"
           ENDOFCONFIG
           envsubst < tests/integration/integration_config.yml > /tmp/ic.yml && mv /tmp/ic.yml tests/integration/integration_config.yml
-      - name: Run teardown_dvt3
+      - name: Run write-lane teardown
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test integration teardown_dvt3 --python 3.11

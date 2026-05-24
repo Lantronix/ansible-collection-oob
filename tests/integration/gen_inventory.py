@@ -29,12 +29,12 @@ def main():
                 }
             },
             "children": {
-                "slc_dvt": {
+                "slc_read": {
                     "hosts": {
                         "slc9000": {
-                            "ansible_host": cfg["slc_dvt_host"],
-                            "ansible_user": cfg["slc_dvt_username"],
-                            "ansible_password": cfg["slc_dvt_password"],
+                            "ansible_host": cfg["slc_read_host"],
+                            "ansible_user": cfg["slc_read_username"],
+                            "ansible_password": cfg["slc_read_password"],
                             "ansible_network_os": "lantronix.oob.slc9",
                             "ansible_connection": "ansible.netcommon.httpapi",
                             "ansible_httpapi_use_ssl": True,
@@ -42,12 +42,12 @@ def main():
                         }
                     }
                 },
-                "slc_dvt3": {
+                "slc_write": {
                     "hosts": {
                         "slc9000-write": {
-                            "ansible_host": cfg["slc_dvt3_host"],
-                            "ansible_user": cfg["slc_dvt3_username"],
-                            "ansible_password": cfg["slc_dvt3_password"],
+                            "ansible_host": cfg["slc_write_host"],
+                            "ansible_user": cfg["slc_write_username"],
+                            "ansible_password": cfg["slc_write_password"],
                             "ansible_network_os": "lantronix.oob.slc9",
                             "ansible_connection": "ansible.netcommon.httpapi",
                             "ansible_httpapi_use_ssl": True,
@@ -55,21 +55,21 @@ def main():
                         }
                     }
                 },
-                "percepxion_dvt": {
+                "percepxion_read": {
                     "hosts": {
                         "percepxion-primary": {
-                            "ansible_host": cfg["percepxion_dvt_host"],
-                            "ansible_user": cfg["percepxion_dvt_username"],
-                            "ansible_password": cfg["percepxion_dvt_password"],
+                            "ansible_host": cfg["percepxion_read_host"],
+                            "ansible_user": cfg["percepxion_read_username"],
+                            "ansible_password": cfg["percepxion_read_password"],
                             "ansible_network_os": "lantronix.oob.percepxion",
                             "ansible_connection": "ansible.netcommon.httpapi",
                             "ansible_httpapi_use_ssl": True,
                             "ansible_httpapi_validate_certs": True,
-                            "percepxion_tenant_id": cfg.get("percepxion_dvt_tenant_id") or cfg.get("percepxion_tenant_id") or None,
+                            "percepxion_tenant_id": cfg.get("percepxion_read_tenant_id") or cfg.get("percepxion_tenant_id") or None,
                         }
                     }
                 },
-                "percepxion_dvt3": {
+                "percepxion_write": {
                     "hosts": {
                         "percepxion-write": {
                             "ansible_host": cfg["percepxion_host"],
@@ -79,7 +79,7 @@ def main():
                             "ansible_connection": "ansible.netcommon.httpapi",
                             "ansible_httpapi_use_ssl": True,
                             "ansible_httpapi_validate_certs": True,
-                            "percepxion_tenant_id": cfg.get("percepxion_dvt3_tenant_id") or cfg.get("percepxion_tenant_id") or None,
+                            "percepxion_tenant_id": cfg.get("percepxion_write_tenant_id") or cfg.get("percepxion_tenant_id") or None,
                         }
                     }
                 },

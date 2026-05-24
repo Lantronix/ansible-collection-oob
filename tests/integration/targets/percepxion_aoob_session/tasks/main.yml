@@ -43,8 +43,8 @@
     fail_msg: "Expected changed=true in check_mode, got: {{ session_result }}"
 
 # UNTESTED STATES:
-# - live session without managed device: DVT lane uses check_mode only due to invalid device token.
-#   Live session tested in percepxion_aoob_session_dvt3 (Tier 4) against Cisco C3560G on port 1.
+# - live session without managed device: read-only lane uses check_mode only due to invalid device token.
+#   Live session tested in percepxion_aoob_session_dvt3 (Tier 4) against a console-connected managed device on port 1.
 # - session timeout: behavior when session expires before state=absent call is undocumented.
 # - concurrent sessions on same device: API behavior for multiple sessions is untested.
 # - CLI command within session: send_direct_cli_command path not tested via this module.

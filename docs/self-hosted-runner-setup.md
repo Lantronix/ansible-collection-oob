@@ -27,7 +27,7 @@ ansible-galaxy collection install ansible.netcommon
 Add these as GitHub repository secrets before running integration tests.
 Navigate to: **Settings -> Secrets and variables -> Actions -> New repository secret**
 
-### DVT (Read-Only Lane)
+### Read-Only Lane
 
 | Secret | Description |
 |---|---|
@@ -39,7 +39,7 @@ Navigate to: **Settings -> Secrets and variables -> Actions -> New repository se
 | `PX_PROJECT_USER` | Percepxion username (primary project) |
 | `PX_PROJECT_PASSWORD` | Percepxion password (primary project) |
 
-### DVT3 (Write Lane)
+### Write Lane
 
 | Secret | Description |
 |---|---|
@@ -58,22 +58,22 @@ Navigate to: **Settings -> Secrets and variables -> Actions -> New repository se
 
 | Secret | Description |
 |---|---|
-| `CISCO_C3560G_IP` | Cisco C3560G management IP |
-| `CISCO_C3560G_USERNAME` | Cisco C3560G username |
-| `CISCO_C3560G_PASSWORD` | Cisco C3560G password |
-| `CISCO_C3560G_CONSOLE_COMMAND` | SSH command reaching the device via console server port 1 |
+| `MANAGED_DEVICE_IP` | Managed device management IP |
+| `MANAGED_DEVICE_USERNAME` | Managed device username |
+| `MANAGED_DEVICE_PASSWORD` | Managed device password |
+| `MANAGED_DEVICE_CONSOLE_COMMAND` | SSH command reaching the device via console server port 1 |
 
-If the Cisco device secrets are not set, the managed device reachability check
+If the managed device secrets are not set, the reachability check
 in `setup_dvt3` will fail. The Tier 4 tests will be skipped cleanly.
 
 ## Running Manually
 
 ```bash
-# DVT read-only lane only
-gh workflow run integration.yml -f lane=dvt
+# Read-only lane only
+gh workflow run integration.yml -f lane=read
 
-# DVT3 write lane only
-gh workflow run integration.yml -f lane=dvt3
+# Write lane only
+gh workflow run integration.yml -f lane=write
 
 # Full suite (default)
 gh workflow run integration.yml
@@ -90,7 +90,7 @@ For running integration tests locally without GitHub Actions:
    ```bash
    ansible-test integration slc_facts --python 3.11
    ```
-4. Run all DVT targets:
+4. Run all read-only targets:
    ```bash
    ansible-test integration slc_facts slc_firmware slc_system ... --python 3.11
    ```

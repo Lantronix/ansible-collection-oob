@@ -10,7 +10,7 @@
 - name: Import already-registered device (expect skipped)
   lantronix.oob.percepxion_import_devices:
     devices:
-      - serial: "{{ slc_dvt_serial }}"
+      - serial: "{{ slc_read_serial }}"
     tenant_id: "{{ percepxion_tenant_id }}"
   register: skip_result
   delegate_to: percepxion-primary

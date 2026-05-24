@@ -81,7 +81,7 @@
         success_msg: "Idempotent create correctly reported changed=false"
         fail_msg: "Expected changed=false on repeat create, got: {{ idempotent_create.changed }}"
 
-    # --- MODIFY (Tier 2 / DVT3 only) ---
+    # --- MODIFY (Tier 2 / write lane only) ---
 
     - name: percepxion_smart_groups | modify | change query_string
       lantronix.oob.percepxion_smart_groups:

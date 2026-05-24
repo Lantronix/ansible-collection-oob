@@ -1,7 +1,7 @@
 ---
 # slc_network manages interface IP config (dhcp vs static). No MTU support.
 # eth2 is used as test interface: secondary port, not management (eth1 = management at 192.168.100.76).
-# DVT3 baseline: eth2 is DHCP.
+# Write-lane baseline: eth2 is DHCP.
 #
 # Idempotency is tested with a DHCP no-op (reliable). Static-IP idempotency is not
 # tested: the device resets eth2 to DHCP after network service restarts (the connection

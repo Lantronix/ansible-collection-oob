@@ -79,5 +79,5 @@
 # - state=reboot: excluded from CI (would terminate the test session and fail all subsequent tests).
 # - description (site_tag) persistence: POST /system/identity with site_tag triggers subsystem restart
 #   and the value reverts in firmware 9.7.0.0R9. Cannot be validated via API roundtrip on this firmware.
-# - hostname change: causes TCP drop and subsystem restart on DVT3; deferred to manual lab test.
+# - hostname change: causes TCP drop and subsystem restart on write lane; deferred to manual lab test.
 # - hostname with special characters: behavior for hostnames with underscores, dots is untested.
