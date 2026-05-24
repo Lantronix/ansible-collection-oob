@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: pip install ansible-core requests
+        run: pip install ansible-core requests pytest pytest-xdist
       - name: Run unit tests
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test units --python 3.11
