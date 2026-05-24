@@ -17,6 +17,9 @@ slc_write_hostname: "slc9000-write"
 percepxion_read_host: "api.gopercepxion.ai"
 percepxion_read_username: "user@example.com"
 percepxion_read_password: "changeme"
+percepxion_tenant_id: ""
+slc_read_serial: "000000000000"
+percepxion_test_existing_user: "user@example.com"
 
 # Percepxion, write project (write lane)
 percepxion_host: "api.gopercepxion.ai"

@@ -102,9 +102,20 @@ def main():
     username = module.params["username"]
     state = module.params["state"]
 
+    # /v2/user/search does not support tenant scoping for non-admin users;
+    # use a no-tenant client for the read phase only.
+    search_client = PercepxionClient(
+        host=connection.get_api_host(),
+        token=connection.get_token(),
+        csrf_token=connection.get_csrf_token(),
+        project_tag=module.params.get("project_tag") or connection.get_project_tag(),
+        tenant_id=None,
+        verify_ssl=connection.get_option("validate_certs"),
+    )
+
     try:
         # search_string filters on name/email, not username, fetch all and filter client-side
-        result = client.search_users(limit=1000)
+        result = search_client.search_users(limit=1000)
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 

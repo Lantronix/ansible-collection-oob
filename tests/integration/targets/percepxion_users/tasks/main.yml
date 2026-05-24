@@ -13,7 +13,6 @@
 - name: Check existing user with state=present -- expect changed=false
   lantronix.oob.percepxion_users:
     username: "{{ percepxion_test_existing_user }}"
-    tenant_id: "{{ percepxion_tenant_id }}"
     state: present
   register: existing_result
   delegate_to: percepxion-primary
@@ -29,7 +28,6 @@
 - name: Check non-existent user with state=absent -- expect changed=false (already absent)
   lantronix.oob.percepxion_users:
     username: "ansible-test-nonexistent@ansible.local"
-    tenant_id: "{{ percepxion_tenant_id }}"
     state: absent
   register: absent_result
   delegate_to: percepxion-primary
