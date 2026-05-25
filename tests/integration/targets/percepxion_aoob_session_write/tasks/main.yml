@@ -25,6 +25,8 @@
 - name: percepxion_aoob_session | tier4 | look up write-lane device_id
   lantronix.oob.percepxion_devices:
     search_string: "{{ slc_write_hostname }}"
+    project_tag: "{{ percepxion_write_project_tag | default(omit) }}"
+    tenant_id: "{{ percepxion_write_tenant_id | default(omit) }}"
     limit: 1
   register: write_lane_device
   delegate_to: percepxion-write
@@ -89,11 +91,14 @@
   when: managed_device_available and aoob_session_available | default(false) and session_result.session_id is defined
 
 # UNTESTED STATES:
-# - AOOB session open/close: write-lane SLC9000 shows comm_state=Down / device_state=Client Disabled
-#   in Percepxion API as of 2026-05-24, even though 'show px' on the device reports running.
-#   POST /v3/device/connect returns 401 "Invalid device token size". The device may need to
-#   re-register its device key with Percepxion. All AOOB session assertions are skipped when
-#   comm_state != Up.
+# - AOOB session open/close: POST /v3/device/connect returns 401 "Invalid device token size"
+#   as of 2026-05-25. After full de-registration and re-registration of DVT3 to the write-lane
+#   Percepxion tenant, comm_state=Up and device_state=Connected, session tests now attempt to
+#   run, but the 401 persists. The Percepxion API returns device_key="" for this device even
+#   after re-registration, indicating the ZTC device key did not upload to Percepxion's DB.
+#   Resolution requires either (a) Katie clearing the device key server-side to force a clean
+#   re-upload, or (b) confirming the correct /v3/device/connect payload (endpoint is undocumented
+#   in the 6.12 API spec; paths marked TBD in percepxion_client.py).
 # - session to offline device: Percepxion behavior when SLC9000 is unreachable during AOOB request.
 # - session timeout mid-transfer: behavior when device closes session mid-command.
 # - concurrent sessions: two simultaneous AOOB sessions to the same port.
