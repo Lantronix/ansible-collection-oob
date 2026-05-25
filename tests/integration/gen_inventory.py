@@ -80,6 +80,7 @@ def main():
                             "ansible_httpapi_use_ssl": True,
                             "ansible_httpapi_validate_certs": True,
                             "percepxion_tenant_id": cfg.get("percepxion_write_tenant_id") or cfg.get("percepxion_tenant_id") or None,
+                            "percepxion_project_tag": cfg.get("percepxion_write_project_tag") or None,
                         }
                     }
                 },
