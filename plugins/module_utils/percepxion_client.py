@@ -270,7 +270,7 @@ class PercepxionClient:
         """POST /v1/device/register, register a new device by serial/MAC."""
         return self._post("/v1/device/register", self._scope(payload))
 
-    # --- AOOB sessions (endpoint paths TBD, confirm with Katie against production API) ---
+    # --- AOOB sessions (endpoint paths TBD, confirm with Percepxion backend team against production API) ---
 
     def initiate_session(self, device_id):
         """POST /v3/device/connect, initiate an OOB terminal session."""

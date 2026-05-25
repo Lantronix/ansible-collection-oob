@@ -96,9 +96,9 @@
 #   Percepxion tenant, comm_state=Up and device_state=Connected, session tests now attempt to
 #   run, but the 401 persists. The Percepxion API returns device_key="" for this device even
 #   after re-registration, indicating the ZTC device key did not upload to Percepxion's DB.
-#   Resolution requires either (a) Katie clearing the device key server-side to force a clean
-#   re-upload, or (b) confirming the correct /v3/device/connect payload (endpoint is undocumented
-#   in the 6.12 API spec; paths marked TBD in percepxion_client.py).
+#   Resolution requires either (a) clearing the device key server-side via the Percepxion backend
+#   team to force a clean re-upload, or (b) confirming the correct /v3/device/connect payload
+#   (endpoint is undocumented in the 6.12 API spec; paths marked TBD in percepxion_client.py).
 # - session to offline device: Percepxion behavior when SLC9000 is unreachable during AOOB request.
 # - session timeout mid-transfer: behavior when device closes session mid-command.
 # - concurrent sessions: two simultaneous AOOB sessions to the same port.
