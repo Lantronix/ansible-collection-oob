@@ -29,5 +29,7 @@ build_ignore:
   - ansible-creator.log
   - .ansible
   - docs/superpowers
+  - tests/integration/integration_config.yml
+  - tests/integration/integration_config.vault.yml
 dependencies:
   ansible.netcommon: ">=5.0.0"
