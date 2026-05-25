@@ -5,7 +5,8 @@ from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import slc_managed_devices
 
 MOCK_MANAGED_DEVICES = {
-    "managed_devices": [
+    "total_devices": 3,
+    "devices": [
         {"id": "dev1", "name": "cisco-router", "status": "managed", "port_id": "port1"},
         {"id": "dev2", "name": "juniper-switch", "status": "unmanaged", "port_id": "port2"},
         {"id": "dev3", "name": "arista-switch", "status": "discovered", "port_id": "port3"},

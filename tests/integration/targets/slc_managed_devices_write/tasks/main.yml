@@ -53,7 +53,7 @@
 
 - name: slc_managed_devices | tier4 | find managed device on port
   ansible.builtin.set_fact:
-    target_device_record: "{{ managed_devices.managed_devices | selectattr('port_id', 'equalto', 'port' ~ managed_device_port) | list }}"
+    target_device_record: "{{ managed_devices.managed_devices | selectattr('port_id', 'equalto', managed_device_port | int) | list }}"
   when: managed_device_available and managed_device_onboarded
 
 - name: slc_managed_devices | tier4 | assert managed device appears on expected port
@@ -68,8 +68,9 @@
   ansible.builtin.assert:
     that:
       - target_device_record[0].port_id is defined
-      - target_device_record[0].status is defined
-    success_msg: "slc_managed_devices | tier4 | device attributes verified"
+      - target_device_record[0].model is defined
+      - target_device_record[0].connection_type is defined
+    success_msg: "slc_managed_devices | tier4 | device attributes verified (model={{ target_device_record[0].model }})"
     fail_msg: "slc_managed_devices | tier4 | FAIL: device attributes missing"
   when: managed_device_available and managed_device_onboarded
 

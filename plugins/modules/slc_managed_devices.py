@@ -50,22 +50,34 @@ managed_devices:
   type: list
   elements: dict
   contains:
-    id:
-      description: Unique device identifier.
-      type: str
-      sample: dev1
-    name:
-      description: Device hostname or label.
-      type: str
-      sample: cisco-router
-    status:
-      description: Device management status (managed, unmanaged, discovered).
-      type: str
-      sample: managed
     port_id:
-      description: Serial port the device is connected to.
+      description: Serial port number the device is connected to.
+      type: int
+      sample: 1
+    name:
+      description: Port label assigned to the device.
       type: str
-      sample: port1
+      sample: port-1
+    connection_type:
+      description: Connection method (serial, ethernet).
+      type: str
+      sample: serial
+    type:
+      description: Device OS type (e.g. C(Cisco ios)).
+      type: str
+      sample: Cisco ios
+    model:
+      description: Device hardware model string.
+      type: str
+      sample: C3560G
+    management_ipv4:
+      description: Management IPv4 address of the device.
+      type: str
+      sample: 192.168.50.59
+    onboard_date:
+      description: Timestamp when the device was onboarded (ISO 8601).
+      type: str
+      sample: "2026-05-25T03:35:29"
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -93,7 +105,7 @@ def main():
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 
-    devices = result.get("managed_devices", [])
+    devices = result.get("devices", [])
 
     filter_status = module.params.get("filter_status")
     if filter_status:
