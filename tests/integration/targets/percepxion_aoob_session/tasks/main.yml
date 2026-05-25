@@ -2,10 +2,10 @@
 # Smoke test for percepxion_aoob_session using check_mode (read-only).
 #
 # KNOWN LIMITATION: /v3/device/connect requires the physical device to have
-# an active Percepxion device token (device-to-cloud registration). Lab devices
-# (SLC9000_0ae0, SLC9000_0b28) are not actively registered, so live session
-# tests return "Invalid device token size". Live CRUD coverage requires a
-# properly registered device and lives in unit tests.
+# an active Percepxion device token (device-to-cloud registration). The lab
+# devices were not actively registered, so live session tests return
+# "Invalid device token size". Live CRUD coverage requires a properly
+# registered device and lives in unit tests.
 # This test verifies the module runs without crashing and reports would-change.
 # tenant_id must be passed explicitly -- connection.get_tenant_id() returns None.
 
