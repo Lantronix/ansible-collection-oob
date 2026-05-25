@@ -4,6 +4,41 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.17
+=======
+
+Release Summary
+---------------
+
+Bugfix and cleanup release. Fixes a key name mismatch in ``slc_managed_devices``
+where the module parsed ``managed_devices`` from the API response but the SLC9000
+REST API v2 returns ``devices``. Fixes SLC9 httpapi raw socket session management
+for mini_httpd compatibility. Excludes integration test config files from the
+collection tarball. Removes internal identifiers from code comments.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.slc_managed_devices``: the module extracted ``managed_devices``
+  from the ``/devices/managed`` API response, but the SLC9000 REST API v2 returns
+  the list under the ``devices`` key. All ``slc_managed_devices`` tasks returned
+  an empty list. Fixed response key to ``devices``.
+- ``lantronix.oob.slc9`` httpapi plugin: raw socket session lifecycle (login,
+  write, logout) refactored to bypass mini_httpd's split-header behaviour that
+  caused connection failures when the SLC9000 web server processed HTTP headers
+  across multiple TCP segments.
+- ``galaxy.yml``: added ``tests/integration/integration_config.yml`` and
+  ``tests/integration/integration_config.vault.yml`` to ``build_ignore`` so
+  lab environment credentials are never bundled into the Automation Hub tarball.
+
+Minor Changes
+-------------
+
+- Integration test targets: ``UNTESTED STATES`` blocks updated with
+  post-reregistration findings for the AOOB session target; ``gen_inventory.py``
+  now passes ``percepxion_project_tag`` to the write-lane Percepxion host.
+- CI: added ``pytest`` and ``pytest-xdist`` to the unit test job dependencies.
+
 v1.0.16
 =======
 
