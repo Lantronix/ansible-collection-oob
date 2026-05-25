@@ -246,17 +246,16 @@ Bugfixes
   explicitly in every task because ``connection.get_tenant_id()`` returns
   ``None`` in module context. Added ``tenant_id: "{{ percepxion_tenant_id }}"``
   to every Percepxion module task.
-- ``percepxion_devices`` integration test: search string changed from
-  ``"SLC9000-RH"`` (not present in demo tenant) to ``"SLC8000-RH"`` (confirmed
-  registered device).
+- ``percepxion_devices`` integration test: search string updated to match a
+  device confirmed registered in the demo tenant.
 - ``percepxion_smart_groups`` integration test: replaced ``criteria`` dict
   parameter (rejected by module) with ``query_string`` string parameter
   matching the module's ``argument_spec``.
 - ``percepxion_firmware`` integration test: same ``criteria`` → ``query_string``
   fix applied to the embedded temporary smart group creation task.
-- ``percepxion_import_devices`` integration test: replaced non-existent serial
-  ``"SLC9000-RH"`` with ``"SLC8000-RH"`` for the idempotency (skip) path;
-  added ``check_mode: true`` path for the would-register scenario.
+- ``percepxion_import_devices`` integration test: corrected serial number to a
+  device confirmed registered in the demo tenant for the idempotency (skip)
+  path; added ``check_mode: true`` path for the would-register scenario.
 - ``percepxion_jobs`` integration test: rewritten as read-only ``state: query``
   smoke test. The ``/v1/job/jobgroup/create`` endpoint requires a full
   operation payload (``type``, ``subtype``, ``op_code``, ``operation``,
@@ -264,10 +263,9 @@ Bugfixes
   CRUD coverage lives in unit tests.
 - ``percepxion_aoob_session`` integration test: rewritten as ``check_mode: true``
   smoke test. Live ``/v3/device/connect`` calls require the physical device to
-  hold an active Percepxion device token; lab SLC9000 devices
-  (``SLC9000_0ae0``, ``SLC9000_0b28``) are not actively registered, returning
-  "Invalid device token size". Module decision logic and check_mode reporting
-  are verified without a live connection.
+  hold an active Percepxion device token; the lab SLC9000 devices were not
+  actively registered, returning "Invalid device token size". Module decision
+  logic and check_mode reporting are verified without a live connection.
 
 Minor Changes
 -------------

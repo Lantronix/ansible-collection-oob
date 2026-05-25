@@ -31,5 +31,6 @@ build_ignore:
   - docs/superpowers
   - tests/integration/integration_config.yml
   - tests/integration/integration_config.vault.yml
+  - tests/integration/lab-inventory
 dependencies:
   ansible.netcommon: ">=5.0.0"

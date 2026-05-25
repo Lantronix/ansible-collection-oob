@@ -92,7 +92,7 @@
 
 # UNTESTED STATES:
 # - AOOB session open/close: POST /v3/device/connect returns 401 "Invalid device token size"
-#   as of 2026-05-25. After full de-registration and re-registration of DVT3 to the write-lane
+#   as of 2026-05-25. After full de-registration and re-registration of the write-lane SLC9000 to the write-lane
 #   Percepxion tenant, comm_state=Up and device_state=Connected, session tests now attempt to
 #   run, but the 401 persists. The Percepxion API returns device_key="" for this device even
 #   after re-registration, indicating the ZTC device key did not upload to Percepxion's DB.
