@@ -28,5 +28,6 @@ build_ignore:
   - .venv
   - ansible-creator.log
   - .ansible
+  - docs/superpowers
 dependencies:
   ansible.netcommon: ">=5.0.0"

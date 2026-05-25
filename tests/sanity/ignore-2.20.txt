@@ -34,3 +34,4 @@ plugins/modules/percepxion_import_devices.py validate-modules:missing-gplv3-lice
 plugins/modules/percepxion_import_devices.py import-3.11
 plugins/modules/percepxion_telemetry.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_telemetry.py import-3.11
+tests/integration/clear_slc_sessions.py shebang

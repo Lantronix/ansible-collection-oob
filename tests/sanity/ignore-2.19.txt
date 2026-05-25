@@ -21,3 +21,4 @@ plugins/modules/percepxion_audit_logs.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_aoob_session.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_import_devices.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_telemetry.py validate-modules:missing-gplv3-license
+tests/integration/clear_slc_sessions.py shebang

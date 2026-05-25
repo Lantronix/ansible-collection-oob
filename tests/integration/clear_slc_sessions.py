@@ -3,8 +3,8 @@
 
 Reads credentials from tests/integration/integration_config.yml (gitignored).
 Usage:
-    python3 clear_slc_sessions.py           # clears write-lane (192.168.100.76)
-    python3 clear_slc_sessions.py --read    # clears read-lane (192.168.100.75)
+    python3 clear_slc_sessions.py           # clears write-lane host
+    python3 clear_slc_sessions.py --read    # clears read-lane host
     python3 clear_slc_sessions.py --both    # clears both lanes
 """
 from __future__ import absolute_import, division, print_function
@@ -41,7 +41,7 @@ def load_config():
                 if not line or line.startswith("#"):
                     continue
                 if ":" in line:
-                    k, _, v = line.partition(":")
+                    k, _sep, v = line.partition(":")
                     cfg[k.strip()] = v.strip().strip('"')
     return cfg
 
