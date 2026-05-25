@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+import json as _json
+import socket as _socket
+import ssl as _ssl
 import time
 
 try:
@@ -24,6 +27,8 @@ class SLC9Client:
 
     def __init__(self, host, token, verify_ssl=True):
         self.host = host
+        self._token = token
+        self.verify_ssl = verify_ssl
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
@@ -33,6 +38,94 @@ class SLC9Client:
 
     def _url(self, path):
         return "https://{0}{1}{2}".format(self.host, self.BASE_PATH, path)
+
+    def _raw_write(self, method, path, data=None, close_expected=False):
+        """Send a write request via raw TLS socket using a single sendall().
+
+        mini_httpd on SLC9000 cannot handle requests where headers and body
+        arrive in separate TCP writes (which requests always does for bodies).
+        This method sends the complete request, headers + body, in one TLS
+        record, which mini_httpd can parse correctly.
+
+        Set close_expected=True for endpoints that close the TCP connection
+        without sending an HTTP response (config/batch, system/identity, etc.).
+        """
+        body_bytes = (_json.dumps(data, separators=(",", ":")).encode("utf-8")
+                      if data is not None else b"")
+        full_path = "{0}{1}".format(self.BASE_PATH, path)
+
+        request = (
+            "{0} {1} HTTP/1.1\r\n".format(method, full_path).encode()
+            + "Host: {0}\r\n".format(self.host).encode()
+            + "X-auth-token: {0}\r\n".format(self._token).encode()
+            + b"Content-Type: application/json\r\n"
+            + "Content-Length: {0}\r\n".format(len(body_bytes)).encode()
+            + b"Connection: close\r\n"
+            + b"\r\n"
+            + body_bytes
+        )
+
+        ctx = _ssl.create_default_context()
+        if not self.verify_ssl:
+            ctx.check_hostname = False
+            ctx.verify_mode = _ssl.CERT_NONE
+
+        try:
+            raw_sock = _socket.create_connection((self.host, 443), timeout=30)
+            tls_sock = ctx.wrap_socket(raw_sock, server_hostname=self.host)
+            tls_sock.sendall(request)
+            response = b""
+            while True:
+                chunk = tls_sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+            tls_sock.close()
+        except Exception as exc:
+            if close_expected:
+                return {}
+            raise AnsibleLantronixError(
+                "SLC9000: connection error on {0} {1}: {2}".format(method, path, exc)
+            )
+
+        if not response:
+            if close_expected:
+                return {}
+            raise AnsibleLantronixError(
+                "SLC9000: no response from {0} {1}".format(method, path)
+            )
+
+        status_line = response.split(b"\r\n", 1)[0]
+        try:
+            status_code = int(status_line.split(b" ", 2)[1])
+        except (IndexError, ValueError):
+            raise AnsibleLantronixError(
+                "SLC9000: malformed HTTP response from {0} {1}".format(method, path)
+            )
+
+        header_end = response.find(b"\r\n\r\n")
+        resp_body = response[header_end + 4:] if header_end != -1 else b""
+
+        if status_code >= 400:
+            try:
+                error_body = _json.loads(resp_body)
+                msg = error_body.get("message") or error_body.get("error") or str(status_code)
+                if isinstance(msg, list):
+                    msg = "; ".join(str(m) for m in msg)
+            except Exception:
+                msg = "HTTP {0} from {1} {2}".format(status_code, method, path)
+            raise AnsibleLantronixError(msg)
+
+        if not resp_body.strip():
+            return {}
+        try:
+            return _json.loads(resp_body)
+        except ValueError:
+            raise AnsibleLantronixError(
+                "SLC9000: non-JSON response from {0} {1}: {2!r}".format(
+                    method, path, resp_body[:200]
+                )
+            )
 
     def _get(self, path):
         try:
@@ -49,31 +142,13 @@ class SLC9Client:
             )
 
     def _post(self, path, data=None):
-        try:
-            kwargs = {"json": data} if data is not None else {}
-            resp = self.session.post(self._url(path), **kwargs)
-            resp.raise_for_status()
-            return resp.json() if resp.content else {}
-        except requests.HTTPError as exc:
-            raise AnsibleLantronixError(api_error_message(exc))
+        return self._raw_write("POST", path, data)
 
     def _put(self, path, data=None):
-        try:
-            kwargs = {"json": data} if data is not None else {}
-            resp = self.session.put(self._url(path), **kwargs)
-            resp.raise_for_status()
-            return resp.json() if resp.content else {}
-        except requests.HTTPError as exc:
-            raise AnsibleLantronixError(api_error_message(exc))
+        return self._raw_write("PUT", path, data)
 
     def _patch(self, path, data=None):
-        try:
-            kwargs = {"json": data} if data is not None else {}
-            resp = self.session.patch(self._url(path), **kwargs)
-            resp.raise_for_status()
-            return resp.json() if resp.content else {}
-        except requests.HTTPError as exc:
-            raise AnsibleLantronixError(api_error_message(exc))
+        return self._raw_write("PATCH", path, data)
 
     # --- System ---
 

@@ -56,6 +56,25 @@ PASS=()
 FAIL=()
 SKIP=()
 
+# SLC write-lane targets that need a session clear before running.
+# Each target creates ~10 sessions that the httpapi plugin does not release on
+# teardown; the SLC9000 allows a maximum of 20 concurrent REST sessions.
+SLC_WRITE_TARGETS=(
+    setup_write_lane
+    slc_config_write
+    slc_managed_devices_write
+    slc_network_write
+    slc_system_write
+    slc_users_write
+    slc_device_ports_write
+    teardown_write_lane
+)
+
+clear_slc_write_sessions() {
+    echo "--- clearing SLC write-lane REST sessions ---"
+    python3 "${SCRIPT_DIR}/clear_slc_sessions.py" || true
+}
+
 run_target() {
     local target="$1"
     local tasks_file="${SCRIPT_DIR}/targets/${target}/tasks/main.yml"
@@ -83,6 +102,10 @@ if [[ "${LANE}" == "write" || "${LANE}" == "all" ]]; then
     echo ""
     echo "=== WRITE LANE ==="
     for t in "${WRITE_TARGETS[@]}"; do
+        # Clear SLC sessions before each SLC write target to avoid MAX_SESSIONS.
+        if [[ " ${SLC_WRITE_TARGETS[*]} " == *" ${t} "* ]]; then
+            clear_slc_write_sessions
+        fi
         run_target "${t}"
         if [[ "${t}" == "setup_write_lane" && " ${FAIL[*]} " == *" setup_write_lane "* ]]; then
             echo "=== ABORT: setup_write_lane failed, skipping remaining write targets ==="
