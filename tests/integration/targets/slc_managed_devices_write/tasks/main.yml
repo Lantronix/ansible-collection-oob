@@ -1,6 +1,8 @@
 ---
 # slc_managed_devices: REST API /managed_devices is GET-only. No write path.
-# Tier 4 asserts the managed device appears in the managed device list.
+# Tier 4 asserts the managed device appears in the managed device list IF the
+# device has been onboarded via 'set managed onboard'. The TCP gate (port 3001)
+# confirms the console port is configured; a separate check confirms onboarding.
 
 - name: slc_managed_devices | tier4-gate | check managed device reachability
   ansible.builtin.command:
@@ -27,6 +29,19 @@
   delegate_to: slc9000-write
   when: managed_device_available
 
+- name: slc_managed_devices | tier4 | set onboarding fact
+  ansible.builtin.set_fact:
+    managed_device_onboarded: "{{ managed_devices.managed_devices | length > 0 }}"
+  when: managed_device_available
+
+- name: slc_managed_devices | tier4 | skip notice if not onboarded
+  ansible.builtin.debug:
+    msg: >-
+      Console port reachable but no managed devices are onboarded.
+      Run 'set managed onboard 1 method manual login admin' on the write-lane SLC
+      to onboard the device before running Tier 4 assertions.
+  when: managed_device_available and not managed_device_onboarded
+
 - name: slc_managed_devices | tier4 | assert device list is non-empty
   ansible.builtin.assert:
     that:
@@ -34,12 +49,12 @@
       - managed_devices.changed == false
     success_msg: "slc_managed_devices | tier4 | {{ managed_devices.managed_devices | length }} managed device(s) found"
     fail_msg: "slc_managed_devices | tier4 | FAIL: empty managed device list"
-  when: managed_device_available
+  when: managed_device_available and managed_device_onboarded
 
 - name: slc_managed_devices | tier4 | find managed device on port
   ansible.builtin.set_fact:
     target_device_record: "{{ managed_devices.managed_devices | selectattr('port_id', 'equalto', 'port' ~ managed_device_port) | list }}"
-  when: managed_device_available
+  when: managed_device_available and managed_device_onboarded
 
 - name: slc_managed_devices | tier4 | assert managed device appears on expected port
   ansible.builtin.assert:
@@ -47,7 +62,7 @@
       - target_device_record | length == 1
     success_msg: "slc_managed_devices | tier4 | Managed device found on port{{ managed_device_port }}"
     fail_msg: "slc_managed_devices | tier4 | FAIL: no device found on port{{ managed_device_port }}"
-  when: managed_device_available
+  when: managed_device_available and managed_device_onboarded
 
 - name: slc_managed_devices | tier4 | assert device attributes
   ansible.builtin.assert:
@@ -56,9 +71,13 @@
       - target_device_record[0].status is defined
     success_msg: "slc_managed_devices | tier4 | device attributes verified"
     fail_msg: "slc_managed_devices | tier4 | FAIL: device attributes missing"
-  when: managed_device_available
+  when: managed_device_available and managed_device_onboarded
 
 # UNTESTED STATES:
 # - write path: /managed_devices is GET-only in API v2; no attribute modification available via module.
 # - multi-device serial bus: multiple devices sharing one port (daisy chain). Write lane has one device on port 1.
 # - port with no device: managed device info for an empty port not verified.
+# - managed device attributes (hostname, status, port_id) when device is onboarded: requires
+#   'set managed onboard 1 method manual login admin' on the write-lane SLC as a lab prerequisite.
+#   The AOOB backend must be operational. Onboarding was attempted but failed (state unknown)
+#   on 2026-05-24. The TCP gate (port 3001 reachable) passes independently.

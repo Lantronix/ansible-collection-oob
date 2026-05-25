@@ -38,10 +38,20 @@
     fail_msg: "percepxion_aoob_session | tier4 | FAIL: write-lane device not found in Percepxion project"
   when: managed_device_available
 
-- name: percepxion_aoob_session | tier4 | set device_id
+- name: percepxion_aoob_session | tier4 | set device_id and connectivity facts
   ansible.builtin.set_fact:
     write_device_id: "{{ write_lane_device.devices[0].device_id }}"
+    aoob_session_available: "{{ write_lane_device.devices[0].comm_state | default('Down') == 'Up' }}"
   when: managed_device_available and write_lane_device.devices | length == 1
+
+- name: percepxion_aoob_session | tier4 | skip notice if device not connected
+  ansible.builtin.debug:
+    msg: >-
+      Device found in Percepxion but comm_state={{ write_lane_device.devices[0].comm_state | default('unknown') }}
+      (device_state={{ write_lane_device.devices[0].attributes.device_state | default('unknown') }}).
+      AOOB session tests will be skipped.
+      To enable: ensure the write-lane SLC9000 Percepxion client is registered and comm_state is Up.
+  when: managed_device_available and write_lane_device.devices | length == 1 and not aoob_session_available
 
 - name: percepxion_aoob_session | tier4 | open AOOB session
   lantronix.oob.percepxion_aoob_session:
@@ -49,7 +59,7 @@
     state: present
   register: session_result
   delegate_to: percepxion-write
-  when: managed_device_available and write_device_id is defined
+  when: managed_device_available and aoob_session_available | default(false)
 
 - name: percepxion_aoob_session | tier4 | assert session opened
   ansible.builtin.assert:
@@ -59,7 +69,7 @@
       - session_result.session_id | length > 0
     success_msg: "percepxion_aoob_session | tier4 | AOOB session established, session_id={{ session_result.session_id }}"
     fail_msg: "percepxion_aoob_session | tier4 | FAIL: session did not return session_id"
-  when: managed_device_available and write_device_id is defined
+  when: managed_device_available and aoob_session_available | default(false)
 
 - name: percepxion_aoob_session | tier4 | close AOOB session
   lantronix.oob.percepxion_aoob_session:
@@ -68,7 +78,7 @@
     state: absent
   register: close_result
   delegate_to: percepxion-write
-  when: managed_device_available and write_device_id is defined and session_result.session_id is defined
+  when: managed_device_available and aoob_session_available | default(false) and session_result.session_id is defined
 
 - name: percepxion_aoob_session | tier4 | assert session closed
   ansible.builtin.assert:
@@ -76,9 +86,14 @@
       - close_result.changed == true
     success_msg: "percepxion_aoob_session | tier4 | session closed cleanly"
     fail_msg: "percepxion_aoob_session | tier4 | FAIL: session close did not report changed"
-  when: managed_device_available and write_device_id is defined and session_result.session_id is defined
+  when: managed_device_available and aoob_session_available | default(false) and session_result.session_id is defined
 
 # UNTESTED STATES:
+# - AOOB session open/close: write-lane SLC9000 shows comm_state=Down / device_state=Client Disabled
+#   in Percepxion API as of 2026-05-24, even though 'show px' on the device reports running.
+#   POST /v3/device/connect returns 401 "Invalid device token size". The device may need to
+#   re-register its device key with Percepxion. All AOOB session assertions are skipped when
+#   comm_state != Up.
 # - session to offline device: Percepxion behavior when SLC9000 is unreachable during AOOB request.
 # - session timeout mid-transfer: behavior when device closes session mid-command.
 # - concurrent sessions: two simultaneous AOOB sessions to the same port.
