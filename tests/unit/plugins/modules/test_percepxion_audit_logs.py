@@ -55,7 +55,7 @@ def test_access_log_downloads_for_device():
     m, client, mock_cls = run_module({"log_type": "access", "device_id": "dev-001", "start_time": None, "end_time": None, "limit": 100})
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
-    client.download_device_log.assert_called_once_with("dev-001", log_type="access")
+    client.download_device_log.assert_called_once_with("dev-001", log_level="info")
 
 
 def test_percepxion_audit_logs_passes_validate_certs_to_client():

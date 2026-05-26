@@ -8,6 +8,15 @@ DOCUMENTATION = r"""
 module: percepxion_users
 short_description: Manage user accounts on the Percepxion platform
 version_added: "1.0.0"
+deprecated:
+  removed_in: "2.0.0"
+  removed_from_collection: lantronix.oob
+  why: >-
+    The user management endpoints (C(/v2/user/search), C(/v2/user/create),
+    C(/v2/user/delete)) are not present in the Percepxion 6.12 API specification.
+    Integration testing returned 404 on all CRUD operations.
+  alternative: >-
+    Manage Percepxion users through the Percepxion web interface.
 author:
   - Lantronix Product Team (@lantronix)
 description:
@@ -15,8 +24,9 @@ description:
   - Checks whether the user exists before acting; only calls create or delete
     when the desired state differs from current state.
 notes:
-  - User management uses C(/v2/user/*) endpoints confirmed against the
-    Percepxion 6.12 demo environment.
+  - B(Deprecated.) The user management API endpoints used by this module are not
+    confirmed in the Percepxion 6.12 API specification. CRUD operations will
+    likely fail. Do not use in production.
 options:
   username:
     description: Username to manage.
@@ -94,6 +104,15 @@ def main():
             state=dict(type="str", default="present", choices=["present", "absent"]),
         ),
         supports_check_mode=True,
+    )
+
+    module.deprecate(
+        "lantronix.oob.percepxion_users is deprecated and will be removed in version 2.0.0. "
+        "The user management API endpoints used by this module are not documented in the "
+        "Percepxion 6.12 specification and have not been validated; CRUD operations will likely fail. "
+        "Use the Percepxion web interface to manage users.",
+        version="2.0.0",
+        collection_name="lantronix.oob",
     )
 
     connection = Connection(module._socket_path)

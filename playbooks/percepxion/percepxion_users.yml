@@ -1,4 +1,9 @@
 ---
+# DEPRECATED: percepxion_users is deprecated as of v1.0.18 and will be removed in v2.0.0.
+# The user management API endpoints (/v2/user/search, /v2/user/create, /v2/user/delete)
+# are not in the Percepxion 6.12 API spec and returned 404 during integration testing.
+# Use the Percepxion web interface to manage users.
+#
 # percepxion_users, Manage user accounts on the Percepxion platform
 #
 # What this does:

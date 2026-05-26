@@ -8,6 +8,17 @@ DOCUMENTATION = r"""
 module: percepxion_aoob_session
 short_description: Initiate or terminate OOB terminal sessions via Percepxion
 version_added: "1.0.0"
+deprecated:
+  removed_in: "2.0.0"
+  removed_from_collection: lantronix.oob
+  why: >-
+    The AOOB session management API endpoints (C(/v3/device/connect) and
+    C(/v3/device/disconnect)) are not present in the Percepxion 6.12 API
+    specification. The Percepxion Connect feature is browser-based and cannot
+    be managed programmatically through this module.
+  alternative: >-
+    Use the Percepxion web interface to initiate and close AOOB terminal
+    sessions.
 author:
   - Lantronix Product Team (@lantronix)
 description:
@@ -15,10 +26,9 @@ description:
     a session ID. Always C(changed=True).
   - C(state=absent) terminates an active session by ID. Always C(changed=True).
 notes:
-  - Session endpoint paths (C(/v3/device/connect) and C(/v3/device/disconnect))
-    are not confirmed in the Percepxion 6.12 API spec. Verify with Percepxion
-    engineering before use in production. Update C(percepxion_client.py) if
-    paths differ.
+  - B(Deprecated.) This module calls endpoint paths that are not confirmed in
+    the Percepxion 6.12 API spec and will fail against a real Percepxion
+    environment. Do not use in production.
   - Sessions are non-idempotent. Each C(state=present) opens a new connection.
 options:
   device_id:
@@ -95,6 +105,15 @@ def main():
             ("state", "absent", ["session_id"]),
         ],
         supports_check_mode=True,
+    )
+
+    module.deprecate(
+        "lantronix.oob.percepxion_aoob_session is deprecated and will be removed in version 2.0.0. "
+        "The Percepxion Connect feature is browser-based; the API endpoints used by this module "
+        "are not documented in the Percepxion 6.12 specification and will fail in production. "
+        "Use the Percepxion web interface to initiate AOOB sessions.",
+        version="2.0.0",
+        collection_name="lantronix.oob",
     )
 
     connection = Connection(module._socket_path)

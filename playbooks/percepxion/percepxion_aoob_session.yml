@@ -1,4 +1,9 @@
 ---
+# DEPRECATED: percepxion_aoob_session is deprecated as of v1.0.18 and will be removed in v2.0.0.
+# The Percepxion Connect feature is browser-based. The API endpoints used by the underlying
+# module (/v3/device/connect, /v3/device/disconnect) are not in the Percepxion 6.12 API spec
+# and will fail in production. Use the Percepxion web interface to initiate AOOB sessions.
+#
 # percepxion_aoob_session, Initiate or terminate OOB terminal sessions via Percepxion
 #
 # What this does:

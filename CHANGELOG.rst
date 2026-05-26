@@ -4,6 +4,52 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.18
+=======
+
+Release Summary
+---------------
+
+Bugfix and deprecation release. Fixes the ``percepxion_import_devices`` device
+field names introduced in v1.0.17, corrects the log download API field name in
+``percepxion_audit_logs``, updates the unit test fixture for
+``percepxion_import_devices`` to use correct field names, and deprecates
+``percepxion_aoob_session`` and ``percepxion_users`` whose underlying API
+endpoints are not present in the Percepxion 6.12 specification.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.percepxion_import_devices``: the module's
+  ``argument_spec`` and ``DOCUMENTATION`` declared ``serial``, ``mac``, and
+  ``model`` as the per-device suboption keys. The Percepxion
+  ``DeviceRegisterRequest`` schema requires ``device_id`` (serial number),
+  ``device_key`` (32-character device identifier), ``device_name``, and
+  optionally ``device_description``. Any playbook that called
+  ``register_device`` (not the idempotency skip path) would fail with an
+  API 400. Fixed field names throughout the module, playbook, and unit test
+  fixture.
+- ``lantronix.oob.percepxion_audit_logs``: ``download_device_log`` sent
+  ``log_type: "access"`` in the request body. The Percepxion 6.12
+  ``DeviceLogDownloadRequest`` schema uses ``log_level`` (enum: ``info``).
+  Fixed the client method signature, the caller in ``percepxion_audit_logs``,
+  and the corresponding unit test assertion.
+
+Deprecated Features
+-------------------
+
+- ``lantronix.oob.percepxion_aoob_session``: deprecated. The session
+  management endpoints (``/v3/device/connect``, ``/v3/device/disconnect``)
+  are not present in the Percepxion 6.12 API specification. The Percepxion
+  Connect feature is browser-based and cannot be managed programmatically
+  via these endpoints. The module will be removed in version 2.0.0. Use
+  the Percepxion web interface to initiate AOOB terminal sessions.
+- ``lantronix.oob.percepxion_users``: deprecated. The user management
+  endpoints (``/v2/user/search``, ``/v2/user/create``, ``/v2/user/delete``)
+  are not present in the Percepxion 6.12 API specification and returned 404
+  during integration testing. The module will be removed in version 2.0.0.
+  Use the Percepxion web interface to manage users.
+
 v1.0.17
 =======
 

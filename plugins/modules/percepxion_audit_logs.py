@@ -140,7 +140,7 @@ def main():
         return
 
     try:
-        log_content = client.download_device_log(module.params["device_id"], log_type="access")
+        log_content = client.download_device_log(module.params["device_id"], log_level="info")
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
     module.exit_json(changed=False, log_content=log_content or "")

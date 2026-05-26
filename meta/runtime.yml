@@ -1,2 +1,19 @@
 requires_ansible: ">=2.16.0"
-plugin_routing: {}
+plugin_routing:
+  modules:
+    percepxion_aoob_session:
+      deprecation:
+        removal_version: "2.0.0"
+        warning_text: >-
+          percepxion_aoob_session is deprecated. The Percepxion Connect feature
+          is browser-based; the API endpoints used by this module are not
+          documented in the Percepxion 6.12 specification. Use the Percepxion
+          web interface to initiate AOOB sessions.
+    percepxion_users:
+      deprecation:
+        removal_version: "2.0.0"
+        warning_text: >-
+          percepxion_users is deprecated. The user management API endpoints used
+          by this module are not documented in the Percepxion 6.12 specification
+          and returned 404 during integration testing. Use the Percepxion web
+          interface to manage users.

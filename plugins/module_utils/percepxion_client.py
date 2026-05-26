@@ -221,11 +221,11 @@ class PercepxionClient:
     def search_user_audit_logs(self, limit=100):
         return self._post("/v1/audit/user/search", self._scope({"limit": limit}))
 
-    def download_device_log(self, device_id, log_type="access"):
+    def download_device_log(self, device_id, log_level="info"):
         """POST /v1/storage/file/devicelog/download -- returns raw log text (text/plain)."""
         try:
             resp = self.session.post(self._url("/v1/storage/file/devicelog/download"),
-                                     json=self._scope({"device_id": device_id, "log_type": log_type}))
+                                     json=self._scope({"device_id": device_id, "log_level": log_level}))
             resp.raise_for_status()
             return resp.text
         except requests.HTTPError as exc:
