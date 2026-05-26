@@ -1,6 +1,6 @@
 # lantronix.oob Ansible Collection
 
-Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 20 modules covering SLC9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
+Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` collection provides 18 active modules covering SLC9000 device configuration and Percepxion fleet management, the only Ansible collection that automates the full OOB infrastructure stack, not just the appliance.
 
 ## Installation
 
@@ -50,15 +50,15 @@ pip install requests
 | `lantronix.oob.percepxion_facts` | Gather fleet summary and platform facts |
 | `lantronix.oob.percepxion_devices` | Query and update device inventory |
 | `lantronix.oob.percepxion_projects` | Manage device project assignments |
-| `lantronix.oob.percepxion_users` | Manage Percepxion users and roles |
 | `lantronix.oob.percepxion_smart_groups` | Create and manage device smart groups |
 | `lantronix.oob.percepxion_firmware` | Fleet firmware compliance report and upgrade |
 | `lantronix.oob.percepxion_config` | Config backup, restore, push at fleet scale |
 | `lantronix.oob.percepxion_jobs` | Job group lifecycle, create, schedule, monitor |
 | `lantronix.oob.percepxion_audit_logs` | Security audit log query and device access log export |
-| `lantronix.oob.percepxion_aoob_session` | Initiate and terminate OOB sessions |
 | `lantronix.oob.percepxion_import_devices` | Bulk device import and project assignment |
 | `lantronix.oob.percepxion_telemetry` | Device telemetry stats and historical data |
+| `lantronix.oob.percepxion_users` | *(Deprecated, removed in 2.0.0)* User management endpoints not in Percepxion 6.12 API. Use the Percepxion web interface. |
+| `lantronix.oob.percepxion_aoob_session` | *(Deprecated, removed in 2.0.0)* Percepxion Connect is browser-based; session API endpoints do not exist. Use the Percepxion web interface. |
 
 ## Example Roles
 
