@@ -4,16 +4,24 @@
 # What this does:
 #   Registers one or more devices in Percepxion using POST /v1/device/register,
 #   then assigns them to a project. Checks whether each device is already
-#   registered (by serial number) before calling register, skips already-
-#   registered devices (idempotent on serial number).
+#   registered (by device_id / serial number) before calling register, skips
+#   already-registered devices (idempotent).
 #
-# Required per device: serial number. MAC address and model are optional
-#   but recommended for accurate inventory.
+# Required per device (matches the "Import Lantronix Device" screen in Percepxion):
+#   device_id    The serial number printed on the device label. This is what
+#                Percepxion calls the Serial Number in the UI.
+#   device_key   The unique 32-character Device ID. This is what Percepxion
+#                calls the Device ID in the UI. Older SLC devices without a
+#                Device ID must be provisioned with LPM before import.
+#   device_name  A user-defined name for the device (e.g. "slc-dc1-rack3").
 #
-# Where to find serial numbers:
-#   - On the SLC9000 label on the chassis
-#   - Via slc_facts.yml output (serial_number field)
-#   - From your procurement records
+# Optional per device:
+#   device_description  Free-text description (e.g. location, purpose).
+#
+# Where to find device_id and device_key:
+#   - Physical label on the SLC chassis
+#   - Lantronix Provisioning Manager (LPM) utility
+#   - SLC web manager or CLI (show system identity)
 #
 # Run:
 #   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_import_devices.yml
@@ -35,19 +43,21 @@
     tenant_id: ""
 
     # List of devices to register.
-    # Each entry requires serial. mac and model are optional but recommended.
-    # Add one dict per device.
+    # Each entry requires device_id (serial number), device_key (32-char Device ID),
+    # and device_name. device_description is optional.
     devices:
-      - serial: "SLC9K-000001"
-        mac: "00:11:22:33:44:01"
-        model: "SLC9016"
-      - serial: "SLC9K-000002"
-        mac: "00:11:22:33:44:02"
-        model: "SLC9032"
+      - device_id: "SN123456"
+        device_key: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+        device_name: "slc-datacenter-01"
+        device_description: "SLC9016, DC East, rack 3"
+      - device_id: "SN789012"
+        device_key: "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5"
+        device_name: "slc-datacenter-02"
       # Add additional devices here:
-      # - serial: "SLC9K-000003"
-      #   mac: "00:11:22:33:44:03"
-      #   model: "SLC9016"
+      # - device_id: "SN000099"
+      #   device_key: "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6"
+      #   device_name: "slc-branch-office-01"
+      #   device_description: "SLC9032, branch office Seattle"
 
   tasks:
 
