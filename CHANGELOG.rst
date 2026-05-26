@@ -4,6 +4,43 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.20
+=======
+
+Release Summary
+---------------
+
+Playbook correctness release. Removes two deprecated-module playbooks
+(``percepxion_aoob_session.yml``, ``percepxion_users.yml``), strips deprecated
+``percepxion_aoob_session`` calls from the incident response combo playbook,
+corrects the device import field schema in the fleet onboarding combo playbook,
+and fixes two runtime bugs where ``ansible.builtin.debug`` ``var:`` received a
+Jinja2 expression instead of a plain variable name.
+
+Bugfixes
+--------
+
+- ``playbooks/percepxion/percepxion_aoob_session.yml``: removed (entire file
+  calls the ``percepxion_aoob_session`` module deprecated in v1.0.18).
+- ``playbooks/percepxion/percepxion_users.yml``: removed (entire file calls
+  the ``percepxion_users`` module deprecated in v1.0.18).
+- ``playbooks/combo/incident_response_oob.yml``: removed Phase 2 (open
+  session) and Phase 3 (close session) task blocks, which called the
+  deprecated ``percepxion_aoob_session`` module. Playbook is now scoped to
+  OOB path verification only; operators are directed to the Percepxion web UI
+  for AOOB terminal sessions.
+- ``playbooks/combo/new_device_fleet_onboarding.yml``: corrected the example
+  ``devices`` list from pre-v1.0.18 field names (``serial``, ``mac``,
+  ``model``) to the current schema (``device_id``, ``device_key``,
+  ``device_name``, ``device_description``).
+- ``playbooks/percepxion/percepxion_jobs.yml``: fixed ``ansible.builtin.debug``
+  task using ``var:`` with a Jinja2 expression (``"{{ operation + '_result' }}"``).
+  The ``var:`` parameter accepts a plain variable name only; replaced with
+  ``msg: "{{ vars[operation + '_result'] | default({}) }}"``.
+- ``playbooks/percepxion/percepxion_smart_groups.yml``: fixed
+  ``ansible.builtin.debug`` task using ``var:`` with a Jinja2 ternary
+  expression. Replaced with ``msg:`` using ``vars[...]`` dynamic lookup.
+
 v1.0.19
 =======
 

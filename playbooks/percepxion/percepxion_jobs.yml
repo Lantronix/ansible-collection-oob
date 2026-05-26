@@ -108,5 +108,5 @@
 
     - name: Show result
       ansible.builtin.debug:
-        var: "{{ operation + '_result' }}"
-      when: operation != "query" and operation + '_result' is defined
+        msg: "{{ vars[operation + '_result'] | default({}) }}"
+      when: operation != "query"

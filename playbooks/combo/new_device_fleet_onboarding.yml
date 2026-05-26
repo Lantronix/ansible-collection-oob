@@ -33,18 +33,25 @@
     tenant_id: ""
 
     # ---- Devices to register ----
-    # Add one entry per device. serial is required; mac and model are recommended.
+    # Add one entry per device.
+    # device_id:          Serial number or unique hardware identifier (required)
+    # device_key:         32-character hex activation key from the Percepxion portal (required)
+    # device_name:        Friendly name shown in Percepxion (required)
+    # device_description: Optional free-text label (model, location, rack, etc.)
     devices:
-      - serial: "SLC9K-000001"
-        mac: "00:11:22:33:44:01"
-        model: "SLC9016"
-      - serial: "SLC9K-000002"
-        mac: "00:11:22:33:44:02"
-        model: "SLC9032"
+      - device_id: "SN000001"
+        device_key: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+        device_name: "slc-datacenter-01"
+        device_description: "SLC9016, DC East, rack 3"
+      - device_id: "SN000002"
+        device_key: "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5"
+        device_name: "slc-datacenter-02"
+        device_description: "SLC9032, DC East, rack 4"
       # Add more devices here:
-      # - serial: "SLC9K-000003"
-      #   mac: "00:11:22:33:44:03"
-      #   model: "SLC9016"
+      # - device_id: "SN000003"
+      #   device_key: "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6"
+      #   device_name: "slc-datacenter-03"
+      #   device_description: "SLC9016, DC East, rack 5"
 
     # ---- Smart group ----
     # A smart group is created to target these devices for fleet operations.

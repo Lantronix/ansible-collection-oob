@@ -76,7 +76,7 @@
 
     - name: Show create result
       ansible.builtin.debug:
-        var: "{{ 'create_query_result' if device_ids | length == 0 else 'create_ids_result' }}"
+        msg: "{{ vars['create_query_result' if device_ids | length == 0 else 'create_ids_result'] | default({}) }}"
       when: operation == "create"
 
     - name: Delete smart group "{{ group_name }}"
