@@ -1,0 +1,60 @@
+---
+# lantronix.oob Quick-Start Inventory
+#
+# Copy this file to your working directory and fill in your values.
+# Reference it with:  ansible-playbook -i inventory.yml playbooks/slc/slc_facts.yml
+#
+# Two host groups are defined below, one for SLC9000 devices, one for the
+# Percepxion platform. Use whichever group(s) your playbook targets.
+#
+# Credentials: store passwords in ansible-vault rather than in plain text.
+# Example:
+#   ansible-vault encrypt_string 'mysecretpass' --name 'ansible_password'
+# Then reference the vault file:
+#   ansible-playbook -i inventory.yml --vault-password-file ~/.vault_pass playbook.yml
+
+all:
+  children:
+
+    # -------------------------------------------------------------------------
+    # SLC9000 Devices
+    # Add one entry per device. Duplicate the host block for multiple units.
+    # -------------------------------------------------------------------------
+    slc_devices:
+      hosts:
+        slc9k-primary:
+          ansible_host: 192.0.2.10          # SLC9000 management IP or hostname
+          ansible_user: sysadmin
+          ansible_password: "CHANGE_ME"     # Use ansible-vault in production
+          ansible_network_os: lantronix.oob.slc9
+          ansible_connection: ansible.netcommon.httpapi
+          ansible_httpapi_use_ssl: true
+          ansible_httpapi_validate_certs: false  # Set true with a valid cert
+
+        # slc9k-secondary:
+        #   ansible_host: 192.0.2.11
+        #   ansible_user: sysadmin
+        #   ansible_password: "CHANGE_ME"
+        #   ansible_network_os: lantronix.oob.slc9
+        #   ansible_connection: ansible.netcommon.httpapi
+        #   ansible_httpapi_use_ssl: true
+        #   ansible_httpapi_validate_certs: false
+
+    # -------------------------------------------------------------------------
+    # Percepxion Platform
+    # A single host entry connects to the Percepxion cloud API.
+    # percepxion_project_tag scopes all operations to a named project.
+    # percepxion_tenant_id is only needed for Project Admin operations.
+    # -------------------------------------------------------------------------
+    percepxion_platform:
+      hosts:
+        percepxion:
+          ansible_host: api.gopercepxion.ai
+          ansible_user: "your.email@example.com"
+          ansible_password: "CHANGE_ME"     # Use ansible-vault in production
+          ansible_network_os: lantronix.oob.percepxion
+          ansible_connection: ansible.netcommon.httpapi
+          ansible_httpapi_use_ssl: true
+          ansible_httpapi_validate_certs: true
+          percepxion_project_tag: "your-project"   # Optional: scopes device operations
+          percepxion_tenant_id: ""                  # Optional: Project Admin only

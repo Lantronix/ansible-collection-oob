@@ -1,0 +1,92 @@
+---
+# percepxion_telemetry, Query device telemetry from Percepxion
+#
+# What this does:
+#   Current mode (no time range): Returns current telemetry stats for the
+#     specified metrics. Multiple metrics supported in one call.
+#   Historical mode (start + end provided): Returns time-series data for a
+#     single metric over the time range. Only the first metric in the list
+#     is used for historical queries.
+#   Read-only; always changed=false.
+#
+# Common metric names: cpu, memory, temperature
+# (Consult your Percepxion documentation for the full list of metric identifiers.)
+#
+# Time format: ISO 8601. Example: "2026-05-01T00:00:00Z"
+#
+# Run (current health snapshot):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_telemetry.yml \
+#     -e "device_id=abc-123-uuid"
+#
+# Run (historical CPU for the past 24 hours):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_telemetry.yml \
+#     -e "device_id=abc-123-uuid start=2026-05-24T00:00:00Z end=2026-05-25T00:00:00Z"
+
+- name: Query Percepxion device telemetry
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Required: the Percepxion device ID to query.
+    # Get from percepxion_devices.yml output (id field).
+    device_id: ""
+
+    # Metrics to retrieve. For historical queries, only the first metric is used.
+    metrics:
+      - cpu
+      - memory
+      - temperature
+
+    # ISO 8601 time range for historical queries.
+    # Leave both empty for current snapshot mode.
+    start: ""
+    end: ""
+
+    # Project scope.
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate device_id is set
+      ansible.builtin.assert:
+        that:
+          - device_id | length > 0
+        fail_msg: "device_id is required. Get it from percepxion_devices.yml output."
+
+    - name: Query current telemetry for device {{ device_id }}
+      lantronix.oob.percepxion_telemetry:
+        device_id: "{{ device_id }}"
+        metrics: "{{ metrics }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: current_telemetry
+      when: start | length == 0
+
+    - name: Display current telemetry
+      ansible.builtin.debug:
+        var: current_telemetry.telemetry
+      when: start | length == 0
+
+    - name: Query historical telemetry (metric {{ metrics[0] }})
+      lantronix.oob.percepxion_telemetry:
+        device_id: "{{ device_id }}"
+        metrics: "{{ metrics }}"
+        start_time: "{{ start }}"
+        end_time: "{{ end }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: historical_telemetry
+      when: start | length > 0
+
+    - name: Display historical telemetry
+      ansible.builtin.debug:
+        var: historical_telemetry.telemetry
+      when: start | length > 0
+
+    - name: Note on historical queries
+      ansible.builtin.debug:
+        msg: >-
+          Historical query returned data for metric '{{ metrics[0] }}'.
+          To query additional metrics, run separate tasks or separate playbook runs.
+      when: start | length > 0 and metrics | length > 1

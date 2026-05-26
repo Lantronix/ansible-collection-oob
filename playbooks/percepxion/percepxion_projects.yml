@@ -1,0 +1,71 @@
+---
+# percepxion_projects, Assign or unassign a device from a Percepxion project
+#
+# What this does:
+#   Assigns a device to a named project or removes it from its current project.
+#   Checks current project assignment before acting, only calls assign or
+#   unassign when the state differs (idempotent).
+#
+# How to find device_id:
+#   Run percepxion_devices.yml first and note the id field for your device.
+#
+# Run (assign a device to a project):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_projects.yml \
+#     -e "device_id=abc-123 target_project=my-project operation=assign"
+#
+# Run (unassign a device from its project):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_projects.yml \
+#     -e "device_id=abc-123 operation=unassign"
+
+- name: Manage Percepxion device project assignment
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Required: the Percepxion device ID to manage.
+    # Get this from percepxion_devices.yml output (id field).
+    device_id: ""
+
+    # The project tag to assign to. Required when operation=assign.
+    target_project: ""
+
+    # "assign" (state=present) or "unassign" (state=absent)
+    operation: "assign"
+
+    # Tenant ID for Project Admin operations. Leave empty for standard users.
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate required parameters
+      ansible.builtin.assert:
+        that:
+          - device_id | length > 0
+        fail_msg: "device_id is required. Pass -e device_id=<your-device-id>"
+
+    - name: Assign device {{ device_id }} to project {{ target_project }}
+      lantronix.oob.percepxion_projects:
+        device_id: "{{ device_id }}"
+        project_tag: "{{ target_project }}"
+        state: present
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: assign_result
+      when: operation == "assign"
+
+    - name: Show assign result
+      ansible.builtin.debug:
+        var: assign_result
+      when: operation == "assign"
+
+    - name: Unassign device {{ device_id }} from its current project
+      lantronix.oob.percepxion_projects:
+        device_id: "{{ device_id }}"
+        state: absent
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: unassign_result
+      when: operation == "unassign"
+
+    - name: Show unassign result
+      ansible.builtin.debug:
+        var: unassign_result
+      when: operation == "unassign"

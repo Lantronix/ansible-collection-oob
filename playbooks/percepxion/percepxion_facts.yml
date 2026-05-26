@@ -1,0 +1,40 @@
+---
+# percepxion_facts, Gather fleet summary facts from Percepxion
+#
+# What this does:
+#   Returns device count and summary information for the connected Percepxion
+#   tenant. Scoped to percepxion_project_tag when set in inventory.
+#   Read-only; always changed=false.
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_facts.yml
+#
+# Scope to a specific project:
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_facts.yml \
+#     -e "project_tag=my-project"
+
+- name: Gather Percepxion platform facts
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Override the project_tag from inventory to scope this run to one project.
+    # Leave empty to use the value set in inventory.yml.
+    project_tag: ""
+
+  tasks:
+
+    - name: Collect Percepxion platform facts
+      lantronix.oob.percepxion_facts:
+        project_tag: "{{ project_tag | default(omit) }}"
+      register: result
+
+    - name: Display platform facts
+      ansible.builtin.debug:
+        var: result.percepxion_facts
+
+    - name: Show device count summary
+      ansible.builtin.debug:
+        msg: >-
+          Percepxion tenant: {{ result.percepxion_facts.device_count | default(0) }} device(s) registered
+          {{ ('in project ' + project_tag) if project_tag | length > 0 else '(all projects)' }}

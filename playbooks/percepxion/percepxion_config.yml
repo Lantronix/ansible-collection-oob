@@ -1,0 +1,90 @@
+---
+# percepxion_config, Manage configuration content objects on Percepxion
+#
+# What this does:
+#   Creates, updates, or deletes configuration content objects stored in
+#   Percepxion, config files, scripts, and certificates used in fleet
+#   config push operations.
+#
+#   Checks for existing content by name before creating (idempotent on create).
+#   Deletion requires the content object name.
+#
+# content_type values:
+#   config, SLC9000 configuration file content
+#   script, Shell or Python script to deploy
+#   certificate, Certificate or key file
+#
+# Run (create a config object from a local file):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_config.yml \
+#     -e "operation=create content_name=baseline-ntp content_type=config"
+#   Edit the data var below or pass the file content via lookup.
+#
+# Run (delete a config object):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_config.yml \
+#     -e "operation=delete content_name=baseline-ntp"
+
+- name: Manage Percepxion configuration content objects
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # "create" (state=present) or "delete" (state=absent)
+    operation: "create"
+
+    # Content object name. Must be unique within the project.
+    content_name: "baseline-config"
+
+    # Type of content object: config, script, certificate
+    content_type: "config"
+
+    # Content body as a string.
+    # For real use, load from a local file:
+    #   data: "{{ lookup('ansible.builtin.file', 'files/baseline.conf') }}"
+    data: |
+      set ntp server 0.pool.ntp.org
+      set ntp server 1.pool.ntp.org
+      set logging host 192.0.2.100
+
+    # Project scope.
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate required parameters for create
+      ansible.builtin.assert:
+        that:
+          - content_name | length > 0
+          - data | length > 0
+        fail_msg: "content_name and data are required when operation=create."
+      when: operation == "create"
+
+    - name: Create config content object "{{ content_name }}"
+      lantronix.oob.percepxion_config:
+        name: "{{ content_name }}"
+        content_type: "{{ content_type }}"
+        data: "{{ data }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_result
+      when: operation == "create"
+
+    - name: Show create result
+      ansible.builtin.debug:
+        var: create_result
+      when: operation == "create"
+
+    - name: Delete config content object "{{ content_name }}"
+      lantronix.oob.percepxion_config:
+        name: "{{ content_name }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: delete_result
+      when: operation == "delete"
+
+    - name: Show delete result
+      ansible.builtin.debug:
+        var: delete_result
+      when: operation == "delete"

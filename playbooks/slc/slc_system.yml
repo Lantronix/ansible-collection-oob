@@ -1,0 +1,73 @@
+---
+# slc_system, Set hostname, description, and reboot an SLC9000
+#
+# What this does:
+#   Configures system identity (hostname and description) on an SLC9000.
+#   Fetches current identity before writing, only applies a change when
+#   the desired state differs from current state (idempotent for identity).
+#   Optionally reboots the device (reboot is always changed=true).
+#
+# Reboot note:
+#   The device goes offline for 1-2 minutes after a reboot task. Do not
+#   chain other tasks in the same play after reboot=true without a
+#   wait_for_connection step to confirm the device is back.
+#
+# Run (set identity only):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_system.yml
+#
+# Run (set identity and reboot):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_system.yml \
+#     -e "reboot_device=true"
+
+- name: Manage SLC9000 system identity
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # Set the hostname. Leave empty ("") to leave the current hostname unchanged.
+    device_hostname: "slc9k-dc1-rack3"
+
+    # Human-readable description stored on the device.
+    device_description: "Data Center 1, Rack 3, OOB console server"
+
+    # Set true to reboot after applying identity changes.
+    # Confirm you have OOB access before setting this to true.
+    reboot_device: false
+
+  tasks:
+
+    - name: Set hostname and description
+      lantronix.oob.slc_system:
+        hostname: "{{ device_hostname }}"
+        description: "{{ device_description }}"
+        state: present
+      register: identity_result
+      when: device_hostname | length > 0 or device_description | length > 0
+
+    - name: Show identity change result
+      ansible.builtin.debug:
+        var: identity_result
+      when: identity_result is defined
+
+    # Reboot is a separate, explicit action. Always prompt before enabling.
+    - name: Reboot device
+      lantronix.oob.slc_system:
+        reboot: true
+      when: reboot_device | bool
+      register: reboot_result
+
+    - name: Wait for device to come back online after reboot
+      ansible.builtin.wait_for_connection:
+        delay: 30          # Wait 30s before first check
+        timeout: 180       # Give the device 3 minutes to boot
+      when: reboot_device | bool
+
+    - name: Confirm device is responding
+      lantronix.oob.slc_facts:
+      when: reboot_device | bool
+      register: post_reboot_facts
+
+    - name: Show post-reboot hostname
+      ansible.builtin.debug:
+        msg: "Device back online: {{ post_reboot_facts.slc_facts.hostname | default('unknown') }}"
+      when: reboot_device | bool and post_reboot_facts is defined

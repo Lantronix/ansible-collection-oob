@@ -1,0 +1,102 @@
+---
+# percepxion_firmware, Fleet firmware compliance check and update via Percepxion
+#
+# What this does:
+#   state=check: Queries recent firmware job logs for a smart group and
+#     classifies each device as compliant or non-compliant against a target
+#     version. Read-only; always changed=false.
+#   state=update: Creates a firmware update job group targeting the smart group.
+#     Always changed=true. Non-idempotent, each run creates a new job.
+#
+# Prerequisite: create the target smart group first using percepxion_smart_groups.yml.
+# Get the smart_group_id from the smart group creation output or percepxion_facts.
+#
+# Run (compliance check only, safe, default):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_firmware.yml \
+#     -e "smart_group_id=<your-group-id> target_version=9.7.0.0R8"
+#
+# Run (check and remediate non-compliant devices):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_firmware.yml \
+#     -e "smart_group_id=<id> target_version=9.7.0.0R8 run_update=true"
+
+- name: Fleet firmware compliance check and update
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Required: Percepxion smart group ID to target.
+    # Get this from percepxion_smart_groups.yml output or the Percepxion UI.
+    smart_group_id: ""
+
+    # Required: target firmware version string.
+    # Example: "9.7.0.0R8" for SLC9000 firmware revision 8.
+    target_version: ""
+
+    # Set true to trigger an update job on non-compliant devices.
+    # Default is check-only (safe to run without approval).
+    run_update: false
+
+    # Project scope.
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate required parameters
+      ansible.builtin.assert:
+        that:
+          - smart_group_id | length > 0
+          - target_version | length > 0
+        fail_msg: "smart_group_id and target_version are both required."
+
+    - name: Check firmware compliance for smart group
+      lantronix.oob.percepxion_firmware:
+        smart_group_id: "{{ smart_group_id }}"
+        firmware_version: "{{ target_version }}"
+        state: check
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: compliance_result
+
+    - name: Display compliance report
+      ansible.builtin.debug:
+        var: compliance_result
+
+    - name: List non-compliant devices
+      ansible.builtin.debug:
+        msg: >-
+          Non-compliant devices ({{ (compliance_result.non_compliant_devices | default([])) | length }}):
+          {{ compliance_result.non_compliant_devices | default([]) | map(attribute='device_name') | list }}
+      when: (compliance_result.non_compliant_devices | default([])) | length > 0
+
+    - name: Confirm all devices compliant
+      ansible.builtin.debug:
+        msg: "All devices in the smart group are running {{ target_version }}. No update needed."
+      when: (compliance_result.non_compliant_devices | default([])) | length == 0
+
+    # Trigger update only when run_update=true and there are non-compliant devices.
+    - name: Trigger firmware update job for non-compliant devices
+      lantronix.oob.percepxion_firmware:
+        smart_group_id: "{{ smart_group_id }}"
+        firmware_version: "{{ target_version }}"
+        state: update
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: update_result
+      when:
+        - run_update | bool
+        - (compliance_result.non_compliant_devices | default([])) | length > 0
+
+    - name: Show update job submission result
+      ansible.builtin.debug:
+        var: update_result
+      when: run_update | bool and update_result is defined
+
+    - name: Remind operator to monitor job progress
+      ansible.builtin.debug:
+        msg: >-
+          Firmware update job submitted. Monitor job status with
+          percepxion_jobs.yml using state=query against the generated job group.
+          Devices update asynchronously, re-run the compliance check in 15-30
+          minutes to confirm completion.
+      when: run_update | bool and update_result is defined and update_result.changed

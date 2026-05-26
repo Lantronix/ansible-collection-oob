@@ -1,0 +1,57 @@
+---
+# slc_users, Manage the sysadmin account on SLC9000
+#
+# What this does:
+#   The SLC9000 REST API exposes only the sysadmin account. This module
+#   can read account attributes or rotate the sysadmin password.
+#   Other local users must be managed via CLI (use slc_config action=batch).
+#
+# Important:
+#   Password changes always report changed=true because the API cannot
+#   verify whether the supplied password matches the current one.
+#
+# Run (read-only):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_users.yml
+#
+# Run (password rotation):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_users.yml \
+#     -e "rotate_password=true new_sysadmin_password=NewSecurePass123"
+#   In production, pass the password via ansible-vault or an encrypted var file.
+
+- name: Manage SLC9000 sysadmin account
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    rotate_password: false           # Set true (or pass -e rotate_password=true) to change the password
+    new_sysadmin_password: ""        # Required when rotate_password=true
+
+  tasks:
+
+    - name: Read sysadmin account attributes
+      lantronix.oob.slc_users:
+        # No new_password provided, read-only query
+      register: user_info
+
+    - name: Display current account info
+      ansible.builtin.debug:
+        var: user_info
+
+    # Rotate password only when explicitly requested.
+    # Store new_sysadmin_password in ansible-vault, never in plain text.
+    - name: Rotate sysadmin password
+      lantronix.oob.slc_users:
+        new_password: "{{ new_sysadmin_password }}"
+      when:
+        - rotate_password | bool
+        - new_sysadmin_password | length > 0
+      register: rotate_result
+      no_log: true   # Suppress output to keep the new password out of logs
+
+    - name: Confirm password rotation
+      ansible.builtin.debug:
+        msg: "Password rotation complete for {{ inventory_hostname }}"
+      when:
+        - rotate_password | bool
+        - rotate_result is defined
+        - rotate_result.changed

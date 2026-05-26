@@ -1,0 +1,64 @@
+---
+# slc_network, Configure ethernet interfaces on SLC9000
+#
+# What this does:
+#   Sets IP addressing (static or DHCP) on a named ethernet interface.
+#   Fetches current config before writing, only applies a change when the
+#   desired state differs from the current state (idempotent).
+#
+# Interface names: eth1 (primary management), eth2 (secondary), etc.
+#
+# WARNING: Changing the management interface IP without console access
+#   will disconnect your session. Always have an OOB path (serial console
+#   or Percepxion session) before reconfiguring management interfaces.
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_network.yml
+#
+# Override interface at runtime:
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_network.yml \
+#     -e "target_interface=eth2 static_ip=10.0.1.50 netmask=255.255.255.0"
+
+- name: Configure SLC9000 ethernet interfaces
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # Which interface to configure. Common values: eth1, eth2
+    target_interface: eth1
+
+    # Set use_dhcp: true to enable DHCP on the interface.
+    # Set use_dhcp: false and provide static_ip + netmask for a static address.
+    use_dhcp: false
+    static_ip: "192.0.2.10"          # Ignored when use_dhcp=true
+    netmask: "255.255.255.0"         # Ignored when use_dhcp=true
+
+  tasks:
+
+    # --- Option A: Enable DHCP ---
+    - name: Enable DHCP on {{ target_interface }}
+      lantronix.oob.slc_network:
+        interface: "{{ target_interface }}"
+        dhcp: true
+      register: dhcp_result
+      when: use_dhcp | bool
+
+    - name: Show DHCP result
+      ansible.builtin.debug:
+        var: dhcp_result
+      when: use_dhcp | bool
+
+    # --- Option B: Set static IP ---
+    - name: Set static IP on {{ target_interface }}
+      lantronix.oob.slc_network:
+        interface: "{{ target_interface }}"
+        dhcp: false
+        ipv4_address: "{{ static_ip }}"
+        netmask: "{{ netmask }}"
+      register: static_result
+      when: not (use_dhcp | bool)
+
+    - name: Show static IP result
+      ansible.builtin.debug:
+        var: static_result
+      when: not (use_dhcp | bool)

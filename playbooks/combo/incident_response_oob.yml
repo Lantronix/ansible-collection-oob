@@ -1,0 +1,143 @@
+---
+# COMBO: Incident Response, OOB Session to an Affected Device
+# Persona: NOC Engineer responding to a network outage
+#
+# What this does (in order):
+#   1. Confirm the SLC9000 is reachable and collect current facts
+#   2. Check what devices are visible on serial ports (including unmanaged/offline)
+#   3. Open an OOB terminal session via Percepxion to the affected device
+#   4. Display the session_id so the operator can connect via the Percepxion UI
+#   5. (Teardown) Close the session when work is complete
+#
+# Why this combo?
+#   During an outage the production network path to the target device is down.
+#   This playbook confirms the OOB path is intact, identifies the device on the
+#   serial port, and establishes the session, all in one run. No single module
+#   or role covers this end-to-end workflow.
+#
+# Workflow:
+#   Phase 1, Confirm OOB path (targets SLC9000 devices):
+#     ansible-playbook -i inventory.yml playbooks/combo/incident_response_oob.yml \
+#       --tags oob_check
+#
+#   Phase 2, Open session (targets Percepxion; requires percepxion_device_id):
+#     ansible-playbook -i inventory.yml playbooks/combo/incident_response_oob.yml \
+#       --tags open_session -e "percepxion_device_id=abc-123"
+#
+#   Phase 3, Close session when done:
+#     ansible-playbook -i inventory.yml playbooks/combo/incident_response_oob.yml \
+#       --tags close_session -e "session_id=sess-xyz-456"
+
+- name: Incident response, confirm OOB path and open session
+  hosts: all
+  gather_facts: false
+
+  vars:
+    # ---- Percepxion device ID of the affected device ----
+    # Get this from percepxion_devices.yml or the Percepxion UI.
+    # Required for Phase 2 (open_session).
+    percepxion_device_id: ""
+
+    # ---- Session ID from a previous Phase 2 run ----
+    # Required for Phase 3 (close_session).
+    session_id: ""
+
+    # ---- Filter for managed device check ----
+    # "unmanaged" surfaces devices that lost their management connection.
+    # Use "" (empty) to see all devices.
+    port_status_filter: ""
+
+    # ---- Project scope ----
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    # ============================================================
+    # Phase 1: Confirm OOB path via SLC9000
+    # ============================================================
+    - name: "OOB Check | Gather SLC9000 facts"
+      lantronix.oob.slc_facts:
+      register: slc_facts
+      tags: [oob_check, always]
+      when: inventory_hostname in groups.get('slc_devices', [])
+
+    - name: "OOB Check | Confirm SLC is online"
+      ansible.builtin.debug:
+        msg: >-
+          SLC ONLINE: {{ inventory_hostname }}
+          firmware={{ slc_facts.slc_facts.current_firmware_version | default('unknown') }},
+          uptime={{ slc_facts.slc_facts.uptime | default('unknown') }}
+      tags: [oob_check]
+      when:
+        - inventory_hostname in groups.get('slc_devices', [])
+        - slc_facts is defined
+
+    - name: "OOB Check | Query serial port device status"
+      lantronix.oob.slc_managed_devices:
+        filter_status: "{{ port_status_filter | default(omit) }}"
+      register: serial_devices
+      tags: [oob_check]
+      when: inventory_hostname in groups.get('slc_devices', [])
+
+    - name: "OOB Check | Show devices visible on serial ports"
+      ansible.builtin.debug:
+        msg: >-
+          {{ (serial_devices.managed_devices | default([])) | length }} device(s) on serial ports.
+          Use percepxion_devices.yml to find the percepxion_device_id for the affected device.
+      tags: [oob_check]
+      when:
+        - inventory_hostname in groups.get('slc_devices', [])
+        - serial_devices is defined
+
+    # ============================================================
+    # Phase 2: Open OOB session via Percepxion
+    # ============================================================
+    - name: "Open Session | Initiate OOB session to {{ percepxion_device_id }}"
+      lantronix.oob.percepxion_aoob_session:
+        device_id: "{{ percepxion_device_id }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: session_open
+      tags: [open_session]
+      when:
+        - inventory_hostname in groups.get('percepxion_platform', [])
+        - percepxion_device_id | length > 0
+
+    - name: "Open Session | Show session details"
+      ansible.builtin.debug:
+        msg: >-
+          OOB SESSION OPEN.
+          device={{ percepxion_device_id }},
+          session_id={{ session_open.session_id | default('see full output') }}.
+          Connect via the Percepxion UI or record session_id for the close_session phase.
+      tags: [open_session]
+      when:
+        - inventory_hostname in groups.get('percepxion_platform', [])
+        - session_open is defined
+        - session_open.changed
+
+    # ============================================================
+    # Phase 3: Close session when incident work is complete
+    # ============================================================
+    - name: "Close Session | Terminate session {{ session_id }}"
+      lantronix.oob.percepxion_aoob_session:
+        session_id: "{{ session_id }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: session_close
+      tags: [close_session]
+      when:
+        - inventory_hostname in groups.get('percepxion_platform', [])
+        - session_id | length > 0
+
+    - name: "Close Session | Confirm session terminated"
+      ansible.builtin.debug:
+        msg: "Session {{ session_id }} closed (changed={{ session_close.changed }})"
+      tags: [close_session]
+      when:
+        - inventory_hostname in groups.get('percepxion_platform', [])
+        - session_id | length > 0
+        - session_close is defined

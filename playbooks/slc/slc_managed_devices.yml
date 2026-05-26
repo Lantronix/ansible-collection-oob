@@ -1,0 +1,63 @@
+---
+# slc_managed_devices, Query devices discovered on SLC9000 serial ports
+#
+# What this does:
+#   Returns the list of devices discovered by the SLC9000 on its serial ports
+#   via GET /managed_devices. Read-only; always changed=false.
+#   Optionally filters the list by management status.
+#
+# Device statuses:
+#   managed, Device is actively managed via a serial port
+#   unmanaged, Device was detected but not yet placed under management
+#   discovered, Device is in the discovery phase
+#   (omit filter_status to return all devices regardless of status)
+#
+# Run (all devices):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_managed_devices.yml
+#
+# Run (show only unmanaged devices):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_managed_devices.yml \
+#     -e "status_filter=unmanaged"
+
+- name: Query devices on SLC9000 serial ports
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # Leave empty to return all devices.
+    # Valid values: managed, unmanaged, discovered
+    status_filter: ""
+
+  tasks:
+
+    # --- Query without filter ---
+    - name: Get all managed devices
+      lantronix.oob.slc_managed_devices:
+      register: all_devices
+      when: status_filter | length == 0
+
+    - name: Display all devices
+      ansible.builtin.debug:
+        var: all_devices
+      when: status_filter | length == 0
+
+    # --- Query with status filter ---
+    - name: Get {{ status_filter }} devices
+      lantronix.oob.slc_managed_devices:
+        filter_status: "{{ status_filter }}"
+      register: filtered_devices
+      when: status_filter | length > 0
+
+    - name: Display {{ status_filter }} devices
+      ansible.builtin.debug:
+        var: filtered_devices
+      when: status_filter | length > 0
+
+    # Summary count, useful for onboarding audits.
+    - name: Show device count
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          {{ ((all_devices.managed_devices | default([])) + (filtered_devices.managed_devices | default([]))) | length }}
+          device(s) returned
+          {{ ('(filter: ' + status_filter + ')') if status_filter | length > 0 else '(all statuses)' }}

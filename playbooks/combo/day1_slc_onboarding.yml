@@ -1,0 +1,134 @@
+---
+# COMBO: Day-1 SLC9000 Onboarding
+# Persona: Network Engineer deploying a new SLC9000 into a data center rack
+#
+# What this does (in order):
+#   1. Gather device facts to confirm connectivity and baseline identity
+#   2. Set hostname and description
+#   3. Configure the management interface (static IP or DHCP)
+#   4. Apply baseline NTP and syslog settings via batch CLI commands
+#   5. Save the running configuration to persistent storage
+#
+# Why not use the oob_baseline_config role instead?
+#   The role is designed for fleet-wide enforcement across many devices. This
+#   playbook is for the day-1 workflow on a single new device where you want
+#   visibility into each step and confirmation before proceeding.
+#
+# Prerequisites:
+#   - SLC9000 is reachable from your Ansible control node
+#   - Default sysadmin credentials are set in inventory.yml
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/combo/day1_slc_onboarding.yml \
+#     --limit slc9k-primary
+#
+# Override specific vars at runtime:
+#   ansible-playbook -i inventory.yml playbooks/combo/day1_slc_onboarding.yml \
+#     --limit slc9k-primary \
+#     -e "device_hostname=slc9k-dc2-rack7 static_ip=10.20.30.50"
+
+- name: Day-1 SLC9000 onboarding
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # ---- Identity ----
+    device_hostname: "slc9k-dc1-rack1"
+    device_description: "Data Center 1, Rack 1, OOB console server"
+
+    # ---- Network (management interface) ----
+    management_interface: "eth1"
+    use_dhcp: false
+    static_ip: "192.0.2.10"      # Ignored when use_dhcp=true
+    netmask: "255.255.255.0"     # Ignored when use_dhcp=true
+
+    # ---- Baseline config (applied via batch CLI commands) ----
+    ntp_servers:
+      - "0.pool.ntp.org"
+      - "1.pool.ntp.org"
+
+    # Set to your syslog collector IP. Leave empty to skip syslog configuration.
+    syslog_host: "192.0.2.100"
+
+  tasks:
+
+    # ---- Step 1: Confirm connectivity and identity ----
+    - name: "Step 1: Gather device facts"
+      lantronix.oob.slc_facts:
+      register: facts
+
+    - name: Show current device identity
+      ansible.builtin.debug:
+        msg: >-
+          Connected: model={{ facts.slc_facts.model | default('unknown') }},
+          current hostname={{ facts.slc_facts.hostname | default('unset') }},
+          firmware={{ facts.slc_facts.current_firmware_version | default('unknown') }}
+
+    # ---- Step 2: Set hostname and description ----
+    - name: "Step 2: Set hostname to {{ device_hostname }}"
+      lantronix.oob.slc_system:
+        hostname: "{{ device_hostname }}"
+        description: "{{ device_description }}"
+        state: present
+      register: identity_result
+
+    - name: Confirm identity update
+      ansible.builtin.debug:
+        msg: "Hostname set (changed={{ identity_result.changed }})"
+
+    # ---- Step 3: Configure management interface ----
+    - name: "Step 3a: Enable DHCP on {{ management_interface }}"
+      lantronix.oob.slc_network:
+        interface: "{{ management_interface }}"
+        dhcp: true
+      when: use_dhcp | bool
+      register: net_result_dhcp
+
+    - name: "Step 3b: Set static IP {{ static_ip }} on {{ management_interface }}"
+      lantronix.oob.slc_network:
+        interface: "{{ management_interface }}"
+        dhcp: false
+        ipv4_address: "{{ static_ip }}"
+        netmask: "{{ netmask }}"
+      when: not (use_dhcp | bool)
+      register: net_result_static
+
+    - name: Confirm network config
+      ansible.builtin.debug:
+        msg: >-
+          Network configured (changed={{
+            (net_result_dhcp.changed if use_dhcp | bool else net_result_static.changed)
+            | default(false) }})
+
+    # ---- Step 4: Apply NTP and syslog via batch CLI ----
+    - name: "Step 4: Apply NTP and syslog baseline via batch commands"
+      lantronix.oob.slc_config:
+        action: batch
+        commands: >-
+          {{
+            (ntp_servers | map('regex_replace', '^', 'set ntp server ') | list) +
+            (['set logging host ' + syslog_host] if syslog_host | length > 0 else [])
+          }}
+      register: batch_result
+      when: ntp_servers | length > 0 or syslog_host | length > 0
+
+    - name: Confirm batch apply
+      ansible.builtin.debug:
+        msg: "Baseline config applied (changed={{ batch_result.changed | default(false) }})"
+
+    # ---- Step 5: Save configuration ----
+    - name: "Step 5: Save running configuration to persistent storage"
+      lantronix.oob.slc_config:
+        action: save
+      register: save_result
+
+    - name: Onboarding complete
+      ansible.builtin.debug:
+        msg: >-
+          Day-1 onboarding complete for {{ inventory_hostname }}.
+          hostname={{ device_hostname }},
+          interface={{ management_interface }},
+          ip={{ static_ip if not (use_dhcp | bool) else 'dhcp' }},
+          ntp={{ ntp_servers | join(', ') }},
+          syslog={{ syslog_host if syslog_host | length > 0 else 'not configured' }},
+          config saved={{ save_result.changed }}

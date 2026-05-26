@@ -1,0 +1,41 @@
+---
+# slc_facts, Gather hardware, firmware, and status facts from an SLC9000
+#
+# What this does:
+#   Calls three read-only API endpoints (/system/version, /system/status,
+#   /system/identity) and returns them as a single slc_facts dict. Safe to
+#   run at any time, makes no changes.
+#
+# When to use:
+#   - Confirm device identity before running change tasks
+#   - Verify firmware version during audits
+#   - Spot-check uptime and temperature in a health check
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_facts.yml
+#
+# Target a single device:
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_facts.yml --limit slc9k-primary
+
+- name: Gather SLC9000 facts
+  hosts: slc_devices
+  gather_facts: false
+
+  tasks:
+
+    - name: Collect hardware, firmware, and system facts
+      lantronix.oob.slc_facts:
+      register: result
+
+    - name: Display all facts
+      ansible.builtin.debug:
+        var: result.slc_facts
+
+    # Useful when scripting decisions based on firmware version.
+    - name: Show firmware summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          model={{ result.slc_facts.model | default('unknown') }},
+          firmware={{ result.slc_facts.current_firmware_version | default('unknown') }},
+          hostname={{ result.slc_facts.hostname | default('unknown') }}

@@ -1,0 +1,112 @@
+---
+# percepxion_jobs, Manage scheduled job groups on Percepxion
+#
+# What this does:
+#   state=present  Create or enable/disable an existing job group.
+#   state=absent   Delete a job group.
+#   state=query    Return job logs for a named group. Read-only; changed=false.
+#
+# Job types: Contact your Percepxion administrator for valid job_type values.
+# Common types created automatically by percepxion_firmware (update jobs).
+#
+# Run (query job logs):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_jobs.yml \
+#     -e "operation=query job_name=firmware-update-fleet-q1"
+#
+# Run (disable a job):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_jobs.yml \
+#     -e "operation=disable job_name=nightly-backup"
+#
+# Run (delete a job):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_jobs.yml \
+#     -e "operation=delete job_name=old-job"
+
+- name: Manage Percepxion job groups
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Operation: create, enable, disable, query, delete
+    operation: "query"
+
+    # Job group name.
+    job_name: ""
+
+    # Job type. Required when action=create and the job group does not yet exist.
+    job_type: ""
+
+    # Project scope.
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate job_name is set
+      ansible.builtin.assert:
+        that:
+          - job_name | length > 0
+        fail_msg: "job_name is required."
+
+    - name: Query job logs for "{{ job_name }}"
+      lantronix.oob.percepxion_jobs:
+        name: "{{ job_name }}"
+        state: query
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: query_result
+      when: operation == "query"
+
+    - name: Display job logs
+      ansible.builtin.debug:
+        var: query_result
+      when: operation == "query"
+
+    - name: Create job group "{{ job_name }}"
+      lantronix.oob.percepxion_jobs:
+        name: "{{ job_name }}"
+        job_type: "{{ job_type }}"
+        enabled: true
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_result
+      when: operation == "create"
+
+    - name: Show create result
+      ansible.builtin.debug:
+        var: create_result
+      when: operation == "create"
+
+    - name: Enable job group "{{ job_name }}"
+      lantronix.oob.percepxion_jobs:
+        name: "{{ job_name }}"
+        enabled: true
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: enable_result
+      when: operation == "enable"
+
+    - name: Disable job group "{{ job_name }}"
+      lantronix.oob.percepxion_jobs:
+        name: "{{ job_name }}"
+        enabled: false
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: disable_result
+      when: operation == "disable"
+
+    - name: Delete job group "{{ job_name }}"
+      lantronix.oob.percepxion_jobs:
+        name: "{{ job_name }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: delete_result
+      when: operation == "delete"
+
+    - name: Show result
+      ansible.builtin.debug:
+        var: "{{ operation + '_result' }}"
+      when: operation != "query" and operation + '_result' is defined

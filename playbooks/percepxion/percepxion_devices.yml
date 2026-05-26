@@ -1,0 +1,57 @@
+---
+# percepxion_devices, Query device inventory from Percepxion
+#
+# What this does:
+#   Returns a list of devices registered in Percepxion. Scoped to
+#   percepxion_project_tag when set in inventory. Read-only; always changed=false.
+#   Supports substring search by device name or identifier.
+#
+# Run (all devices):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_devices.yml
+#
+# Search by name:
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_devices.yml \
+#     -e "search=SLC9k-dc1"
+#
+# Increase result limit:
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_devices.yml \
+#     -e "result_limit=500"
+
+- name: Query Percepxion device inventory
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Substring filter on device name or identifier. Leave empty to return all.
+    search: ""
+
+    # Maximum number of devices returned. Default is 100.
+    result_limit: 100
+
+    # Override inventory project_tag to scope this query.
+    project_tag: ""
+
+  tasks:
+
+    - name: Query device inventory
+      lantronix.oob.percepxion_devices:
+        search_string: "{{ search | default(omit) }}"
+        limit: "{{ result_limit }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+      register: device_list
+
+    - name: Display device inventory
+      ansible.builtin.debug:
+        var: device_list.devices
+
+    - name: Show device count
+      ansible.builtin.debug:
+        msg: >-
+          {{ (device_list.devices | default([])) | length }} device(s) returned
+          {{ ('matching "' + search + '"') if search | length > 0 else '' }}
+
+    # List device names for quick human review.
+    - name: List device names
+      ansible.builtin.debug:
+        msg: "{{ device_list.devices | default([]) | map(attribute='device_name') | list }}"
+      when: (device_list.devices | default([])) | length > 0

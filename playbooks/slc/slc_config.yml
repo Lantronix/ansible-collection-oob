@@ -1,0 +1,92 @@
+---
+# slc_config, Backup, compare, batch configure, and save on SLC9000
+#
+# What this does:
+#   action=get     Read-only. Returns the running configuration as CLI commands.
+#   action=compare Read-only. Returns a diff between running and saved config.
+#   action=batch   Executes a list of CLI configuration commands. changed=true.
+#   action=save    Calls the save endpoint to persist running config. changed=true.
+#
+# Idempotency note:
+#   batch and save are always changed=true regardless of content. Run action=get
+#   first to inspect current state if you want to gate changes conditionally.
+#
+# Run (get current config, safe, read-only):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_config.yml \
+#     -e "config_action=get"
+#
+# Run (apply batch commands):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_config.yml \
+#     -e "config_action=batch"
+#
+# Run (save running config):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_config.yml \
+#     -e "config_action=save"
+
+- name: Manage SLC9000 configuration
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # Which action to perform: get, compare, batch, save
+    config_action: get
+
+    # CLI commands to execute when config_action=batch.
+    # Each string is a complete CLI command as you would type it in the SLC shell.
+    # Examples below: configure NTP and syslog. Adjust to your environment.
+    batch_commands:
+      - "set ntp server 0.pool.ntp.org"
+      - "set ntp server 1.pool.ntp.org"
+      - "set logging host 192.0.2.100"
+      # Add additional commands here. Each is a separate list item.
+
+  tasks:
+
+    # --- Get running configuration ---
+    - name: Retrieve running configuration
+      lantronix.oob.slc_config:
+        action: get
+      register: config_get
+      when: config_action == "get"
+
+    - name: Display running configuration
+      ansible.builtin.debug:
+        var: config_get
+      when: config_action == "get"
+
+    # --- Compare running vs saved ---
+    - name: Compare running vs saved configuration
+      lantronix.oob.slc_config:
+        action: compare
+      register: config_compare
+      when: config_action == "compare"
+
+    - name: Display configuration diff
+      ansible.builtin.debug:
+        var: config_compare
+      when: config_action == "compare"
+
+    # --- Apply batch CLI commands ---
+    - name: Apply batch configuration commands
+      lantronix.oob.slc_config:
+        action: batch
+        commands: "{{ batch_commands }}"
+      register: config_batch
+      when: config_action == "batch"
+
+    - name: Display batch result
+      ansible.builtin.debug:
+        var: config_batch
+      when: config_action == "batch"
+
+    # --- Save running config ---
+    - name: Save running configuration to persistent storage
+      lantronix.oob.slc_config:
+        action: save
+      register: config_save
+      when: config_action == "save"
+
+    - name: Confirm save
+      ansible.builtin.debug:
+        msg: "Configuration saved on {{ inventory_hostname }}"
+      when: config_action == "save" and config_save is defined and config_save.changed

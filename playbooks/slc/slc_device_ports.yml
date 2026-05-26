@@ -1,0 +1,63 @@
+---
+# slc_device_ports, Query serial port configuration on SLC9000
+#
+# What this does:
+#   Returns serial port configuration from GET /ports. Read-only.
+#   Optionally also fetches active port connections from GET /connections.
+#   Port configuration changes are made via slc_config (action=batch).
+#
+# Port ID format: "port1", "port2", ... "port32" (varies by model)
+#   SLC9016 = ports 1-16, SLC9032 = ports 1-32, etc.
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_device_ports.yml
+#
+# Query a single port with active connections:
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_device_ports.yml \
+#     -e "query_port=port3 show_connections=true"
+
+- name: Query SLC9000 serial device ports
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # Leave empty to query all ports. Set "port1", "port3", etc. to filter.
+    query_port: ""
+
+    # Set true to also fetch active connections per port.
+    show_connections: false
+
+  tasks:
+
+    # --- Query all ports ---
+    - name: Query all serial ports
+      lantronix.oob.slc_device_ports:
+        gather_connections: "{{ show_connections | bool }}"
+      register: all_ports
+      when: query_port | length == 0
+
+    - name: Display all port configuration
+      ansible.builtin.debug:
+        var: all_ports
+      when: query_port | length == 0
+
+    # --- Query a single port ---
+    - name: Query port {{ query_port }}
+      lantronix.oob.slc_device_ports:
+        port_id: "{{ query_port }}"
+        gather_connections: "{{ show_connections | bool }}"
+      register: single_port
+      when: query_port | length > 0
+
+    - name: Display port {{ query_port }} detail
+      ansible.builtin.debug:
+        var: single_port
+      when: query_port | length > 0
+
+    # Summarize port count. Useful for quick inventory validation.
+    - name: Show port count summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          {{ (all_ports.ports | default([])) | length }} ports configured
+      when: query_port | length == 0 and all_ports is defined

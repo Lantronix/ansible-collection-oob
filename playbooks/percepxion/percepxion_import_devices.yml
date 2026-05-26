@@ -1,0 +1,78 @@
+---
+# percepxion_import_devices, Register and assign devices to Percepxion
+#
+# What this does:
+#   Registers one or more devices in Percepxion using POST /v1/device/register,
+#   then assigns them to a project. Checks whether each device is already
+#   registered (by serial number) before calling register, skips already-
+#   registered devices (idempotent on serial number).
+#
+# Required per device: serial number. MAC address and model are optional
+#   but recommended for accurate inventory.
+#
+# Where to find serial numbers:
+#   - On the SLC9000 label on the chassis
+#   - Via slc_facts.yml output (serial_number field)
+#   - From your procurement records
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_import_devices.yml
+#
+# Override project at runtime:
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_import_devices.yml \
+#     -e "target_project=datacenter-east"
+
+- name: Register and assign devices to Percepxion
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Project to assign newly registered devices to.
+    # Leave empty to register without project assignment.
+    target_project: "my-project"
+
+    # Tenant ID for Project Admin operations.
+    tenant_id: ""
+
+    # List of devices to register.
+    # Each entry requires serial. mac and model are optional but recommended.
+    # Add one dict per device.
+    devices:
+      - serial: "SLC9K-000001"
+        mac: "00:11:22:33:44:01"
+        model: "SLC9016"
+      - serial: "SLC9K-000002"
+        mac: "00:11:22:33:44:02"
+        model: "SLC9032"
+      # Add additional devices here:
+      # - serial: "SLC9K-000003"
+      #   mac: "00:11:22:33:44:03"
+      #   model: "SLC9016"
+
+  tasks:
+
+    - name: Validate device list is not empty
+      ansible.builtin.assert:
+        that:
+          - devices | length > 0
+        fail_msg: "At least one device entry is required in the devices list."
+
+    - name: Register and assign {{ devices | length }} device(s) to Percepxion
+      lantronix.oob.percepxion_import_devices:
+        devices: "{{ devices }}"
+        project_tag: "{{ target_project | default(omit) }}"
+        state: present
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: import_result
+
+    - name: Display import result
+      ansible.builtin.debug:
+        var: import_result
+
+    - name: Show registration summary
+      ansible.builtin.debug:
+        msg: >-
+          Import complete:
+          {{ import_result.registered | default([]) | length }} registered,
+          {{ import_result.skipped | default([]) | length }} already existed (skipped).
+          {{ ('Assigned to project: ' + target_project) if target_project | length > 0 else 'No project assignment.' }}

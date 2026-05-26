@@ -1,0 +1,92 @@
+---
+# slc_firmware, Check or update firmware on SLC9000
+#
+# What this does:
+#   state=check: Returns current firmware, alternate bank firmware, and
+#     update status. Read-only; always changed=false. Safe to run anytime.
+#   state=update: Submits a firmware update request. The device downloads
+#     and installs the image asynchronously. Poll with state=check to track
+#     progress. Always changed=true.
+#
+# Firmware download:
+#   Get the firmware image URL and MD5 checksum from the Lantronix support
+#   portal at https://www.lantronix.com/support/downloads/.
+#
+# WARNING: Firmware updates are non-idempotent. Running state=update always
+#   triggers a new update job even if the device is already on the target
+#   version. Always run state=check first to verify current version.
+#
+# Run (check only, default):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_firmware.yml
+#
+# Run (trigger update, uncomment the update task below):
+#   ansible-playbook -i inventory.yml playbooks/slc/slc_firmware.yml \
+#     -e "run_update=true firmware_url=https://... firmware_md5=abc123"
+
+- name: Manage SLC9000 firmware
+  hosts: slc_devices
+  gather_facts: false
+
+  vars:
+    # Controls whether the update task runs. Default is check-only.
+    run_update: false
+
+    # Firmware image URL. Obtain from Lantronix support portal.
+    firmware_url: ""
+
+    # MD5 checksum string provided alongside the firmware download.
+    firmware_md5: ""
+
+    # Human-readable label stored in the update job record.
+    firmware_description: "Ansible-triggered update"
+
+    # Reboot automatically after the image is written to the alternate bank.
+    reboot_after_update: false
+
+  tasks:
+
+    - name: Check current firmware version and update status
+      lantronix.oob.slc_firmware:
+        state: check
+      register: firmware_info
+
+    - name: Display firmware status
+      ansible.builtin.debug:
+        var: firmware_info
+
+    - name: Show version summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          active={{ firmware_info.current_firmware_version | default('unknown') }},
+          alternate={{ firmware_info.alternate_firmware_version | default('unknown') }},
+          update_status={{ firmware_info.update_status | default('none') }}
+
+    # --- Trigger firmware update ---
+    # Uncomment the block below or pass -e run_update=true at the command line.
+    # Ensure firmware_url and firmware_md5 are set before running.
+    - name: Trigger firmware update
+      lantronix.oob.slc_firmware:
+        state: update
+        url: "{{ firmware_url }}"
+        md5_key: "{{ firmware_md5 }}"
+        description: "{{ firmware_description }}"
+        reboot_after_update: "{{ reboot_after_update | bool }}"
+      when:
+        - run_update | bool
+        - firmware_url | length > 0
+        - firmware_md5 | length > 0
+      register: update_result
+
+    - name: Show update submission result
+      ansible.builtin.debug:
+        var: update_result
+      when: run_update | bool and update_result is defined
+
+    - name: Remind operator to poll for completion
+      ansible.builtin.debug:
+        msg: >-
+          Update submitted for {{ inventory_hostname }}. The device downloads
+          the image asynchronously. Re-run this playbook with run_update=false
+          in 5-10 minutes to check update_status.
+      when: run_update | bool and update_result is defined and update_result.changed

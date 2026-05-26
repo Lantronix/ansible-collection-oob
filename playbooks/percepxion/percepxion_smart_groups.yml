@@ -1,0 +1,94 @@
+---
+# percepxion_smart_groups, Create and manage device smart groups on Percepxion
+#
+# What this does:
+#   Creates or deletes Percepxion smart groups. A smart group is a dynamic
+#   device set defined by a filter expression or a static list of device IDs.
+#   Checks for an existing group by name before acting (idempotent on create).
+#
+# Smart groups are used as targets for fleet operations:
+#   - percepxion_firmware (fleet firmware updates)
+#   - percepxion_jobs (scheduled job groups)
+#   - oob_firmware_audit role
+#
+# query_string examples:
+#   "device_name:SLC*", all devices whose name starts with SLC
+#   "firmware_version:9.7.0*", all devices on a specific firmware family
+#   "project:my-project", all devices in a named project
+#   (Consult Percepxion documentation for the full filter syntax)
+#
+# Run (create by group_query):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_smart_groups.yml \
+#     -e "operation=create group_name=all-slc9k group_query=device_name:SLC*"
+#
+# Run (delete a group):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_smart_groups.yml \
+#     -e "operation=delete group_name=all-slc9k"
+
+- name: Manage Percepxion smart groups
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # "create" (state=present) or "delete" (state=absent)
+    operation: "create"
+
+    # Smart group name. Must be unique within the project.
+    group_name: "my-smart-group"
+
+    # Filter expression defining dynamic group membership.
+    # Use group_query or device_ids, not both.
+    group_query: "device_name:SLC*"
+
+    # Alternative: static list of device IDs.
+    # device_ids:
+    #   - "device-uuid-1"
+    #   - "device-uuid-2"
+    device_ids: []
+
+    # Project scope for the smart group.
+    project_tag: ""
+
+    # Tenant ID for Project Admin operations.
+    tenant_id: ""
+
+  tasks:
+
+    - name: Create smart group "{{ group_name }}" by group_query expression
+      lantronix.oob.percepxion_smart_groups:
+        name: "{{ group_name }}"
+        query_string: "{{ group_query }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_query_result
+      when: operation == "create" and device_ids | length == 0
+
+    - name: Create smart group "{{ group_name }}" from device ID list
+      lantronix.oob.percepxion_smart_groups:
+        name: "{{ group_name }}"
+        device_ids: "{{ device_ids }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_ids_result
+      when: operation == "create" and device_ids | length > 0
+
+    - name: Show create result
+      ansible.builtin.debug:
+        var: "{{ 'create_query_result' if device_ids | length == 0 else 'create_ids_result' }}"
+      when: operation == "create"
+
+    - name: Delete smart group "{{ group_name }}"
+      lantronix.oob.percepxion_smart_groups:
+        name: "{{ group_name }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: delete_result
+      when: operation == "delete"
+
+    - name: Show delete result
+      ansible.builtin.debug:
+        var: delete_result
+      when: operation == "delete"

@@ -1,0 +1,136 @@
+---
+# COMBO: Security Audit
+# Persona: Security Engineer reviewing OOB infrastructure access and account hygiene
+#
+# What this does:
+#   SLC9000 side:
+#     1. Gather device facts and confirm firmware version
+#     2. Query the sysadmin account attributes on each SLC
+#   Percepxion side:
+#     3. Pull recent device audit events (platform-level changes)
+#     4. Pull recent user audit events (login/logout, account changes)
+#     5. Pull the terminal access log for a specific device (if device_id is set)
+#
+# Why this combo?
+#   No single role covers cross-platform audit log review. This playbook
+#   collects evidence from both the SLC devices and the Percepxion platform
+#   in a single run, useful for quarterly reviews, incident investigation,
+#   or compliance reporting.
+#
+# Run (all audit, no access log):
+#   ansible-playbook -i inventory.yml playbooks/combo/security_audit.yml
+#
+# Run (include access log for a specific device):
+#   ansible-playbook -i inventory.yml playbooks/combo/security_audit.yml \
+#     -e "audit_device_id=abc-123-device-uuid"
+#
+# Run with a time window (ISO 8601):
+#   ansible-playbook -i inventory.yml playbooks/combo/security_audit.yml \
+#     -e "audit_start=2026-05-01T00:00:00Z audit_end=2026-05-25T23:59:59Z"
+
+- name: OOB infrastructure security audit
+  hosts: all
+  gather_facts: false
+
+  vars:
+    # ---- Time range for Percepxion audit log queries ----
+    # Leave empty to return the most recent entries up to audit_limit.
+    audit_start: ""
+    audit_end: ""
+    audit_limit: 200
+
+    # ---- Device access log ----
+    # Set a Percepxion device ID to pull its terminal session access log.
+    # Leave empty to skip the access log query.
+    audit_device_id: ""
+
+    # ---- Project scope ----
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    # ============================================================
+    # SLC9000: Facts and account review
+    # ============================================================
+    - name: "SLC | Gather device facts for firmware audit"
+      lantronix.oob.slc_facts:
+      register: slc_facts_result
+      when: inventory_hostname in groups.get('slc_devices', [])
+
+    - name: "SLC | Show firmware version (verify it matches expected release)"
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          firmware={{ slc_facts_result.slc_facts.current_firmware_version | default('unknown') }},
+          model={{ slc_facts_result.slc_facts.model | default('unknown') }}
+      when: inventory_hostname in groups.get('slc_devices', []) and slc_facts_result is defined
+
+    - name: "SLC | Query sysadmin account attributes"
+      lantronix.oob.slc_users:
+      register: slc_users_result
+      when: inventory_hostname in groups.get('slc_devices', [])
+
+    - name: "SLC | Show sysadmin account info"
+      ansible.builtin.debug:
+        var: slc_users_result
+      when: inventory_hostname in groups.get('slc_devices', []) and slc_users_result is defined
+
+    # ============================================================
+    # Percepxion: Audit log review
+    # ============================================================
+    - name: "Percepxion | Query device audit log"
+      lantronix.oob.percepxion_audit_logs:
+        log_type: device
+        start_time: "{{ audit_start | default(omit) }}"
+        end_time: "{{ audit_end | default(omit) }}"
+        limit: "{{ audit_limit }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: device_audit
+      when: inventory_hostname in groups.get('percepxion_platform', [])
+
+    - name: "Percepxion | Show device audit events"
+      ansible.builtin.debug:
+        msg: >-
+          Device audit: {{ (device_audit.audit_logs | default([])) | length }} events.
+          Review device_audit.audit_logs for platform change details.
+      when: inventory_hostname in groups.get('percepxion_platform', []) and device_audit is defined
+
+    - name: "Percepxion | Query user audit log"
+      lantronix.oob.percepxion_audit_logs:
+        log_type: user
+        start_time: "{{ audit_start | default(omit) }}"
+        end_time: "{{ audit_end | default(omit) }}"
+        limit: "{{ audit_limit }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: user_audit
+      when: inventory_hostname in groups.get('percepxion_platform', [])
+
+    - name: "Percepxion | Show user audit events"
+      ansible.builtin.debug:
+        msg: >-
+          User audit: {{ (user_audit.audit_logs | default([])) | length }} events.
+          Review user_audit.audit_logs for login and account change details.
+      when: inventory_hostname in groups.get('percepxion_platform', []) and user_audit is defined
+
+    # Optional: pull terminal session access log for a specific device.
+    - name: "Percepxion | Query terminal access log for device {{ audit_device_id }}"
+      lantronix.oob.percepxion_audit_logs:
+        log_type: access
+        device_id: "{{ audit_device_id }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: access_log
+      when:
+        - inventory_hostname in groups.get('percepxion_platform', [])
+        - audit_device_id | length > 0
+
+    - name: "Percepxion | Show access log"
+      ansible.builtin.debug:
+        var: access_log
+      when:
+        - inventory_hostname in groups.get('percepxion_platform', [])
+        - audit_device_id | length > 0
+        - access_log is defined

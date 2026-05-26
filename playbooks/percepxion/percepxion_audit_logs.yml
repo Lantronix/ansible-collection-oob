@@ -1,0 +1,78 @@
+---
+# percepxion_audit_logs, Query audit logs from Percepxion
+#
+# What this does:
+#   log_type=device  Returns platform-level device audit events (add, remove,
+#                    config changes). Supports time range filtering.
+#   log_type=user    Returns user account audit events (login, logout, changes).
+#   log_type=access  Downloads the terminal session access log for a specific device.
+#   All modes are read-only; always changed=false.
+#
+# Time format: ISO 8601. Example: "2026-05-01T00:00:00Z"
+#
+# Run (device audit log, last 100 events):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_audit_logs.yml \
+#     -e "log_type=device"
+#
+# Run (user audit log with time range):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_audit_logs.yml \
+#     -e "log_type=user start=2026-05-01T00:00:00Z end=2026-05-25T23:59:59Z"
+#
+# Run (device terminal access log):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_audit_logs.yml \
+#     -e "log_type=access device_id=abc-123-device-uuid"
+
+- name: Query Percepxion audit logs
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # Log type: device, user, access
+    log_type: "device"
+
+    # Device ID, required when log_type=access.
+    # Get from percepxion_devices.yml output.
+    device_id: ""
+
+    # ISO 8601 time range for filtering device audit logs.
+    # Leave empty to return the most recent entries up to the limit.
+    start: ""
+    end: ""
+
+    # Maximum entries to return (default 100, max depends on platform).
+    limit: 100
+
+    # Project scope.
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate device_id for access log
+      ansible.builtin.assert:
+        that:
+          - device_id | length > 0
+        fail_msg: "device_id is required when log_type=access."
+      when: log_type == "access"
+
+    - name: Query {{ log_type }} audit log
+      lantronix.oob.percepxion_audit_logs:
+        log_type: "{{ log_type }}"
+        device_id: "{{ device_id | default(omit) }}"
+        start_time: "{{ start | default(omit) }}"
+        end_time: "{{ end | default(omit) }}"
+        limit: "{{ limit }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: log_result
+
+    - name: Display audit log results
+      ansible.builtin.debug:
+        var: log_result
+
+    - name: Show entry count
+      ansible.builtin.debug:
+        msg: >-
+          {{ log_type | capitalize }} audit log:
+          {{ (log_result.audit_logs | default([])) | length }} entries returned
+          {{ ('from ' + start + ' to ' + end) if start | length > 0 else '' }}

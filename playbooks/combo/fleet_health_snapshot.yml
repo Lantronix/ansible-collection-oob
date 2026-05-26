@@ -1,0 +1,136 @@
+---
+# COMBO: Fleet Health Snapshot
+# Persona: Network Manager or SRE pulling a current health report across OOB infrastructure
+#
+# What this does:
+#   1. Gather Percepxion platform facts (total device count and summary)
+#   2. List all devices in the target project
+#   3. Pull current telemetry (CPU, memory, temperature) for a specific device
+#      or for a list of device IDs
+#   4. Check firmware compliance across the fleet smart group
+#
+# Why this combo?
+#   No role covers the health reporting workflow. The oob_fleet_inventory role
+#   builds an Ansible inventory but does not produce a health summary. This
+#   playbook combines device listing, telemetry, and firmware compliance into
+#   a single operator-facing report.
+#
+# Run (platform summary + device list only):
+#   ansible-playbook -i inventory.yml playbooks/combo/fleet_health_snapshot.yml
+#
+# Run (include telemetry for a specific device):
+#   ansible-playbook -i inventory.yml playbooks/combo/fleet_health_snapshot.yml \
+#     -e "telemetry_device_id=abc-123-uuid"
+#
+# Run (include firmware compliance for a smart group):
+#   ansible-playbook -i inventory.yml playbooks/combo/fleet_health_snapshot.yml \
+#     -e "fw_smart_group_id=sg-456 fw_target_version=9.7.0.0R8"
+
+- name: Fleet health snapshot
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # ---- Project scope ----
+    # Scopes device list and facts to a named project.
+    # Leave empty to query across all projects the account can access.
+    project_tag: ""
+    tenant_id: ""
+
+    # ---- Device list ----
+    # Maximum devices to return. Increase for large fleets.
+    device_list_limit: 200
+
+    # ---- Telemetry ----
+    # Set a Percepxion device ID to pull telemetry. Leave empty to skip.
+    telemetry_device_id: ""
+    telemetry_metrics:
+      - cpu
+      - memory
+      - temperature
+
+    # ---- Firmware compliance ----
+    # Set both vars to include a compliance check. Leave empty to skip.
+    fw_smart_group_id: ""
+    fw_target_version: ""
+
+  tasks:
+
+    # ---- Step 1: Platform summary ----
+    - name: "Step 1: Gather Percepxion platform facts"
+      lantronix.oob.percepxion_facts:
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: platform_facts
+
+    - name: Show platform summary
+      ansible.builtin.debug:
+        msg: >-
+          Percepxion platform:
+          {{ platform_facts.percepxion_facts.device_count | default(0) }} device(s) registered
+          {{ ('in project ' + project_tag) if project_tag | length > 0 else '(all projects)' }}
+
+    # ---- Step 2: Device list ----
+    - name: "Step 2: List all devices"
+      lantronix.oob.percepxion_devices:
+        limit: "{{ device_list_limit }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: device_list
+
+    - name: Show device names
+      ansible.builtin.debug:
+        msg: >-
+          Devices ({{ (device_list.devices | default([])) | length }} returned):
+          {{ device_list.devices | default([]) | map(attribute='device_name') | list }}
+
+    # ---- Step 3: Telemetry for a specific device ----
+    - name: "Step 3: Pull current telemetry for {{ telemetry_device_id }}"
+      lantronix.oob.percepxion_telemetry:
+        device_id: "{{ telemetry_device_id }}"
+        metrics: "{{ telemetry_metrics }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: telemetry_result
+      when: telemetry_device_id | length > 0
+
+    - name: Show telemetry
+      ansible.builtin.debug:
+        msg: >-
+          Telemetry for {{ telemetry_device_id }}:
+          {{ telemetry_result.telemetry | default({}) }}
+      when: telemetry_device_id | length > 0 and telemetry_result is defined
+
+    # ---- Step 4: Firmware compliance check ----
+    - name: "Step 4: Check firmware compliance against {{ fw_target_version }}"
+      lantronix.oob.percepxion_firmware:
+        smart_group_id: "{{ fw_smart_group_id }}"
+        firmware_version: "{{ fw_target_version }}"
+        state: check
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: fw_result
+      when:
+        - fw_smart_group_id | length > 0
+        - fw_target_version | length > 0
+
+    - name: Show firmware compliance summary
+      ansible.builtin.debug:
+        msg: >-
+          Firmware compliance (target={{ fw_target_version }}):
+          {{ (fw_result.compliant_devices | default([])) | length }} compliant,
+          {{ (fw_result.non_compliant_devices | default([])) | length }} non-compliant.
+          {{ 'All devices up to date.' if (fw_result.non_compliant_devices | default([])) | length == 0
+             else 'Non-compliant: ' + (fw_result.non_compliant_devices | default([]) | map(attribute='device_name') | list | join(', ')) }}
+      when:
+        - fw_smart_group_id | length > 0
+        - fw_result is defined
+
+    # ---- Final summary ----
+    - name: Health snapshot complete
+      ansible.builtin.debug:
+        msg: >-
+          Snapshot complete.
+          Devices={{ (device_list.devices | default([])) | length }},
+          telemetry={{ 'collected' if telemetry_device_id | length > 0 else 'skipped (set telemetry_device_id)' }},
+          firmware_check={{ 'completed' if fw_smart_group_id | length > 0 else 'skipped (set fw_smart_group_id + fw_target_version)' }}

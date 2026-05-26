@@ -1,0 +1,84 @@
+---
+# percepxion_users, Manage user accounts on the Percepxion platform
+#
+# What this does:
+#   Creates or deletes Percepxion user accounts. Checks whether the user
+#   exists before acting, only calls create or delete when the desired
+#   state differs from current state (idempotent).
+#
+# Roles: Contact your Percepxion administrator for valid role names in your tenant.
+# Common values: admin, operator, viewer (exact values depend on tenant config).
+#
+# Run (create a user):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_users.yml \
+#     -e "operation=create username=ops@example.com role=operator"
+#   Supply the password via vault or prompt, do not pass in plain text on the CLI.
+#
+# Run (delete a user):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_users.yml \
+#     -e "operation=delete username=ops@example.com"
+
+- name: Manage Percepxion user accounts
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # "create" (state=present) or "delete" (state=absent)
+    operation: "create"
+
+    # Username, typically an email address.
+    username: ""
+
+    # Role to assign. Required when action=create.
+    role: "operator"
+
+    # Password for the new account. Required when action=create.
+    # In production, set this via ansible-vault or a vault-encrypted var file.
+    # Example vault usage:
+    #   ansible-vault encrypt_string 'SecurePass123' --name 'new_user_password'
+    new_user_password: ""
+
+    # Override the project scope for this operation.
+    project_tag: ""
+
+    # Tenant ID for Project Admin operations.
+    tenant_id: ""
+
+  tasks:
+
+    - name: Validate required parameters
+      ansible.builtin.assert:
+        that:
+          - username | length > 0
+        fail_msg: "username is required."
+
+    - name: Create user {{ username }}
+      lantronix.oob.percepxion_users:
+        username: "{{ username }}"
+        role: "{{ role }}"
+        password: "{{ new_user_password }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_result
+      no_log: true   # Suppress output to keep the password out of logs
+      when: operation == "create"
+
+    - name: Confirm user created
+      ansible.builtin.debug:
+        msg: "User {{ username }} created (changed={{ create_result.changed }})"
+      when: operation == "create" and create_result is defined
+
+    - name: Delete user {{ username }}
+      lantronix.oob.percepxion_users:
+        username: "{{ username }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: delete_result
+      when: operation == "delete"
+
+    - name: Confirm user deleted
+      ansible.builtin.debug:
+        msg: "User {{ username }} deleted (changed={{ delete_result.changed }})"
+      when: operation == "delete" and delete_result is defined

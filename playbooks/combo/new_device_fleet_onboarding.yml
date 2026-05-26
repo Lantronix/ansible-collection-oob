@@ -1,0 +1,121 @@
+---
+# COMBO: New Device Fleet Onboarding into Percepxion
+# Persona: IT Operations bringing a batch of new SLC9000s under Percepxion management
+#
+# What this does (in order):
+#   1. Register devices in Percepxion by serial number (skips already-registered)
+#   2. Assign all registered devices to a named project
+#   3. Create a smart group targeting the new devices
+#   4. Run a firmware compliance check against the smart group
+#
+# Why this combo?
+#   No single role covers the full new-device onboarding path. The oob_firmware_audit
+#   role assumes the smart group already exists. This playbook handles the full
+#   sequence from raw device serial to monitored fleet member.
+#
+# Run:
+#   ansible-playbook -i inventory.yml playbooks/combo/new_device_fleet_onboarding.yml
+#
+# After completion:
+#   - Check percepxion_firmware compliance output for non-compliant devices
+#   - Run percepxion_firmware.yml with run_update=true to remediate if needed
+
+- name: Onboard new SLC9000 devices into Percepxion
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # ---- Target project ----
+    # Project tag to assign newly registered devices to.
+    target_project: "datacenter-east"
+
+    # Tenant ID for Project Admin operations. Leave empty for standard users.
+    tenant_id: ""
+
+    # ---- Devices to register ----
+    # Add one entry per device. serial is required; mac and model are recommended.
+    devices:
+      - serial: "SLC9K-000001"
+        mac: "00:11:22:33:44:01"
+        model: "SLC9016"
+      - serial: "SLC9K-000002"
+        mac: "00:11:22:33:44:02"
+        model: "SLC9032"
+      # Add more devices here:
+      # - serial: "SLC9K-000003"
+      #   mac: "00:11:22:33:44:03"
+      #   model: "SLC9016"
+
+    # ---- Smart group ----
+    # A smart group is created to target these devices for fleet operations.
+    # The query_string below matches devices by project. Adjust if needed.
+    smart_group_name: "new-fleet-{{ target_project }}"
+    smart_group_query: "project:{{ target_project }}"
+
+    # ---- Firmware compliance check ----
+    # Target firmware version to check compliance against after onboarding.
+    # Get the current shipping version from the Lantronix support portal.
+    target_firmware_version: "9.7.0.0R8"
+
+  tasks:
+
+    # ---- Step 1: Register devices ----
+    - name: "Step 1: Register {{ devices | length }} device(s) in Percepxion"
+      lantronix.oob.percepxion_import_devices:
+        devices: "{{ devices }}"
+        project_tag: "{{ target_project }}"
+        state: present
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: import_result
+
+    - name: Show registration summary
+      ansible.builtin.debug:
+        msg: >-
+          Registration complete:
+          {{ import_result.registered | default([]) | length }} new,
+          {{ import_result.skipped | default([]) | length }} already registered (skipped).
+
+    # ---- Step 2: Create smart group for the new devices ----
+    - name: "Step 2: Create smart group '{{ smart_group_name }}'"
+      lantronix.oob.percepxion_smart_groups:
+        name: "{{ smart_group_name }}"
+        query_string: "{{ smart_group_query }}"
+        project_tag: "{{ target_project }}"
+        state: present
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: sg_result
+
+    - name: Show smart group result
+      ansible.builtin.debug:
+        msg: >-
+          Smart group '{{ smart_group_name }}' ready
+          (changed={{ sg_result.changed }}, id={{ sg_result.smart_group_id | default('see output') }})
+
+    # ---- Step 3: Firmware compliance check ----
+    - name: "Step 3: Check firmware compliance against {{ target_firmware_version }}"
+      lantronix.oob.percepxion_firmware:
+        smart_group_id: "{{ sg_result.smart_group_id }}"
+        firmware_version: "{{ target_firmware_version }}"
+        state: check
+        project_tag: "{{ target_project }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: fw_result
+      when: sg_result.smart_group_id is defined
+
+    - name: Show firmware compliance summary
+      ansible.builtin.debug:
+        msg: >-
+          Firmware check complete.
+          Compliant: {{ (fw_result.compliant_devices | default([])) | length }},
+          Non-compliant: {{ (fw_result.non_compliant_devices | default([])) | length }}.
+          {{ 'All devices are on target firmware.' if (fw_result.non_compliant_devices | default([])) | length == 0
+             else 'Run percepxion_firmware.yml with run_update=true to remediate.' }}
+      when: fw_result is defined
+
+    - name: Fleet onboarding complete
+      ansible.builtin.debug:
+        msg: >-
+          Onboarding complete. Project={{ target_project }},
+          smart_group={{ smart_group_name }},
+          smart_group_id={{ sg_result.smart_group_id | default('see output') }}.
+          Save the smart_group_id for use with percepxion_firmware.yml.
