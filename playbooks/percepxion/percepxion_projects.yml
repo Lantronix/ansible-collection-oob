@@ -43,7 +43,7 @@
           - device_id | length > 0
         fail_msg: "device_id is required. Pass -e device_id=<your-device-id>"
 
-    - name: Assign device {{ device_id }} to project {{ target_project }}
+    - name: Assign device to project {{ target_project }}
       lantronix.oob.percepxion_projects:
         device_id: "{{ device_id }}"
         project_tag: "{{ target_project }}"
@@ -57,7 +57,7 @@
         var: assign_result
       when: operation == "assign"
 
-    - name: Unassign device {{ device_id }} from its current project
+    - name: Unassign device from current project ({{ device_id }})
       lantronix.oob.percepxion_projects:
         device_id: "{{ device_id }}"
         state: absent

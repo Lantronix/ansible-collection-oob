@@ -42,13 +42,13 @@
       when: status_filter | length == 0
 
     # --- Query with status filter ---
-    - name: Get {{ status_filter }} devices
+    - name: Get devices with status filter {{ status_filter }}
       lantronix.oob.slc_managed_devices:
         filter_status: "{{ status_filter }}"
       register: filtered_devices
       when: status_filter | length > 0
 
-    - name: Display {{ status_filter }} devices
+    - name: Display devices with status filter {{ status_filter }}
       ansible.builtin.debug:
         var: filtered_devices
       when: status_filter | length > 0

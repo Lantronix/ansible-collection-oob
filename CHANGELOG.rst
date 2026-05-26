@@ -4,6 +4,34 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.19
+=======
+
+Release Summary
+---------------
+
+Lint cleanup release. Fixes ansible-lint ``name[template]`` violations across
+11 task names in 7 playbooks, moves the example inventory template from
+``playbooks/`` to ``examples/`` to resolve a false-positive syntax-check error
+from ansible-lint, and updates the README module count and table to reflect
+the two modules deprecated in v1.0.18.
+
+Minor Changes
+-------------
+
+- ``examples/inventory.yml``: moved from ``playbooks/inventory.yml`` to
+  eliminate an ansible-lint ``syntax-check`` false positive (ansible-lint
+  treats all files in ``playbooks/`` as playbooks).
+- Playbooks: fixed ``name[template]`` ansible-lint violations in
+  ``day1_slc_onboarding.yml``, ``new_device_fleet_onboarding.yml``,
+  ``percepxion_audit_logs.yml``, ``percepxion_import_devices.yml``,
+  ``percepxion_projects.yml``, ``percepxion_smart_groups.yml``,
+  ``slc_device_ports.yml``, and ``slc_managed_devices.yml``. Task names
+  with Jinja2 templates now place the template at the end of the name string.
+- ``README.md``: corrected module count from 20 to 18 active; marked
+  ``percepxion_users`` and ``percepxion_aoob_session`` as deprecated in the
+  module table.
+
 v1.0.18
 =======
 

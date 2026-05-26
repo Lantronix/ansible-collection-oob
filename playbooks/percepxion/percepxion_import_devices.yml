@@ -67,7 +67,7 @@
           - devices | length > 0
         fail_msg: "At least one device entry is required in the devices list."
 
-    - name: Register and assign {{ devices | length }} device(s) to Percepxion
+    - name: Register and assign devices to Percepxion ({{ devices | length }})
       lantronix.oob.percepxion_import_devices:
         devices: "{{ devices }}"
         project_tag: "{{ target_project | default(omit) }}"

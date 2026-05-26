@@ -55,7 +55,7 @@
         fail_msg: "device_id is required when log_type=access."
       when: log_type == "access"
 
-    - name: Query {{ log_type }} audit log
+    - name: Query audit log ({{ log_type }})
       lantronix.oob.percepxion_audit_logs:
         log_type: "{{ log_type }}"
         device_id: "{{ device_id | default(omit) }}"

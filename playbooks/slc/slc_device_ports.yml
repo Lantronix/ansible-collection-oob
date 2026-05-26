@@ -49,7 +49,7 @@
       register: single_port
       when: query_port | length > 0
 
-    - name: Display port {{ query_port }} detail
+    - name: Display port detail for {{ query_port }}
       ansible.builtin.debug:
         var: single_port
       when: query_port | length > 0

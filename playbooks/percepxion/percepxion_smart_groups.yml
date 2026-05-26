@@ -54,7 +54,7 @@
 
   tasks:
 
-    - name: Create smart group "{{ group_name }}" by group_query expression
+    - name: Create smart group by query expression ({{ group_name }})
       lantronix.oob.percepxion_smart_groups:
         name: "{{ group_name }}"
         query_string: "{{ group_query }}"
@@ -64,7 +64,7 @@
       register: create_query_result
       when: operation == "create" and device_ids | length == 0
 
-    - name: Create smart group "{{ group_name }}" from device ID list
+    - name: Create smart group from device list ({{ group_name }})
       lantronix.oob.percepxion_smart_groups:
         name: "{{ group_name }}"
         device_ids: "{{ device_ids }}"

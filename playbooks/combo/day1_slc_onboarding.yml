@@ -84,7 +84,7 @@
       when: use_dhcp | bool
       register: net_result_dhcp
 
-    - name: "Step 3b: Set static IP {{ static_ip }} on {{ management_interface }}"
+    - name: "Step 3b: Set static IP on {{ management_interface }}"
       lantronix.oob.slc_network:
         interface: "{{ management_interface }}"
         dhcp: false

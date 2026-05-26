@@ -60,7 +60,7 @@
   tasks:
 
     # ---- Step 1: Register devices ----
-    - name: "Step 1: Register {{ devices | length }} device(s) in Percepxion"
+    - name: "Step 1: Register devices in Percepxion ({{ devices | length }})"
       lantronix.oob.percepxion_import_devices:
         devices: "{{ devices }}"
         project_tag: "{{ target_project }}"
