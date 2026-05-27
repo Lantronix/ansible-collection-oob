@@ -32,5 +32,7 @@ build_ignore:
   - tests/integration/integration_config.yml
   - tests/integration/integration_config.vault.yml
   - tests/integration/lab-inventory
+  - requirements.yml
+  - venv/
 dependencies:
   ansible.netcommon: ">=5.0.0"

@@ -1,0 +1,4 @@
+collections:
+  - name: git+https://github.com/Lantronix/ansible-collection-oob.git
+    type: git
+    version: main
