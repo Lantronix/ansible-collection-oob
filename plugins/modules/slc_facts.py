@@ -102,7 +102,19 @@ slc_facts:
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.connection import Connection
 from ansible_collections.lantronix.oob.plugins.module_utils.slc9_client import SLC9Client
-from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
+from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError, AnsibleLantronixServerError
+
+
+def _safe_get(module, label, fn):
+    """Call fn(), return its result dict, or {} with a warning on 5xx."""
+    try:
+        return fn()
+    except AnsibleLantronixServerError as exc:
+        module.warn("slc_facts: {0} returned a server error and will be skipped: {1}".format(label, exc))
+        return {}
+    except AnsibleLantronixError as exc:
+        module.fail_json(msg=str(exc))
+        return {}
 
 
 def main():
@@ -114,13 +126,9 @@ def main():
 
     client = SLC9Client(host=host, token=token, verify_ssl=connection.get_option("validate_certs"))
 
-    try:
-        version = client.get_system_version()
-        status = client.get_system_status()
-        identity = client.get_system_identity()
-    except AnsibleLantronixError as exc:
-        module.fail_json(msg=str(exc))
-        return
+    version = _safe_get(module, "/system/version", client.get_system_version)
+    status = _safe_get(module, "/system/status", client.get_system_status)
+    identity = _safe_get(module, "/system/identity", client.get_system_identity)
 
     facts = {}
     facts.update(version)

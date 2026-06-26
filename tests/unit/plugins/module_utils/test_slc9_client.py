@@ -44,8 +44,11 @@ def test_get_raises_ansible_lantronix_error_on_http_error():
     from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
     import requests as req
     client = make_client()
+    err_resp = MagicMock()
+    err_resp.status_code = 404
+    err_resp.json.return_value = {"message": "not found"}
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = req.HTTPError(response=MagicMock(json=MagicMock(return_value={"message": "not found"})))
+    mock_response.raise_for_status.side_effect = req.HTTPError(response=err_resp)
     with patch.object(client.session, "get", return_value=mock_response):
         with pytest.raises(AnsibleLantronixError, match="not found"):
             client.get_system_version()

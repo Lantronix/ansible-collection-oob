@@ -4,6 +4,42 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.21
+=======
+
+Release Summary
+---------------
+
+R21 firmware compatibility fixes and a breaking rename in ``percepxion_import_devices``
+to match the Percepxion v1 API field names. Minimum tested firmware: SLC9000 9.7.0.0R21.
+
+Breaking Changes
+----------------
+
+- ``percepxion_import_devices`` - Parameters renamed to match Percepxion v1 API.
+  ``device_id`` (previously: hardware serial number) is renamed to ``serial_num``.
+  ``device_key`` (previously: 32-char Percepxion device ID) is renamed to ``device_id``.
+  A new optional ``device_key`` parameter is added for the device callhome auth key
+  (leave blank for manual imports; the device supplies this automatically).
+  Update existing playbooks: change ``device_id: "SN123"`` to ``serial_num: "SN123"``
+  and ``device_key: "abc..."`` to ``device_id: "abc..."``.
+
+Bugfixes
+--------
+
+- ``common`` - Added ``AnsibleLantronixServerError`` as a subclass of
+  ``AnsibleLantronixError`` for 5xx HTTP responses, enabling callers to tolerate
+  partial endpoint failures without failing the entire play.
+- ``slc_facts`` - Added ``_safe_get`` wrapper so individual endpoint 5xx errors emit
+  a warning and return empty data rather than failing the play.
+- ``slc9_client`` - ``post_config_batch`` now sends commands as a newline-separated
+  string instead of a JSON array, fixing ``INVALID_JSON`` errors on SLC9000 R21.
+- ``slc9_client`` - ``set_system_identity`` now fetches current identity before
+  patching and includes required R21 fields (``rack_row``, ``rack_cluster``, ``rack``).
+  Also detects HTTP 200 responses with body-embedded error status.
+- ``slc9_client`` - Write operations now use ``requests.Session`` transport;
+  ``_raw_write`` raw TLS socket workaround removed. Minimum tested firmware: R21.
+
 v1.0.20
 =======
 

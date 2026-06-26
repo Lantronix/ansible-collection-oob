@@ -1,9 +1,6 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-import json as _json
-import socket as _socket
-import ssl as _ssl
 import time
 
 try:
@@ -13,7 +10,7 @@ except ImportError:
     HAS_REQUESTS = False
     requests = None
 
-from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message, AnsibleLantronixError
+from ansible_collections.lantronix.oob.plugins.module_utils.common import api_error_message, AnsibleLantronixError, AnsibleLantronixServerError
 
 
 class SLC9Client:
@@ -27,8 +24,6 @@ class SLC9Client:
 
     def __init__(self, host, token, verify_ssl=True):
         self.host = host
-        self._token = token
-        self.verify_ssl = verify_ssl
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
@@ -39,100 +34,14 @@ class SLC9Client:
     def _url(self, path):
         return "https://{0}{1}{2}".format(self.host, self.BASE_PATH, path)
 
-    def _raw_write(self, method, path, data=None, close_expected=False):
-        """Send a write request via raw TLS socket using a single sendall().
-
-        mini_httpd on SLC9000 cannot handle requests where headers and body
-        arrive in separate TCP writes (which requests always does for bodies).
-        This method sends the complete request, headers + body, in one TLS
-        record, which mini_httpd can parse correctly.
-
-        Set close_expected=True for endpoints that close the TCP connection
-        without sending an HTTP response (config/batch, system/identity, etc.).
-        """
-        body_bytes = (_json.dumps(data, separators=(",", ":")).encode("utf-8")
-                      if data is not None else b"")
-        full_path = "{0}{1}".format(self.BASE_PATH, path)
-
-        request = (
-            "{0} {1} HTTP/1.1\r\n".format(method, full_path).encode()
-            + "Host: {0}\r\n".format(self.host).encode()
-            + "X-auth-token: {0}\r\n".format(self._token).encode()
-            + b"Content-Type: application/json\r\n"
-            + "Content-Length: {0}\r\n".format(len(body_bytes)).encode()
-            + b"Connection: close\r\n"
-            + b"\r\n"
-            + body_bytes
-        )
-
-        ctx = _ssl.create_default_context()
-        if not self.verify_ssl:
-            ctx.check_hostname = False
-            ctx.verify_mode = _ssl.CERT_NONE
-
-        try:
-            raw_sock = _socket.create_connection((self.host, 443), timeout=30)
-            tls_sock = ctx.wrap_socket(raw_sock, server_hostname=self.host)
-            tls_sock.sendall(request)
-            response = b""
-            while True:
-                chunk = tls_sock.recv(4096)
-                if not chunk:
-                    break
-                response += chunk
-            tls_sock.close()
-        except Exception as exc:
-            if close_expected:
-                return {}
-            raise AnsibleLantronixError(
-                "SLC9000: connection error on {0} {1}: {2}".format(method, path, exc)
-            )
-
-        if not response:
-            if close_expected:
-                return {}
-            raise AnsibleLantronixError(
-                "SLC9000: no response from {0} {1}".format(method, path)
-            )
-
-        status_line = response.split(b"\r\n", 1)[0]
-        try:
-            status_code = int(status_line.split(b" ", 2)[1])
-        except (IndexError, ValueError):
-            raise AnsibleLantronixError(
-                "SLC9000: malformed HTTP response from {0} {1}".format(method, path)
-            )
-
-        header_end = response.find(b"\r\n\r\n")
-        resp_body = response[header_end + 4:] if header_end != -1 else b""
-
-        if status_code >= 400:
-            try:
-                error_body = _json.loads(resp_body)
-                msg = error_body.get("message") or error_body.get("error") or str(status_code)
-                if isinstance(msg, list):
-                    msg = "; ".join(str(m) for m in msg)
-            except Exception:
-                msg = "HTTP {0} from {1} {2}".format(status_code, method, path)
-            raise AnsibleLantronixError(msg)
-
-        if not resp_body.strip():
-            return {}
-        try:
-            return _json.loads(resp_body)
-        except ValueError:
-            raise AnsibleLantronixError(
-                "SLC9000: non-JSON response from {0} {1}: {2!r}".format(
-                    method, path, resp_body[:200]
-                )
-            )
-
     def _get(self, path):
         try:
             resp = self.session.get(self._url(path))
             resp.raise_for_status()
             return resp.json()
         except requests.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code >= 500:
+                raise AnsibleLantronixServerError(api_error_message(exc))
             raise AnsibleLantronixError(api_error_message(exc))
         except ValueError as exc:
             raise AnsibleLantronixError(
@@ -142,13 +51,31 @@ class SLC9Client:
             )
 
     def _post(self, path, data=None):
-        return self._raw_write("POST", path, data)
+        try:
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.post(self._url(path), **kwargs)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
 
     def _put(self, path, data=None):
-        return self._raw_write("PUT", path, data)
+        try:
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.put(self._url(path), **kwargs)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
 
     def _patch(self, path, data=None):
-        return self._raw_write("PATCH", path, data)
+        try:
+            kwargs = {"json": data} if data is not None else {}
+            resp = self.session.patch(self._url(path), **kwargs)
+            resp.raise_for_status()
+            return resp.json() if resp.content else {}
+        except requests.HTTPError as exc:
+            raise AnsibleLantronixError(api_error_message(exc))
 
     # --- System ---
 
@@ -167,30 +94,39 @@ class SLC9Client:
     def set_system_identity(self, hostname=None, description=None):
         """POST /system/identity -- update hostname or description.
 
+        R21 requires rack_row, rack_cluster, and rack in every POST even when
+        only setting hostname. Fetch current identity first and merge fields.
+
+        R21 also wraps validation errors in HTTP 200 bodies (status: 400).
+        Detect and raise those explicitly.
+
         The device reloads a subsystem after applying identity changes, which
         causes the HTTP connection to drop before a response is sent. We catch
         that ConnectionError and verify success with a follow-up GET.
-
-        The API field for description is 'site_tag'; this method maps the
-        'description' parameter to that key in the request payload.
         """
-        payload = {}
+        current = self.get_system_identity()
+        payload = {
+            "rack_row": current.get("rack_row", "1"),
+            "rack_cluster": current.get("rack_cluster", "1"),
+            "rack": current.get("rack", "1"),
+        }
         if hostname is not None:
             payload["hostname"] = hostname
         if description is not None:
             payload["site_tag"] = description
         try:
-            # Use a short timeout: the device drops the TCP connection (active close
-            # or read timeout) immediately after applying identity changes, before
-            # sending an HTTP response. Either ConnectionError or ReadTimeout is expected.
             resp = self.session.post(self._url("/system/identity"), json=payload, timeout=5)
             resp.raise_for_status()
-            return resp.json() if resp.content else {}
+            body = resp.json() if resp.content else {}
+            if isinstance(body, dict) and int(body.get("status", 200)) >= 400:
+                msg = body.get("message") or body.get("error") or "API error"
+                if isinstance(msg, list):
+                    msg = "; ".join(str(m) for m in msg)
+                raise AnsibleLantronixError(msg)
+            return body
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
         except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-            # Device closes the connection after applying identity changes.
-            # Wait briefly for the subsystem reload, then verify via GET.
             time.sleep(2)
             return self.get_system_identity()
 
@@ -211,20 +147,8 @@ class SLC9Client:
         return self._get("/network/interfaces")
 
     def set_network_interfaces(self, payload):
-        """PUT /network/interfaces -- update interface config.
-
-        The device restarts the network subsystem after applying interface changes,
-        closing the TCP connection before sending an HTTP response.
-        """
-        try:
-            resp = self.session.put(self._url("/network/interfaces"), json=payload, timeout=30)
-            resp.raise_for_status()
-            return resp.json() if resp.content else {}
-        except requests.HTTPError as exc:
-            raise AnsibleLantronixError(api_error_message(exc))
-        except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-            time.sleep(3)
-            return self.get_network_interfaces()
+        """PUT /network/interfaces -- update interface config."""
+        return self._put("/network/interfaces", payload)
 
     # --- Ports ---
 
@@ -249,20 +173,8 @@ class SLC9Client:
         return self._get("/firmware/status")
 
     def get_firmware_update_status(self):
-        """GET /firmware/update_status -- ongoing update progress.
-
-        Returns a plain-text log (not JSON) while an update is in progress.
-        Falls back to a structured dict with status=in_progress in that case.
-        """
-        try:
-            resp = self.session.get(self._url("/firmware/update_status"))
-            resp.raise_for_status()
-            try:
-                return resp.json()
-            except ValueError:
-                return {"status": "in_progress", "progress": 0, "message": resp.text}
-        except requests.HTTPError as exc:
-            raise AnsibleLantronixError(api_error_message(exc))
+        """GET /firmware/update_status -- ongoing update progress."""
+        return self._get("/firmware/update_status")
 
     def trigger_firmware_update(self, file_url, md5_key, reboot_after_update=False, description=""):
         """POST /firmware/update -- start a firmware update from URL.
@@ -299,19 +211,35 @@ class SLC9Client:
     def post_config_batch(self, commands):
         """POST /config/batch -- execute a list of CLI config commands.
 
-        The device closes the TCP connection after applying commands without
-        sending an HTTP response. Catch ConnectionError and treat it as success,
-        then verify via a lightweight GET to confirm the device is still reachable.
+        The API schema (R17+) requires commands as a newline-separated string,
+        not a JSON array. R20 silently accepted arrays; R21 returns INVALID_JSON
+        for arrays.
+
+        R21 may close the HTTP connection after applying certain commands (e.g.
+        port name changes that trigger a web server restart). Catch that and
+        treat it as success. Also detect body-embedded errors (HTTP 200 with
+        status >= 400 in the body), which R21 uses for validation failures.
         """
+        body = "\n".join(commands) if isinstance(commands, list) else commands
         try:
-            resp = self.session.post(self._url("/config/batch"), json={"commands": commands}, timeout=30)
+            resp = self.session.post(
+                self._url("/config/batch"),
+                json={"commands": body},
+                timeout=60,
+            )
             resp.raise_for_status()
-            return resp.json() if resp.content else {}
+            result = resp.json() if resp.content else {}
+            if isinstance(result, dict) and int(result.get("status", 200)) >= 400:
+                msg = result.get("message") or result.get("error") or "API error"
+                if isinstance(msg, list):
+                    msg = "; ".join(str(m) for m in msg)
+                raise AnsibleLantronixError(msg)
+            return result
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
         except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-            time.sleep(2)
-            return self.get_system_version()
+            time.sleep(5)
+            return {}
 
     def factory_reset(self):
         """POST /config/factory_reset -- reset device to factory defaults."""

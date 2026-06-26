@@ -39,7 +39,7 @@ def run_module(params, check_mode=False, search_result=None):
                 return m, instance, mock_cls
 
 
-DEVICES = [{"device_id": "SN123456", "device_key": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4", "device_name": "slc-test-01"}]
+DEVICES = [{"serial_num": "SN123456", "device_id": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4", "device_name": "slc-test-01"}]
 
 
 def test_registers_new_device():
