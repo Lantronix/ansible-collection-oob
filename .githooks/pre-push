@@ -76,4 +76,32 @@ if [[ $FAILED -ne 0 ]]; then
     exit 1
 fi
 
+# --- Public-facing doc review reminder (non-blocking) ---
+# README.md and CHANGELOG.rst ship to customers via GitHub and Automation Hub.
+# Internal build/test/dev instructions belong in CONTRIBUTING.md, not there.
+PUBLIC_DOC_PATTERNS=(
+    'ansible-test (sanity|units|integration)'
+    'Live device tests?'
+    'Build and install from source tarball'
+    'has been archived'
+    'What-Is-Phase-Two'
+    'TODO|FIXME|WIP'
+    'internal use only|do not distribute'
+    '192\.168\.(100|50)\.'
+)
+PUBLIC_DOCS_CHANGED=$(git diff --name-only "$REMOTE_SHA" "$LOCAL_SHA" 2>/dev/null | grep -E '^(README\.md|CHANGELOG\.rst)$' || true)
+if [[ -n "$PUBLIC_DOCS_CHANGED" ]]; then
+    for FILE in $PUBLIC_DOCS_CHANGED; do
+        CONTENT=$(git show "${LOCAL_SHA}:${FILE}" 2>/dev/null) || continue
+        for PATTERN in "${PUBLIC_DOC_PATTERNS[@]}"; do
+            if echo "$CONTENT" | grep -qEi "$PATTERN"; then
+                echo ""
+                echo "REVIEW REMINDER: $FILE still matches internal-content pattern: $PATTERN"
+                echo "Confirm this is intentional customer-facing content before this push lands."
+                echo ""
+            fi
+        done
+    done
+fi
+
 exit 0
