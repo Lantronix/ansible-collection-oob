@@ -22,6 +22,14 @@ notes:
     regardless of whether the resulting configuration differs.
   - Use C(get) before C(batch) to inspect current state if idempotency matters
     for your use case.
+  - C(commands) passed to C(batch) are not filtered or validated by this module,
+    including disruptive commands such as C(reload), C(factory-reset), or
+    C(erase startup-config). This is deliberate, a playbook's C(commands) list is
+    already reviewed and version-controlled before it runs, unlike an interactive
+    agent choosing a command at runtime, so the module does not second-guess it.
+    Use C(--check) to preview which tasks would run C(batch) without applying
+    anything, and review C(commands) content carefully, especially when built
+    from a template or variable.
 options:
   action:
     description: Configuration action to perform.
@@ -68,6 +76,21 @@ diff:
   description: Diff output between running and saved configuration. Present when C(action=compare).
   returned: when action is compare
   type: str
+result:
+  description:
+    - Raw API response from the batch operation. Present when C(action=batch)
+      and the module did not run in check mode.
+    - Contains C(status), C(code), and C(message). C(message) is a list of
+      strings and may include command output for commands the device returns
+      text for (for example C(show) commands); for commands with no textual
+      output it is typically a confirmation message.
+  returned: when action is batch and not check_mode
+  type: dict
+  sample:
+    status: 200
+    code: SUCCESS
+    message:
+      - Configuration updated successfully.
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -118,12 +141,13 @@ def main():
         module.exit_json(changed=True)
         return
 
+    exit_kwargs = {"changed": True}
     if not module.check_mode:
         try:
-            client.post_config_batch(module.params["commands"])
+            exit_kwargs["result"] = client.post_config_batch(module.params["commands"])
         except AnsibleLantronixError as exc:
             module.fail_json(msg=str(exc))
-    module.exit_json(changed=True)
+    module.exit_json(**exit_kwargs)
 
 
 if __name__ == "__main__":

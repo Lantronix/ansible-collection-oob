@@ -12,7 +12,23 @@ Release Summary
 
 Bugfix release: ``slc_config`` (action ``batch``) no longer reports a false
 ``changed: true`` when a command fails to apply and the connection happens to
-drop for another reason.
+drop for another reason. Also surfaces the raw API response from ``batch``
+so command output reaches the playbook, and documents that ``batch``
+commands are unfiltered by design.
+
+Minor Changes
+-------------
+
+- ``slc_config`` - The ``batch`` action now returns the API response as a new
+  ``result`` field instead of discarding it. ``result.message`` may include
+  command output for commands the device returns text for (for example
+  ``show`` commands).
+- ``slc_config`` - Documented that ``commands`` passed to ``batch`` are not
+  filtered or validated by this module, including disruptive commands such
+  as ``reload``, ``factory-reset``, or ``erase startup-config``. This is
+  deliberate: a playbook's ``commands`` list is already reviewed and
+  version-controlled before it runs. Use ``--check`` to preview which tasks
+  would run ``batch`` without applying anything.
 
 Bugfixes
 --------

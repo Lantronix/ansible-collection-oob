@@ -7,6 +7,7 @@ from ansible_collections.lantronix.oob.plugins.module_utils.common import Ansibl
 
 MOCK_COMMANDS = {"commands": ["set hostname slc9k-lab", "set ntp server 10.0.0.1"]}
 MOCK_COMPARE = {"diff": "- set hostname old\n+ set hostname slc9k-lab"}
+MOCK_BATCH_RESULT = {"status": 200, "code": "SUCCESS", "message": ["Configuration updated successfully."]}
 
 
 def run_module(params, check_mode=False):
@@ -17,7 +18,7 @@ def run_module(params, check_mode=False):
                 instance.get_config_commands.return_value = MOCK_COMMANDS
                 instance.compare_config.return_value = MOCK_COMPARE
                 instance.save_config.return_value = {}
-                instance.post_config_batch.return_value = {}
+                instance.post_config_batch.return_value = MOCK_BATCH_RESULT
                 mock_cls.return_value = instance
 
                 mock_conn = MagicMock()
@@ -68,6 +69,16 @@ def test_batch_calls_post_with_correct_commands():
     client.post_config_batch.assert_called_once_with(cmds)
 
 
+def test_batch_surfaces_api_response_as_result():
+    """The batch action must not discard the API response -- command output
+    (e.g. from show commands) needs to reach the playbook."""
+    cmds = ["show ntp status"]
+    m, client, mock_cls = run_module({"action": "batch", "commands": cmds})
+    kwargs = m.exit_json.call_args[1]
+    assert kwargs["result"] == MOCK_BATCH_RESULT
+    assert kwargs["result"]["message"] == ["Configuration updated successfully."]
+
+
 def test_check_mode_blocks_save():
     m, client, mock_cls = run_module({"action": "save", "commands": None}, check_mode=True)
     kwargs = m.exit_json.call_args[1]
@@ -81,6 +92,7 @@ def test_check_mode_blocks_batch():
     )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
+    assert "result" not in kwargs
     client.post_config_batch.assert_not_called()
 
 

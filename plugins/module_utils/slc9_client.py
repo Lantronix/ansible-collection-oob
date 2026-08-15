@@ -262,7 +262,15 @@ class SLC9Client:
                         "; ".join(missing)
                     )
                 )
-            return {"commands": current_lines}
+            return {
+                "status": 200,
+                "code": "SUCCESS",
+                "message": [
+                    "Connection dropped after applying commands (likely a device service "
+                    "restart); verified all submitted commands are present in the running "
+                    "configuration."
+                ],
+            }
 
     def factory_reset(self):
         """POST /config/factory_reset -- reset device to factory defaults."""

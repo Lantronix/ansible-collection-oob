@@ -77,7 +77,8 @@ def test_post_config_batch_connection_drop_verifies_success():
          patch.object(client.session, "post", side_effect=req.exceptions.ConnectionError()), \
          patch.object(client.session, "get", return_value=get_response):
         result = client.post_config_batch(commands)
-        assert result["commands"] == commands
+        assert result["status"] == 200
+        assert result["code"] == "SUCCESS"
 
 
 def test_post_config_batch_connection_drop_raises_when_not_confirmed():
