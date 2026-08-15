@@ -61,3 +61,38 @@ def test_api_error_message_with_none_response():
     exc.response = None
     result = api_error_message(exc)
     assert "connection failed" in result
+
+
+def test_post_config_batch_connection_drop_verifies_success():
+    """R21 drops the connection after applying commands that trigger a service
+    restart. If the submitted commands show up in the running config afterward,
+    treat it as success rather than raising."""
+    import requests as req
+    client = make_client()
+    commands = ["set ntp state enable sync poll poll local localserver1 pool.ntp.org"]
+    get_response = MagicMock()
+    get_response.json.return_value = {"commands": commands}
+    get_response.raise_for_status = MagicMock()
+    with patch("time.sleep"), \
+         patch.object(client.session, "post", side_effect=req.exceptions.ConnectionError()), \
+         patch.object(client.session, "get", return_value=get_response):
+        result = client.post_config_batch(commands)
+        assert result["commands"] == commands
+
+
+def test_post_config_batch_connection_drop_raises_when_not_confirmed():
+    """If the connection drops and the submitted commands are NOT present in
+    the running config afterward, this is a genuine failure -- raise rather
+    than silently returning as if it succeeded."""
+    from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
+    import requests as req
+    client = make_client()
+    commands = ["set ntp srcipaddr eth1"]
+    get_response = MagicMock()
+    get_response.json.return_value = {"commands": ["set hostname slc9k-dc1"]}
+    get_response.raise_for_status = MagicMock()
+    with patch("time.sleep"), \
+         patch.object(client.session, "post", side_effect=req.exceptions.ReadTimeout()), \
+         patch.object(client.session, "get", return_value=get_response):
+        with pytest.raises(AnsibleLantronixError, match="set ntp srcipaddr eth1"):
+            client.post_config_batch(commands)

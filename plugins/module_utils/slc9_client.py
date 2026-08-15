@@ -216,11 +216,22 @@ class SLC9Client:
         for arrays.
 
         R21 may close the HTTP connection after applying certain commands (e.g.
-        port name changes that trigger a web server restart). Catch that and
-        treat it as success. Also detect body-embedded errors (HTTP 200 with
-        status >= 400 in the body), which R21 uses for validation failures.
+        port name changes that trigger a web server restart). That is expected
+        and not itself an error, but a dropped connection is also what a genuine
+        timeout or failed command looks like. To tell the two apart we re-fetch
+        the running config via get_config_commands() and check whether the
+        submitted command lines are present in it. This is a best-effort line
+        membership check -- some command types may not echo back verbatim in
+        "show running-config" style output, so a false negative (raising when
+        the command did apply) is possible for those. It will not silently
+        report success when a command demonstrably never applied, which is the
+        failure mode this guards against.
+
+        Also detect body-embedded errors (HTTP 200 with status >= 400 in the
+        body), which R21 uses for validation failures.
         """
-        body = "\n".join(commands) if isinstance(commands, list) else commands
+        command_list = commands if isinstance(commands, list) else commands.splitlines()
+        body = "\n".join(command_list)
         try:
             resp = self.session.post(
                 self._url("/config/batch"),
@@ -239,7 +250,19 @@ class SLC9Client:
             raise AnsibleLantronixError(api_error_message(exc))
         except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
             time.sleep(5)
-            return {}
+            raw = self.get_config_commands().get("commands", "")
+            current_lines = raw.splitlines() if isinstance(raw, str) else list(raw)
+            missing = [c for c in command_list if c.strip() and c.strip() not in current_lines]
+            if missing:
+                raise AnsibleLantronixError(
+                    "Connection dropped while applying batch commands and the following "
+                    "could not be confirmed in the running configuration: {0}. This may mean "
+                    "they failed to apply, or the device does not echo them verbatim in "
+                    "show-running-config output. Verify manually with action=get.".format(
+                        "; ".join(missing)
+                    )
+                )
+            return {"commands": current_lines}
 
     def factory_reset(self):
         """POST /config/factory_reset -- reset device to factory defaults."""

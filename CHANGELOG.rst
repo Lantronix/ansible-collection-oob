@@ -4,6 +4,28 @@ Changelog
 
 .. contents:: Topics
 
+v1.0.22
+=======
+
+Release Summary
+---------------
+
+Bugfix release: ``slc_config`` (action ``batch``) no longer reports a false
+``changed: true`` when a command fails to apply and the connection happens to
+drop for another reason.
+
+Bugfixes
+--------
+
+- ``slc9_client`` - ``post_config_batch`` no longer assumes success whenever
+  the connection drops after a ``POST /config/batch``. R21 legitimately drops
+  the connection after commands that trigger a service restart, but the same
+  symptom also occurs on a genuine failure or timeout. The client now
+  re-fetches the running configuration via ``get_config_commands`` and
+  confirms the submitted commands are present before reporting success;
+  otherwise it raises so the task fails instead of silently reporting
+  ``changed: true`` for a command that never applied.
+
 v1.0.21
 =======
 

@@ -3,6 +3,7 @@ __metaclass__ = type
 
 from unittest.mock import patch, MagicMock
 from ansible_collections.lantronix.oob.plugins.modules import slc_config
+from ansible_collections.lantronix.oob.plugins.module_utils.common import AnsibleLantronixError
 
 MOCK_COMMANDS = {"commands": ["set hostname slc9k-lab", "set ntp server 10.0.0.1"]}
 MOCK_COMPARE = {"diff": "- set hostname old\n+ set hostname slc9k-lab"}
@@ -81,6 +82,38 @@ def test_check_mode_blocks_batch():
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.post_config_batch.assert_not_called()
+
+
+def test_batch_fails_when_post_config_batch_cannot_confirm_success():
+    """post_config_batch raises AnsibleLantronixError when a connection drop
+    can't be confirmed as a real success -- slc_config must fail the task,
+    not report changed=True regardless."""
+    with patch("ansible_collections.lantronix.oob.plugins.modules.slc_config.AnsibleModule") as mock_mod:
+        with patch("ansible_collections.lantronix.oob.plugins.modules.slc_config.Connection") as mock_conn_cls:
+            with patch("ansible_collections.lantronix.oob.plugins.modules.slc_config.SLC9Client") as mock_cls:
+                instance = MagicMock()
+                instance.post_config_batch.side_effect = AnsibleLantronixError(
+                    "Connection dropped while applying batch commands and the following "
+                    "could not be confirmed in the running configuration: set ntp srcipaddr eth1."
+                )
+                mock_cls.return_value = instance
+
+                mock_conn = MagicMock()
+                mock_conn.get_token.return_value = "test-token"
+                _conn_opts = {"host": "192.0.2.1", "validate_certs": False}
+                mock_conn.get_option.side_effect = _conn_opts.get
+                mock_conn_cls.return_value = mock_conn
+
+                m = MagicMock()
+                m.params = {"action": "batch", "commands": ["set ntp srcipaddr eth1"]}
+                m.check_mode = False
+                m._socket_path = "/tmp/fake-socket"
+                mock_mod.return_value = m
+
+                slc_config.main()
+
+                m.fail_json.assert_called_once()
+                assert "could not be confirmed" in m.fail_json.call_args[1]["msg"]
 
 
 def test_slc_config_passes_validate_certs_to_client():
