@@ -50,7 +50,7 @@ jobs:
   setup_write_lane:
     runs-on: self-hosted
     needs: unit
-    if: ${{ github.event.inputs.lane != 'read' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lane != 'read' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -118,7 +118,7 @@ jobs:
   integration_read:
     runs-on: self-hosted
     needs: unit
-    if: ${{ github.event.inputs.lane != 'write' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lane != 'write' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -170,7 +170,7 @@ jobs:
   integration_write:
     runs-on: self-hosted
     needs: setup_write_lane
-    if: ${{ github.event.inputs.lane != 'read' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lane != 'read' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -239,7 +239,7 @@ jobs:
   teardown_write_lane:
     runs-on: self-hosted
     needs: [integration_write]
-    if: always()
+    if: ${{ always() && github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
         with:
