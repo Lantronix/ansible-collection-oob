@@ -7,3 +7,5 @@ tests/integration/integration_config.yml
 *.tar.gz
 .ansible/
 docs/superpowers/
+venv/
+.venv/

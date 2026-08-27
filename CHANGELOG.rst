@@ -4,6 +4,48 @@ Changelog
 
 .. contents:: Topics
 
+v1.1.0
+======
+
+Release Summary
+---------------
+
+Adds event-rule and device-tag management, restores and extends user
+management with suspend/resume, and corrects the ``percepxion_aoob_session``
+deprecation rationale. All new request/response shapes were verified live
+against Percepxion 6.13 on 2026-08-27.
+
+Minor Changes
+-------------
+
+- ``percepxion_client``: added event rule, action, idle-connection, and
+  device-tag methods; added ``set_users_enabled`` (bulk suspend/resume via
+  ``PUT /v1/user``) and ``delete_users`` (bulk ``DELETE /v1/user``); fixed
+  ``search_users`` to send the ``offset``/``sort``/``order`` fields that
+  ``POST /v2/user/search`` requires in 6.13.
+- ``percepxion_users``: removed the deprecation and added ``state: suspended``
+  and ``state: enabled``, idempotent against each user's ``enabled`` flag.
+  Delete now uses the bulk ``DELETE /v1/user`` endpoint.
+- Added playbooks ``percepxion_event_rules.yml``, ``percepxion_device_tags.yml``,
+  and ``lockdown.yml`` (bulk suspend/restore of user access).
+
+New Modules
+-----------
+
+- ``percepxion_event_rules`` - create, update, delete, and list Percepxion
+  event rules, and attach email/SMS notification actions.
+- ``percepxion_device_tags`` - create and delete device tags and assign or
+  unassign them to devices.
+
+Bugfixes
+--------
+
+- ``percepxion_aoob_session``: corrected the deprecation rationale (module
+  DOCUMENTATION, runtime ``deprecate()`` string, and ``meta/runtime.yml``).
+  The connect/disconnect endpoints exist server-side but are device-token
+  authenticated, so they return 401 with user credentials; the prior text
+  said the endpoints were absent from the specification.
+
 v1.0.22
 =======
 
