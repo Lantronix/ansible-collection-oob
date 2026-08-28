@@ -70,7 +70,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.percepxion_telemetry` | Device telemetry stats and historical data |
 | `lantronix.oob.percepxion_event_rules` | Create, update, delete event rules and email/SMS notification actions |
 | `lantronix.oob.percepxion_device_tags` | Create device tags and assign or unassign them to devices |
-| `lantronix.oob.percepxion_users` | Create, delete, suspend, and resume user accounts |
+| `lantronix.oob.percepxion_users` | Create, delete, suspend, and resume user accounts; bulk suspend/resume by username or email, allowlist lockdown mode |
 | `lantronix.oob.percepxion_aoob_session` | *(Deprecated, removed in 2.0.0)* Connect/disconnect endpoints are device-token authenticated, not reachable with user credentials. Use the Percepxion web interface. |
 
 ## Example Roles
