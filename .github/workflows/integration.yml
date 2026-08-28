@@ -176,7 +176,7 @@ jobs:
         with:
           path: ansible_collections/lantronix/oob
       - name: Download config snapshot
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: write-lane-config-snapshot
           path: /tmp
@@ -245,7 +245,7 @@ jobs:
         with:
           path: ansible_collections/lantronix/oob
       - name: Download config snapshot
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: write-lane-config-snapshot
           path: /tmp
