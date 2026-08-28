@@ -1,0 +1,102 @@
+---
+# percepxion_device_tags, Manage Percepxion device tags and assignments
+#
+# What this does:
+#   Creates or deletes device tags and assigns or unassigns them to devices.
+#   A device tag is a named, colored label. Tag creation is idempotent (matched
+#   by name); assignment calls are sent whenever device_ids is provided.
+#
+# Run (create a tag):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_device_tags.yml \
+#     -e "operation=create tag_name=production"
+#
+# Run (tag devices):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_device_tags.yml \
+#     -e '{"operation":"assign","tag_name":"production","device_ids":["dev-key-1","dev-key-2"]}'
+#
+# Run (remove a tag from devices, keeping the tag):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_device_tags.yml \
+#     -e '{"operation":"unassign","tag_name":"production","device_ids":["dev-key-1"]}'
+#
+# Run (delete a tag entirely):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_device_tags.yml \
+#     -e "operation=delete tag_name=production"
+
+- name: Manage Percepxion device tags
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # "create", "assign", "unassign", "delete", or "list"
+    operation: "create"
+
+    tag_name: "my-tag"
+
+    # HEX colors, required when creating a tag.
+    tag_color: "#FFFFFF"
+    tag_background_color: "#1D4ED8"
+
+    # Device keys for assign/unassign.
+    device_ids: []
+
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: "Ensure device tag exists: {{ tag_name }}"
+      lantronix.oob.percepxion_device_tags:
+        name: "{{ tag_name }}"
+        color: "{{ tag_color }}"
+        background_color: "{{ tag_background_color }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_result
+      when: operation == "create"
+
+    - name: "Assign device tag to devices: {{ tag_name }}"
+      lantronix.oob.percepxion_device_tags:
+        name: "{{ tag_name }}"
+        color: "{{ tag_color }}"
+        background_color: "{{ tag_background_color }}"
+        device_ids: "{{ device_ids }}"
+        state: present
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: assign_result
+      when: operation == "assign"
+
+    - name: "Unassign device tag from devices: {{ tag_name }}"
+      lantronix.oob.percepxion_device_tags:
+        name: "{{ tag_name }}"
+        device_ids: "{{ device_ids }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: unassign_result
+      when: operation == "unassign"
+
+    - name: "Delete device tag: {{ tag_name }}"
+      lantronix.oob.percepxion_device_tags:
+        name: "{{ tag_name }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: delete_result
+      when: operation == "delete"
+
+    - name: List all tags
+      lantronix.oob.percepxion_device_tags:
+        name: "list-only"
+        state: query
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: tag_list
+      when: operation == "list"
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: >-
+          {{ create_result | default(assign_result) | default(unassign_result)
+             | default(delete_result) | default(tag_list) | default({}) }}

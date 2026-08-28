@@ -249,8 +249,15 @@ class PercepxionClient:
 
     # --- Users ---
 
-    def search_users(self, search_string=None, limit=100):
-        payload = self._scope({"limit": limit})
+    def search_users(self, search_string=None, limit=1000, offset=0, sort="username", order="asc"):
+        # /v2/user/search requires offset/limit/sort/order (6.13); response is
+        # {total, result:[{id, username, ..., enabled}]}.
+        payload = self._scope({
+            "offset": offset,
+            "limit": limit,
+            "sort": sort,
+            "order": order,
+        })
         if search_string:
             payload["search_string"] = search_string
         return self._post("/v2/user/search", payload)
@@ -261,8 +268,19 @@ class PercepxionClient:
             payload["password"] = password
         return self._post("/v2/user/create", payload)
 
-    def delete_user(self, username):
-        return self._post("/v2/user/delete", self._scope({"username": username}))
+    def set_users_enabled(self, user_ids, enable):
+        """PUT /v1/user, bulk suspend (enable=False) or resume (enable=True).
+
+        Verified live 2026-08-27. Body is {users:[{user_id, enable}]}; tenant_id
+        is added by _scope for project_admin.
+        """
+        users = [{"user_id": uid, "enable": bool(enable)} for uid in user_ids]
+        return self._put("/v1/user", self._scope({"users": users}))
+
+    def delete_users(self, user_ids):
+        """DELETE /v1/user, bulk delete by id. Body is {users:[{id}]}."""
+        users = [{"id": uid} for uid in user_ids]
+        return self._delete("/v1/user", self._scope({"users": users}))
 
     # --- Device registration ---
 
@@ -279,3 +297,106 @@ class PercepxionClient:
     def terminate_session(self, session_id):
         """POST /v3/device/disconnect, terminate an active OOB session."""
         return self._post("/v3/device/disconnect", self._scope({"session_id": session_id}))
+
+    # --- Event rules & actions (all shapes verified live 2026-08-27) ---
+
+    def search_event_rules(self, limit=100, offset=0):
+        # Response: {total_results, rules:[{id, name, enable, device_ids, conditions, ...}]}
+        return self._post("/v1/event/rule/search", self._scope({"offset": offset, "limit": limit}))
+
+    def create_event_rule(self, name, conditions, enable=True, device_id=None,
+                          smart_group_id=None, device_search=None, app_code=None):
+        """POST /v1/event/rule/create. Target ONE of device_id (device_keys),
+        smart_group_id, or device_search='*'. Returns {status, code, message[]}
+        with no id; re-query rule/search for the id.
+        """
+        payload = self._scope({"name": name, "conditions": conditions, "enable": enable})
+        if device_id:
+            payload["device_id"] = device_id
+        if smart_group_id:
+            payload["smart_group_id"] = smart_group_id
+        if device_search:
+            payload["device_search"] = device_search
+        if app_code:
+            payload["app_code"] = app_code
+        return self._post("/v1/event/rule/create", payload)
+
+    def update_event_rule(self, rule_id, name, conditions=None, enable=None,
+                          device_id=None, smart_group_id=None, app_code=None):
+        """PUT /v1/event/rule/update. A rule bound to a group cannot be re-scoped
+        to individual devices or another group (400 VALIDATION_ERROR).
+        """
+        payload = self._scope({"id": rule_id, "name": name})
+        if conditions is not None:
+            payload["conditions"] = conditions
+        if enable is not None:
+            payload["enable"] = enable
+        if device_id:
+            payload["device_id"] = device_id
+        if smart_group_id:
+            payload["smart_group_id"] = smart_group_id
+        if app_code:
+            payload["app_code"] = app_code
+        return self._put("/v1/event/rule/update", payload)
+
+    def delete_event_rule(self, name):
+        """POST /v1/event/rule/delete. Deletes by rule NAME, not id."""
+        return self._post("/v1/event/rule/delete", self._scope({"name": name}))
+
+    def get_rule_actions(self, rule_name):
+        return self._post("/v1/event/action/get", self._scope({"rule_name": rule_name}))
+
+    def create_rule_action(self, rule_name, details, name=None, description=None):
+        """POST /v1/event/action/create. details is a list of
+        {action_type: email|sms, action: <target>, enable, reminder_interval}.
+        """
+        payload = self._scope({"rule_name": rule_name, "details": details})
+        if name:
+            payload["name"] = name
+        if description:
+            payload["description"] = description
+        return self._post("/v1/event/action/create", payload)
+
+    def delete_rule_action(self, app_code, rule_name):
+        """POST /v1/event/action/delete, by app_code + rule_name."""
+        return self._post("/v1/event/action/delete", self._scope({
+            "app_code": app_code, "rule_name": rule_name,
+        }))
+
+    def update_idle_connection(self, enable, timeout=None, consecutive_periods=None,
+                               reminder_interval=None, app_code=None):
+        """PUT /v1/event/idleconn/update (POST returns 405). One config per tenant."""
+        payload = self._scope({"enable": enable})
+        for key, val in (("timeout", timeout), ("consecutive_periods", consecutive_periods),
+                         ("reminder_interval", reminder_interval), ("app_code", app_code)):
+            if val is not None:
+                payload[key] = val
+        return self._put("/v1/event/idleconn/update", payload)
+
+    # --- Device tags (shapes verified live 2026-08-27) ---
+
+    def list_device_tags(self):
+        """POST /v3/device/tag/view, returns {tag:[{id, name, color, background_color}]}."""
+        return self._post("/v3/device/tag/view", self._scope())
+
+    def create_device_tag(self, name, color, background_color):
+        """POST /v3/device/tag/create. color and background_color are required HEX."""
+        return self._post("/v3/device/tag/create", self._scope({
+            "name": name, "color": color, "background_color": background_color,
+        }))
+
+    def delete_device_tag(self, tag_ids):
+        """POST /v3/device/tag/delete. tag_ids is a list."""
+        return self._post("/v3/device/tag/delete", self._scope({"id": tag_ids}))
+
+    def assign_device_tag(self, tag_ids, device_ids):
+        """POST /v3/device/tag/assign. {id:[tag_ids], device_id:[device_keys]}."""
+        return self._post("/v3/device/tag/assign", self._scope({
+            "id": tag_ids, "device_id": device_ids,
+        }))
+
+    def unassign_device_tag(self, tag_ids, device_ids):
+        """POST /v3/device/tag/unassign. Same shape as assign."""
+        return self._post("/v3/device/tag/unassign", self._scope({
+            "id": tag_ids, "device_id": device_ids,
+        }))

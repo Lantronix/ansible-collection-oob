@@ -13,9 +13,13 @@ deprecated:
   removed_from_collection: lantronix.oob
   why: >-
     The AOOB session management API endpoints (C(/v3/device/connect) and
-    C(/v3/device/disconnect)) are not present in the Percepxion 6.12 API
-    specification. The Percepxion Connect feature is browser-based and cannot
-    be managed programmatically through this module.
+    C(/v3/device/disconnect)) exist server-side but are device-token
+    authenticated (they require the device C(auth_token) header, not a user
+    session token), so they cannot be driven with the user credentials this
+    collection authenticates with (verified live 2026-08-27: both return
+    401 "Device token verification error" with valid user tokens). The
+    Percepxion Connect feature is browser-based and cannot be managed
+    programmatically through this module.
   alternative: >-
     Use the Percepxion web interface to initiate and close AOOB terminal
     sessions.
@@ -26,9 +30,10 @@ description:
     a session ID. Always C(changed=True).
   - C(state=absent) terminates an active session by ID. Always C(changed=True).
 notes:
-  - B(Deprecated.) This module calls endpoint paths that are not confirmed in
-    the Percepxion 6.12 API spec and will fail against a real Percepxion
-    environment. Do not use in production.
+  - B(Deprecated.) This module calls endpoint paths (C(/v3/device/connect),
+    C(/v3/device/disconnect)) that exist but are device-token authenticated,
+    so they return 401 with the user credentials this collection uses and will
+    fail against a real Percepxion environment. Do not use in production.
   - Sessions are non-idempotent. Each C(state=present) opens a new connection.
 options:
   device_id:
@@ -109,9 +114,10 @@ def main():
 
     module.deprecate(
         "lantronix.oob.percepxion_aoob_session is deprecated and will be removed in version 2.0.0. "
-        "The Percepxion Connect feature is browser-based; the API endpoints used by this module "
-        "are not documented in the Percepxion 6.12 specification and will fail in production. "
-        "Use the Percepxion web interface to initiate AOOB sessions.",
+        "The endpoints it calls (/v3/device/connect, /v3/device/disconnect) exist server-side but "
+        "are device-token authenticated: they require the device auth_token header, not a user "
+        "session token, so they return 401 'Device token verification error' with user credentials "
+        "(verified live 2026-08-27). Use the Percepxion web interface to initiate AOOB sessions.",
         version="2.0.0",
         collection_name="lantronix.oob",
     )

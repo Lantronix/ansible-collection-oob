@@ -1,0 +1,110 @@
+---
+# percepxion_event_rules, Manage Percepxion event rules and notification actions
+#
+# What this does:
+#   Creates, updates, deletes, or lists event rules. A rule watches a telemetry
+#   condition on a device, smart group, or all devices, and fires when the
+#   condition matches. Percepxion events are entirely rule-driven, so nothing
+#   is detected unless a rule watches for it.
+#
+# Idempotency:
+#   Rules are matched by name. Re-running a create is a no-op; the enabled state
+#   is reconciled. Conditions are applied at create time only.
+#
+# Run (create a rule that emails on port-1 disconnect):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_event_rules.yml \
+#     -e "operation=create rule_name=dp-1_disconnected alert_email=netops@example.com"
+#
+# Run (disable a rule):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_event_rules.yml \
+#     -e "operation=disable rule_name=dp-1_disconnected"
+#
+# Run (delete a rule):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_event_rules.yml \
+#     -e "operation=delete rule_name=dp-1_disconnected"
+#
+# Run (list all rules):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_event_rules.yml \
+#     -e "operation=list"
+
+- name: Manage Percepxion event rules
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # "create", "disable", "delete", or "list"
+    operation: "create"
+
+    rule_name: "my-event-rule"
+
+    # Device keys the rule watches. Use one of device_ids, smart_group_ids, or
+    # device_search.
+    device_ids: []
+    smart_group_ids: []
+    device_search: ""
+
+    # Condition list (create only). Attribute paths address raw device telemetry.
+    conditions:
+      - attr_full_name: "Port 1 Status"
+        attr_path: "/dgm/telemetry/port:1/status_record/dp_info/status"
+        operator: "changed_with_val"
+        new_val: "disconnected"
+        old_val: "connected"
+        next_logical: ""
+
+    # Optional email address to notify when the rule fires.
+    alert_email: ""
+
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: "Create event rule: {{ rule_name }}"
+      lantronix.oob.percepxion_event_rules:
+        name: "{{ rule_name }}"
+        state: present
+        enable: true
+        conditions: "{{ conditions }}"
+        device_id: "{{ device_ids if device_ids | length > 0 else omit }}"
+        smart_group_id: "{{ smart_group_ids if smart_group_ids | length > 0 else omit }}"
+        device_search: "{{ device_search if device_search | length > 0 else omit }}"
+        actions: "{{ [{'action_type': 'email', 'action': alert_email, 'enable': true, 'reminder_interval': 0}] if alert_email | length > 0 else omit }}"
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: create_result
+      when: operation == "create"
+
+    - name: "Disable event rule: {{ rule_name }}"
+      lantronix.oob.percepxion_event_rules:
+        name: "{{ rule_name }}"
+        state: present
+        enable: false
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: disable_result
+      when: operation == "disable"
+
+    - name: "Delete event rule: {{ rule_name }}"
+      lantronix.oob.percepxion_event_rules:
+        name: "{{ rule_name }}"
+        state: absent
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: delete_result
+      when: operation == "delete"
+
+    - name: List all event rules
+      lantronix.oob.percepxion_event_rules:
+        name: "list-only"
+        state: query
+        project_tag: "{{ project_tag | default(omit) }}"
+        tenant_id: "{{ tenant_id | default(omit) }}"
+      register: rule_list
+      when: operation == "list"
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: >-
+          {{ create_result | default(disable_result) | default(delete_result)
+             | default(rule_list) | default({}) }}

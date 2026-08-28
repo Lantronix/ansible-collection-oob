@@ -8,41 +8,39 @@ DOCUMENTATION = r"""
 module: percepxion_users
 short_description: Manage user accounts on the Percepxion platform
 version_added: "1.0.0"
-deprecated:
-  removed_in: "2.0.0"
-  removed_from_collection: lantronix.oob
-  why: >-
-    The user management endpoints (C(/v2/user/search), C(/v2/user/create),
-    C(/v2/user/delete)) are not present in the Percepxion 6.12 API specification.
-    Integration testing returned 404 on all CRUD operations.
-  alternative: >-
-    Manage Percepxion users through the Percepxion web interface.
 author:
   - Lantronix Product Team (@lantronix)
 description:
-  - Creates or deletes user accounts on Percepxion.
-  - Checks whether the user exists before acting; only calls create or delete
-    when the desired state differs from current state.
+  - Creates, deletes, suspends, or resumes user accounts on Percepxion.
+  - Reads the user list first and only acts when the desired state differs from
+    current state, so runs are idempotent (including on suspend/resume, which is
+    checked against each user's C(enabled) flag).
 notes:
-  - B(Deprecated.) The user management API endpoints used by this module are not
-    confirmed in the Percepxion 6.12 API specification. CRUD operations will
-    likely fail. Do not use in production.
+  - Suspend and resume use C(PUT /v1/user) (bulk-capable) and were verified live
+    against Percepxion 6.13 on 2026-08-27.
+  - Delete uses C(DELETE /v1/user) (bulk by user ID). Create uses
+    C(POST /v2/user/create). Validate create and delete against your target
+    deployment before relying on them in production.
 options:
   username:
     description: Username to manage.
     type: str
     required: true
   role:
-    description: User role. Required when C(state=present).
+    description: User role. Used when C(state=present) to create a new user.
     type: str
   password:
-    description: User password. Required when creating a new user.
+    description: User password. Used when creating a new user.
     type: str
   state:
-    description: Whether the user should exist.
+    description:
+      - C(present) creates the user if missing.
+      - C(absent) deletes the user if present.
+      - C(suspended) disables an existing user's access.
+      - C(enabled) restores a suspended user's access.
     type: str
     default: present
-    choices: [present, absent]
+    choices: [present, absent, suspended, enabled]
   project_tag:
     description:
       - Percepxion project tag to scope all operations.
@@ -62,6 +60,16 @@ EXAMPLES = r"""
     role: admin
     password: "{{ vault_netops_pass }}"
     state: present
+
+- name: Suspend a user (e.g. offboarding or incident lockdown)
+  lantronix.oob.percepxion_users:
+    username: contractor
+    state: suspended
+
+- name: Resume a suspended user
+  lantronix.oob.percepxion_users:
+    username: contractor
+    state: enabled
 
 - name: Remove a user
   lantronix.oob.percepxion_users:
@@ -101,18 +109,10 @@ def main():
             username=dict(type="str", required=True),
             role=dict(type="str"),
             password=dict(type="str", no_log=True),
-            state=dict(type="str", default="present", choices=["present", "absent"]),
+            state=dict(type="str", default="present",
+                       choices=["present", "absent", "suspended", "enabled"]),
         ),
         supports_check_mode=True,
-    )
-
-    module.deprecate(
-        "lantronix.oob.percepxion_users is deprecated and will be removed in version 2.0.0. "
-        "The user management API endpoints used by this module are not documented in the "
-        "Percepxion 6.12 specification and have not been validated; CRUD operations will likely fail. "
-        "Use the Percepxion web interface to manage users.",
-        version="2.0.0",
-        collection_name="lantronix.oob",
     )
 
     connection = Connection(module._socket_path)
@@ -121,46 +121,45 @@ def main():
     username = module.params["username"]
     state = module.params["state"]
 
-    # /v2/user/search does not support tenant scoping for non-admin users;
-    # use a no-tenant client for the read phase only.
-    search_client = PercepxionClient(
-        host=connection.get_api_host(),
-        token=connection.get_token(),
-        csrf_token=connection.get_csrf_token(),
-        project_tag=module.params.get("project_tag") or connection.get_project_tag(),
-        tenant_id=None,
-        verify_ssl=connection.get_option("validate_certs"),
-    )
-
     try:
-        # search_string filters on name/email, not username, fetch all and filter client-side
-        result = search_client.search_users(limit=1000)
+        # search_string filters on name/email; fetch and match on username exactly.
+        result = client.search_users(limit=1000)
     except AnsibleLantronixError as exc:
         module.fail_json(msg=str(exc))
 
-    # API returns {"total": N, "result": [{id, username, ...}]}
-    existing = [u["username"] for u in result.get("result", [])]
+    # {"total": N, "result": [{id, username, enabled, ...}]}
+    by_username = {u["username"]: u for u in result.get("result", []) if "username" in u}
+    current = by_username.get(username)
     changed = False
 
-    if state == "present" and username not in existing:
-        changed = True
-        if not module.check_mode:
-            try:
-                client.create_user(
-                    username=username,
-                    role=module.params.get("role", "user"),
-                    password=module.params.get("password"),
-                )
-            except AnsibleLantronixError as exc:
-                module.fail_json(msg=str(exc))
+    try:
+        if state == "present":
+            if current is None:
+                changed = True
+                if not module.check_mode:
+                    client.create_user(
+                        username=username,
+                        role=module.params.get("role") or "user",
+                        password=module.params.get("password"),
+                    )
 
-    elif state == "absent" and username in existing:
-        changed = True
-        if not module.check_mode:
-            try:
-                client.delete_user(username)
-            except AnsibleLantronixError as exc:
-                module.fail_json(msg=str(exc))
+        elif state == "absent":
+            if current is not None:
+                changed = True
+                if not module.check_mode:
+                    client.delete_users([current["id"]])
+
+        elif state in ("suspended", "enabled"):
+            if current is None:
+                module.fail_json(msg="cannot %s user '%s': user not found" % (state, username))
+            want_enabled = (state == "enabled")
+            if bool(current.get("enabled")) != want_enabled:
+                changed = True
+                if not module.check_mode:
+                    client.set_users_enabled([current["id"]], enable=want_enabled)
+
+    except AnsibleLantronixError as exc:
+        module.fail_json(msg=str(exc))
 
     module.exit_json(changed=changed, username=username)
 
