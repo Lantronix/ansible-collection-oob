@@ -4,6 +4,31 @@ Changelog
 
 .. contents:: Topics
 
+v1.2.0
+======
+
+Release Summary
+---------------
+
+Certification-hygiene release following Red Hat's review of v1.1.0, plus CI
+hardening. No module behavior changes.
+
+Minor Changes
+-------------
+
+- README - Installation section now follows the Red Hat certified-collection
+  template (install from Automation Hub, requirements file, version pinning,
+  upgrade). Removed the ``pip install requests`` instruction; execution
+  environments built with ``ansible-builder`` resolve ``requirements.txt``
+  automatically.
+- ``.ansible-lint`` - exclude only ``tests/integration`` and ``tests/unit``
+  (previously all of ``tests/``) so sanity ignore files are linted; added
+  ``no-log-password`` to ``warn_list`` per Red Hat guidance.
+- ``tests/config.yml`` - declares ``python_requires`` (Python 3.9+).
+- ``percepxion_aoob_session`` - shortened the deprecation message.
+- ``slc_managed_devices`` - documentation sample IP now uses the RFC 5737
+  documentation range.
+
 v1.1.0
 ======
 

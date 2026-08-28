@@ -73,7 +73,7 @@ managed_devices:
     management_ipv4:
       description: Management IPv4 address of the device.
       type: str
-      sample: 192.168.50.59
+      sample: 192.0.2.59
     onboard_date:
       description: Timestamp when the device was onboarded (ISO 8601).
       type: str

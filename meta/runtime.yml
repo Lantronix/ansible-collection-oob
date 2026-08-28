@@ -5,9 +5,7 @@ plugin_routing:
       deprecation:
         removal_version: "2.0.0"
         warning_text: >-
-          percepxion_aoob_session is deprecated. The endpoints it calls
-          (/v3/device/connect, /v3/device/disconnect) exist server-side but are
-          device-token authenticated: they require the device auth_token header,
-          not a user session token, so they return 401 with user credentials
-          (verified live 2026-08-27). Use the Percepxion web interface to
+          percepxion_aoob_session is deprecated. The connect and disconnect
+          endpoints it calls require device-token authentication and are not
+          reachable with user credentials. Use the Percepxion web interface to
           initiate AOOB sessions.

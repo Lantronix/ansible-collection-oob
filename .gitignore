@@ -9,3 +9,5 @@ tests/integration/integration_config.yml
 docs/superpowers/
 venv/
 .venv/
+dist/
+.pm-os-status.md
