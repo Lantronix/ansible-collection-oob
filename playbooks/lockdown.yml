@@ -1,0 +1,127 @@
+---
+# =============================================================================
+# lockdown.yml -- incident lockdown for a Lantronix OOB estate
+# =============================================================================
+# Sequence:
+#   Play 1 (Percepxion): suspend every platform user except an explicit
+#           allowlist, one bulk PUT /v1/user per tenant.
+#   Play 2 (each SLC appliance): terminate live console/API sessions not owned
+#           by an allowlisted user, then disable every access method except
+#           the ones explicitly kept.
+#
+# DESTRUCTIVE. This playbook is a break-glass action, not routine automation.
+# It will not run unless invoked with:
+#
+#   ansible-playbook playbooks/lockdown.yml \
+#     -e confirm_lockdown=LOCKDOWN \
+#     -e '{"lockdown_allow_users": ["secops-breakglass", "netops-oncall"]}'
+#
+# Notes:
+#   - Suspending a Percepxion user does NOT close sessions they already have
+#     open; that is what Play 2 exists for. Run the whole playbook.
+#   - The account running this playbook is auto-protected by
+#     percepxion_users (all_except mode), but list it explicitly anyway.
+#   - Recovery: rerun percepxion_users with usernames=<list> state=enabled, and
+#     re-enable services via slc_config. Keep a tested recovery playbook next to
+#     this one.
+# =============================================================================
+
+- name: "Lockdown phase 1: suspend Percepxion users outside the allowlist"
+  hosts: percepxion
+  gather_facts: false
+  vars:
+    lockdown_allow_users: []
+  pre_tasks:
+    - name: Refuse to run without explicit confirmation and an allowlist
+      ansible.builtin.assert:
+        that:
+          - confirm_lockdown | default('') == 'LOCKDOWN'
+          - lockdown_allow_users | length > 0
+        fail_msg: >-
+          Pass -e confirm_lockdown=LOCKDOWN and a non-empty
+          lockdown_allow_users list to run this playbook.
+  tasks:
+    - name: Suspend all Percepxion users except the allowlist
+      lantronix.oob.percepxion_users:
+        all_except: "{{ lockdown_allow_users }}"
+        state: suspended
+      register: suspend_result
+
+    - name: Report suspended accounts
+      ansible.builtin.debug:
+        msg: >-
+          Suspended {{ suspend_result.users | length }} account(s):
+          {{ suspend_result.users | map(attribute='username') | list | join(', ') }}.
+          Already disabled: {{ suspend_result.skipped | join(', ') | default('none', true) }}.
+
+- name: "Lockdown phase 2: terminate sessions and restrict access on each SLC"
+  hosts: slc_devices
+  gather_facts: false
+  vars:
+    lockdown_allow_users: []
+    # Access methods to disable on the appliance. VERIFY each command against
+    # the SLC9000 CLI reference for the firmware in your fleet before first
+    # use; keep SSH (or your chosen method) OFF this list.
+    lockdown_disable_commands:
+      - set services telnet disable
+      - set services web disable
+  pre_tasks:
+    - name: Refuse to run without explicit confirmation
+      ansible.builtin.assert:
+        that:
+          - confirm_lockdown | default('') == 'LOCKDOWN'
+        fail_msg: "Pass -e confirm_lockdown=LOCKDOWN to run this playbook."
+  tasks:
+    # The collection has no slc_sessions module yet (tracked follow-up), so
+    # session enumeration/termination goes direct to the appliance REST API
+    # (GET /sessions, DELETE /sessions/{id}) with the same inventory creds the
+    # httpapi connection uses.
+    - name: Log in to the appliance API
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2/user/login"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ ansible_user }}"
+          password: "{{ ansible_password }}"
+        validate_certs: "{{ ansible_httpapi_validate_certs | default(true) }}"
+      register: slc_login
+      delegate_to: localhost
+      no_log: true
+
+    - name: List live sessions
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2/sessions"
+        method: GET
+        headers:
+          X-auth-token: "{{ slc_login.json.token }}"
+        validate_certs: "{{ ansible_httpapi_validate_certs | default(true) }}"
+      register: slc_sessions
+      delegate_to: localhost
+
+    - name: Terminate every session not owned by an allowlisted user
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/v2/sessions/{{ item.id }}"
+        method: DELETE
+        headers:
+          X-auth-token: "{{ slc_login.json.token }}"
+        validate_certs: "{{ ansible_httpapi_validate_certs | default(true) }}"
+        status_code: [200, 204]
+      loop: "{{ slc_sessions.json.sessions | default([]) }}"
+      loop_control:
+        label: "{{ item.username | default('unknown') }} ({{ item.id }})"
+      when: item.username | default('') not in lockdown_allow_users
+      delegate_to: localhost
+
+    - name: Disable all access methods except the explicitly kept ones
+      lantronix.oob.slc_config:
+        action: batch
+        commands: "{{ lockdown_disable_commands }}"
+      register: restrict_result
+
+    - name: Report per-device outcome
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: sessions checked
+          {{ slc_sessions.json.sessions | default([]) | length }},
+          access-method commands applied: {{ lockdown_disable_commands | length }}.

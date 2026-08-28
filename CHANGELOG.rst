@@ -10,12 +10,24 @@ v1.2.0
 Release Summary
 ---------------
 
-Certification-hygiene release following Red Hat's review of v1.1.0, plus CI
-hardening. No module behavior changes.
+Bulk user suspend/resume and an incident-lockdown playbook, plus the
+certification-hygiene changes requested in Red Hat's review of v1.1.0 and CI
+hardening.
 
 Minor Changes
 -------------
 
+- ``percepxion_users`` - new ``usernames`` option suspends or resumes a list
+  of accounts with a single API call; entries may be usernames or email
+  addresses. New ``all_except`` option suspends every account except an
+  allowlist (the operator's own account is always protected). ``username`` is
+  now optional; exactly one of ``username``, ``usernames``, or ``all_except``
+  is required. Bulk calls return ``users`` (changed) and ``skipped`` (already in
+  the requested state).
+- New ``playbooks/lockdown.yml`` reference playbook: suspends Percepxion users
+  outside an allowlist, then terminates non-allowlisted sessions and disables
+  selected access methods on each SLC 9000. Requires explicit confirmation
+  (``-e confirm_lockdown=LOCKDOWN``).
 - README - Installation section now follows the Red Hat certified-collection
   template (install from Automation Hub, requirements file, version pinning,
   upgrade). Removed the ``pip install requests`` instruction; execution
