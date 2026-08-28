@@ -45,6 +45,10 @@ Bugfixes
   The connect/disconnect endpoints exist server-side but are device-token
   authenticated, so they return 401 with user credentials; the prior text
   said the endpoints were absent from the specification.
+- ``galaxy.yml`` ``build_ignore``: the ``venv/`` entry (trailing slash) never
+  matched, so a local ``venv/`` would be bundled into the built collection
+  tarball (observed at ~54 MB). Replaced with ``venv`` + ``venv/*`` (and added
+  ``.venv/*``, ``dist``, ``dist/*``); the tarball builds at ~130 KB.
 
 v1.0.22
 =======
