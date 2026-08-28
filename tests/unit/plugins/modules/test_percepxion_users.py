@@ -51,42 +51,42 @@ def _params(**over):
 
 
 def test_no_change_when_user_exists():
-    m, client, _ = run_module(_params(state="present"))
+    m, client, mock_cls = run_module(_params(state="present"))
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.create_user.assert_not_called()
 
 
 def test_changed_when_new_user():
-    m, client, _ = run_module(_params(username="newuser", role="user", password="Secret1"), existing=EMPTY_USERS)
+    m, client, mock_cls = run_module(_params(username="newuser", role="user", password="Secret1"), existing=EMPTY_USERS)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_user.assert_called_once()
 
 
 def test_absent_removes_user_by_id():
-    m, client, _ = run_module(_params(role=None, state="absent"))
+    m, client, mock_cls = run_module(_params(role=None, state="absent"))
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.delete_users.assert_called_once_with(["u-001"])
 
 
 def test_suspend_enabled_user():
-    m, client, _ = run_module(_params(state="suspended"))
+    m, client, mock_cls = run_module(_params(state="suspended"))
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.set_users_enabled.assert_called_once_with(["u-001"], enable=False)
 
 
 def test_suspend_already_suspended_is_noop():
-    m, client, _ = run_module(_params(state="suspended"), existing=SUSPENDED_USER)
+    m, client, mock_cls = run_module(_params(state="suspended"), existing=SUSPENDED_USER)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is False
     client.set_users_enabled.assert_not_called()
 
 
 def test_enable_suspended_user():
-    m, client, _ = run_module(_params(state="enabled"), existing=SUSPENDED_USER)
+    m, client, mock_cls = run_module(_params(state="enabled"), existing=SUSPENDED_USER)
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.set_users_enabled.assert_called_once_with(["u-001"], enable=True)
@@ -101,8 +101,10 @@ def test_suspend_missing_user_fails():
 
 
 def test_check_mode_blocks_create():
-    m, client, _ = run_module(_params(username="newuser", role="user", password="x"),
-                              check_mode=True, existing=EMPTY_USERS)
+    m, client, mock_cls = run_module(
+        _params(username="newuser", role="user", password="x"),
+        check_mode=True, existing=EMPTY_USERS,
+    )
     kwargs = m.exit_json.call_args[1]
     assert kwargs["changed"] is True
     client.create_user.assert_not_called()
