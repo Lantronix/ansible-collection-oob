@@ -21,7 +21,7 @@ SLC9000 modules use the ``ansible.netcommon.httpapi`` connection with the
    slc_devices:
      hosts:
        slc9k-datacenter:
-         ansible_host: 192.168.1.100
+         ansible_host: 192.0.2.100
      vars:
        ansible_network_os: lantronix.oob.slc9
        ansible_connection: ansible.netcommon.httpapi
@@ -83,7 +83,7 @@ Quick Start
        - name: Enforce NTP server
          lantronix.oob.slc_system:
            ntp_servers:
-             - 192.168.1.1
+             - 192.0.2.1
            state: present
 
        - name: Ensure sysadmin account exists

@@ -4,22 +4,33 @@ Manage Lantronix Out-of-Band infrastructure from Ansible. The `lantronix.oob` co
 
 ## Installation
 
+Install from Red Hat Ansible Automation Hub with the `ansible-galaxy` command-line tool:
+
 ```bash
 ansible-galaxy collection install lantronix.oob
 ```
 
-Requires the `requests` library:
+Or add it to a `requirements.yml` file and run `ansible-galaxy collection install -r requirements.yml`:
+
+```yaml
+collections:
+  - name: lantronix.oob
+```
+
+To install a specific version, or upgrade to the latest release:
 
 ```bash
-pip install requests
+ansible-galaxy collection install lantronix.oob:==1.2.0
+ansible-galaxy collection install lantronix.oob --upgrade
 ```
 
 ## Requirements
 
-- ansible-core >= 2.16
-- ansible.netcommon >= 5.0.0
-- Python 3.9+
-- Python `requests` library
+- Python 3.9 or later
+- Python `requests` library (declared in `requirements.txt`; execution environments built with `ansible-builder` include it automatically)
+- `ansible.netcommon` >= 5.0.0 (installed automatically as a collection dependency)
+
+The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 
 ## Supported Platforms
 
@@ -80,7 +91,7 @@ pip install requests
 slc_devices:
   hosts:
     slc9k-datacenter:
-      ansible_host: 192.168.1.100
+      ansible_host: 192.0.2.100
   vars:
     ansible_network_os: lantronix.oob.slc9
     ansible_connection: ansible.netcommon.httpapi
@@ -162,18 +173,6 @@ To operate across multiple projects, loop over inventory groups rather than modu
 Bug reports and pull requests welcome. Please open an issue before submitting a PR for significant changes.
 
 See [CONTRIBUTING.md](https://github.com/Lantronix/ansible-collection-oob/blob/main/CONTRIBUTING.md) for development setup, coding standards, and commit conventions.
-
-```bash
-mkdir -p ansible_collections/lantronix
-git clone https://github.com/Lantronix/ansible-collection-oob ansible_collections/lantronix/oob
-cd ansible_collections/lantronix/oob
-
-# Sanity tests
-ansible-test sanity --python 3.12
-
-# Unit tests
-ansible-test units --python 3.12
-```
 
 ## Changelog
 

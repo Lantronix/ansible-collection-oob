@@ -114,10 +114,9 @@ def main():
 
     module.deprecate(
         "lantronix.oob.percepxion_aoob_session is deprecated and will be removed in version 2.0.0. "
-        "The endpoints it calls (/v3/device/connect, /v3/device/disconnect) exist server-side but "
-        "are device-token authenticated: they require the device auth_token header, not a user "
-        "session token, so they return 401 'Device token verification error' with user credentials "
-        "(verified live 2026-08-27). Use the Percepxion web interface to initiate AOOB sessions.",
+        "The connect and disconnect endpoints it calls require device-token authentication and "
+        "are not reachable with user credentials. Use the Percepxion web interface to initiate "
+        "AOOB sessions.",
         version="2.0.0",
         collection_name="lantronix.oob",
     )
