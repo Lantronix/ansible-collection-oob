@@ -109,7 +109,7 @@ jobs:
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test integration setup_write_lane --python 3.11
       - name: Upload config snapshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: write-lane-config-snapshot
           path: /tmp/write_lane_config_snapshot.txt
