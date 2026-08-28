@@ -1,0 +1,54 @@
+---
+# percepxion_users.yml, Bulk suspend or restore Percepxion user access
+#
+# What this does:
+#   Suspends or restores a list of Percepxion user accounts in one API call.
+#   Use it for offboarding, an incident lockdown, or restoring access afterward.
+#   Entries may be usernames or email addresses. Accounts already in the target
+#   state are reported under "skipped".
+#
+# For a full incident lockdown (allowlist mode plus SLC session termination and
+# access restriction) see playbooks/lockdown.yml.
+#
+# Run (suspend):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_users.yml \
+#     -e '{"lockdown_action":"suspend","usernames":["contractor1","jdoe@example.com"]}'
+#
+# Run (restore):
+#   ansible-playbook -i inventory.yml playbooks/percepxion/percepxion_users.yml \
+#     -e '{"lockdown_action":"restore","usernames":["contractor1","jdoe@example.com"]}'
+
+- name: Percepxion user access, bulk suspend or restore
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    # "suspend" to disable access, "restore" to re-enable.
+    lockdown_action: "suspend"
+
+    # Usernames or email addresses to act on.
+    usernames: []
+
+    project_tag: ""
+    tenant_id: ""
+
+  tasks:
+
+    - name: Fail when no usernames provided
+      ansible.builtin.fail:
+        msg: "Set usernames to a non-empty list, e.g. -e '{\"usernames\":[\"user1\"]}'"
+      when: usernames | length == 0
+
+    - name: Set access state for the listed accounts
+      lantronix.oob.percepxion_users:
+        usernames: "{{ usernames }}"
+        state: "{{ 'suspended' if lockdown_action == 'suspend' else 'enabled' }}"
+        project_tag: "{{ project_tag | default(omit, true) }}"
+        tenant_id: "{{ tenant_id | default(omit, true) }}"
+      register: result
+
+    - name: Show what changed
+      ansible.builtin.debug:
+        msg: >-
+          Changed: {{ result.users | map(attribute='username') | list }}.
+          Already in state: {{ result.skipped }}.

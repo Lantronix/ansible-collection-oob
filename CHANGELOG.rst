@@ -24,6 +24,9 @@ Minor Changes
   now optional; exactly one of ``username``, ``usernames``, or ``all_except``
   is required. Bulk calls return ``users`` (changed) and ``skipped`` (already in
   the requested state).
+- ``playbooks/percepxion/lockdown.yml`` (per-user loop, added in 1.1.0) is replaced
+  by ``playbooks/percepxion/percepxion_users.yml``, which uses the new bulk
+  ``usernames`` option.
 - New ``playbooks/lockdown.yml`` reference playbook: suspends Percepxion users
   outside an allowlist, then terminates non-allowlisted sessions and disables
   selected access methods on each SLC 9000. Requires explicit confirmation
