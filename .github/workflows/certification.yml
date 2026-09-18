@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   call:
-    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-reusable.yml@v4.1.0 # zizmor: ignore[unpinned-uses]
+    uses: ansible-collections/partner-certification-checker/.github/workflows/certification-reusable.yml@v5.0.0 # zizmor: ignore[unpinned-uses]
     # Our collection requires ansible.netcommon >= 5.0.0 (ansible-core >= 2.14)
     # with:
     #   ansible-core-version: '2.17.0'
