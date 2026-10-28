@@ -1,0 +1,581 @@
+---
+# COMBO: NetBox Sync
+# Persona: Network automation engineer who uses NetBox as the source of truth
+#
+# What this does:
+#   1. Prepares NetBox for Lantronix OOB devices: a "lantronix_itmgos" platform
+#      (matches the Netmiko device_type, so Nornir and Netmiko jobs driven from
+#      NetBox reach SLC and EMG units), a config context that lets the NetBox
+#      inventory plugin hand lantronix.oob connection settings to Ansible, a
+#      percepxion_device_id custom field, and "Open console" links on console
+#      server ports.
+#   2. For each SLC 9000 in the inventory: creates or updates the NetBox device
+#      (device type, serial, platform) and writes each serial port's live name
+#      and attached device into the matching NetBox console server port.
+#   3. From Percepxion: records every SLC and EMG the platform manages in NetBox.
+#      Missing devices are created when their device type exists in NetBox.
+#      Existing devices keep their device type; only the serial number and
+#      Percepxion device ID are updated.
+#
+# Requirements:
+#   - netbox.netbox collection and its pynetbox dependency on the control node
+#   - Lantronix device types loaded in NetBox from netbox-community/devicetype-library
+#     (manufacturer "Lantronix", slugs such as lantronix-slc9016-16e); types are
+#     named by orderable SKU, for example SLC9016-16E
+#   - An existing NetBox site and device role for new devices
+#
+# Matching rules:
+#   - NetBox console server ports are matched by port number: SLC device port 1
+#     is "Port-01". The port name configured on the SLC (it may have been renamed
+#     to the attached device) goes to the NetBox port label, and the attached
+#     managed device name goes to the description.
+#   - The SLC 9000 orderable SKU is derived from the installed I/O modules and
+#     power supply type. Set netbox_device_type on a host to override it.
+#   - The NetBox device name is the inventory hostname; set netbox_device_name on
+#     a host to use a different name.
+#   - An existing NetBox device with the same name is only updated when it is a
+#     Lantronix device on the lantronix_itmgos platform (or no platform) whose
+#     serial number is empty or matches, in netbox_site.
+#     Anything else is reported and left unchanged.
+#   - Device names are limited to letters, digits, dot, underscore and hyphen.
+#
+# Run (everything):
+#   ansible-playbook -i inventory.yml playbooks/combo/netbox_sync.yml \
+#     -e "netbox_url=https://netbox.example.com netbox_site=dc1 netbox_device_role=console-server"
+#
+# Run (SLC devices only, skip Percepxion):
+#   ansible-playbook -i inventory.yml playbooks/combo/netbox_sync.yml \
+#     -e "netbox_url=https://netbox.example.com netbox_site=dc1 netbox_device_role=console-server" \
+#     --tags slc
+#
+# The NetBox API token is read from the NETBOX_TOKEN environment variable by
+# default. Set netbox_token (ansible-vault recommended) to override it.
+
+- name: Prepare NetBox for Lantronix OOB devices
+  hosts: localhost
+  gather_facts: false
+  tags: [setup]
+
+  vars:
+    netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_URL') }}"
+    netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+    netbox_validate_certs: true
+    # SSH to a serial port is 3000 + port number by default (Devices > Device
+    # Ports on the SLC). Change this if your units use a different SSH base port.
+    netbox_console_ssh_base: 3000
+
+  tasks:
+    - name: Check NetBox connection settings
+      ansible.builtin.assert:
+        that:
+          - netbox_url | length > 0
+          - netbox_token | length > 0
+        fail_msg: Set netbox_url and netbox_token (or the NETBOX_URL and NETBOX_TOKEN environment variables).
+        quiet: true
+
+    - name: Ensure the Lantronix manufacturer exists
+      netbox.netbox.netbox_manufacturer:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: Lantronix
+          slug: lantronix
+        state: present
+
+    - name: Ensure the Lantronix ITMG OS platform exists
+      netbox.netbox.netbox_platform:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: Lantronix ITMG OS
+          slug: lantronix_itmgos
+          manufacturer: Lantronix
+          description: SLC and EMG operating system. Slug matches the Netmiko device_type.
+        state: present
+
+    - name: Find the SLC 9000 device types loaded in NetBox
+      ansible.builtin.set_fact:
+        slc9000_type_slugs: >-
+          {{ query('netbox.netbox.nb_lookup', 'device-types',
+                   api_endpoint=netbox_url, token=netbox_token,
+                   validate_certs=netbox_validate_certs,
+                   api_filter='manufacturer=lantronix')
+             | map(attribute='value') | selectattr('model', 'match', '^SLC90')
+             | map(attribute='slug') | list }}
+
+    - name: Report missing SLC 9000 device types
+      ansible.builtin.debug:
+        msg: >-
+          No SLC 9000 device types found in NetBox, so the lantronix.oob config
+          context was not published. Load the Lantronix device types and rerun.
+      when: slc9000_type_slugs | length == 0
+
+    # Scoped to SLC 9000 device types: lantronix.oob targets the SLC 9000 API.
+    - name: Publish lantronix.oob connection settings as a config context
+      netbox.netbox.netbox_config_context:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: lantronix-oob-ansible
+          description: Connection settings for the lantronix.oob collection (SLC 9000)
+          weight: 1000
+          platforms:
+            - lantronix_itmgos
+          device_types: "{{ slc9000_type_slugs }}"
+          data:
+            ansible_network_os: lantronix.oob.slc9
+            ansible_connection: ansible.netcommon.httpapi
+            ansible_httpapi_use_ssl: true
+        state: present
+      when: slc9000_type_slugs | length > 0
+
+    - name: Ensure the percepxion_device_id custom field exists
+      netbox.netbox.netbox_custom_field:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: percepxion_device_id
+          label: Percepxion device ID
+          type: text
+          object_types:
+            - dcim.device
+          description: Device ID assigned by Lantronix Percepxion
+        state: present
+
+    - name: Add console launch links to console server ports
+      netbox.netbox.netbox_custom_link:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: "{{ item.name }}"
+          link_text: "{{ item.text }}"
+          link_url: "{{ item.url }}"
+          object_types:
+            - dcim.consoleserverport
+          new_window: "{{ item.new_window }}"
+        state: present
+      vars:
+        # NetBox renders these as Jinja2 against the console server port; the
+        # raw blocks keep Ansible from templating them first.
+        nb_link_if: >-
+          {% raw %}{% if object.device.platform
+          and object.device.platform.slug == 'lantronix_itmgos'
+          and object.device.primary_ip %}{% endraw %}
+        nb_link_endif: "{% raw %}{% endif %}{% endraw %}"
+        nb_ip: "{% raw %}{{ object.device.primary_ip.address.ip }}{% endraw %}"
+        nb_ssh_port: >-
+          {% raw %}{{ {% endraw %}{{ netbox_console_ssh_base }}{% raw %}
+          + (object.name | replace('Port-', '') | int) }}{% endraw %}
+      loop:
+        - name: lantronix-console-ssh
+          text: "{{ nb_link_if }}Open console (SSH){{ nb_link_endif }}"
+          url: "ssh://{{ nb_ip }}:{{ nb_ssh_port }}"
+          new_window: false
+        - name: lantronix-web-ui
+          text: "{{ nb_link_if }}SLC web UI{{ nb_link_endif }}"
+          url: "https://{{ nb_ip }}/"
+          new_window: true
+      loop_control:
+        label: "{{ item.name }}"
+
+- name: Sync SLC 9000 devices and console ports to NetBox
+  hosts: slc_devices
+  gather_facts: false
+  tags: [slc]
+
+  vars:
+    netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_URL') }}"
+    netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+    netbox_validate_certs: true
+    netbox_site: ""
+    netbox_device_role: ""
+    # Optional. When set (for example 24), the SLC management address
+    # (ansible_host) is recorded on eth1 with this prefix length and made the
+    # device's primary IPv4 address, which enables the console launch links.
+    netbox_mgmt_prefix_length: ""
+
+  tasks:
+    - name: Check required NetBox settings
+      ansible.builtin.assert:
+        that:
+          - netbox_url | length > 0
+          - netbox_token | length > 0
+          - netbox_site | length > 0
+          - netbox_device_role | length > 0
+        fail_msg: Set netbox_url, netbox_token, netbox_site and netbox_device_role.
+        quiet: true
+
+    - name: Gather SLC facts
+      lantronix.oob.slc_facts:
+      register: slc
+
+    - name: Gather SLC device ports
+      lantronix.oob.slc_device_ports:
+      register: slc_ports
+
+    - name: Derive NetBox device name and device type
+      vars:
+        # The reported model counts all serial ports (an SLC9016-16U-16E reports
+        # SLC9032), so the SKU is rebuilt from the installed I/O modules.
+        io_modules: "{{ slc.slc_facts.io_module_types | default('') | split(',') | map('trim') | list }}"
+        rj45_ports: "{{ (io_modules | select('equalto', 'RJ45-16') | list | length) * 16 }}"
+        usb_ports: "{{ (io_modules | select('equalto', 'USB-16') | list | length) * 16 }}"
+        eth_ports: "{{ (io_modules | select('equalto', 'ETH-16') | list | length) * 16 }}"
+        derived_sku: >-
+          {{ ('SLC90%02d' | format(rj45_ports | int))
+             ~ (('-' ~ usb_ports ~ 'U') if usb_ports | int > 0 else '')
+             ~ (('-' ~ eth_ports ~ 'E') if eth_ports | int > 0 else '')
+             ~ ('-DC' if (slc.slc_facts.power_supplies | default('')) is match('DC') else '') }}
+      ansible.builtin.set_fact:
+        nb_name: "{{ netbox_device_name | default(inventory_hostname, true) }}"
+        nb_type: "{{ netbox_device_type | default(derived_sku | trim, true) }}"
+
+    - name: Skip a device name NetBox lookups cannot match safely
+      ansible.builtin.debug:
+        msg: >-
+          Skipping {{ inventory_hostname }}: device name "{{ nb_name }}" contains
+          characters outside A-Z, a-z, 0-9, dot, underscore and hyphen. Set
+          netbox_device_name for this host.
+      when: nb_name is not match('^[A-Za-z0-9._-]+$')
+
+    - name: End this host when the device name is not usable
+      ansible.builtin.meta: end_host
+      when: nb_name is not match('^[A-Za-z0-9._-]+$')
+
+    - name: Look up the device in NetBox
+      ansible.builtin.set_fact:
+        nb_existing: >-
+          {{ query('netbox.netbox.nb_lookup', 'devices',
+                   api_endpoint=netbox_url, token=netbox_token,
+                   validate_certs=netbox_validate_certs,
+                   api_filter='name=' ~ nb_name) }}
+      delegate_to: localhost
+
+    # A NetBox device with the same name is only updated when it is a Lantronix
+    # device in netbox_site, on the lantronix_itmgos platform or no platform, and
+    # its serial number is empty or matches this SLC. Anything else is a
+    # different device that happens to share the name.
+    - name: Check that an existing NetBox device is this SLC
+      vars:
+        rec: "{{ nb_existing[0].value if nb_existing | length > 0 else {} }}"
+      ansible.builtin.set_fact:
+        nb_conflict: >-
+          {{ nb_existing | length > 0 and (
+               rec.device_type.manufacturer.slug != 'lantronix'
+               or rec.site.slug not in [netbox_site, netbox_site | lower]
+               and rec.site.name != netbox_site
+               or (rec.platform.slug | default('', true) if rec.platform else '') not in ['', 'lantronix_itmgos']
+               or (rec.serial | default('', true)) not in ['', slc.slc_facts.serial_number]) }}
+
+    - name: Report a name collision with a different NetBox device
+      ansible.builtin.debug:
+        msg: >-
+          Skipping {{ inventory_hostname }}: NetBox device "{{ nb_name }}" is
+          {{ nb_existing[0].value.device_type.manufacturer.name }} {{ nb_existing[0].value.device_type.model }}
+          with serial "{{ nb_existing[0].value.serial }}", not this SLC (serial {{ slc.slc_facts.serial_number }}).
+          Nothing was changed. Set netbox_device_name for this host to sync it under another name.
+      when: nb_conflict | bool
+
+    - name: End this host on a name collision
+      ansible.builtin.meta: end_host
+      when: nb_conflict | bool
+
+    - name: Create the device in NetBox
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: "{{ nb_name }}"
+          device_type: "lantronix-{{ nb_type | lower }}"
+          device_role: "{{ netbox_device_role }}"
+          site: "{{ netbox_site }}"
+          serial: "{{ slc.slc_facts.serial_number }}"
+          platform: lantronix_itmgos
+          status: active
+        state: present
+      delegate_to: localhost
+      when: nb_existing | length == 0
+
+    - name: Update serial and platform on the existing NetBox device
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: "{{ nb_name }}"
+          serial: "{{ slc.slc_facts.serial_number }}"
+          platform: lantronix_itmgos
+        state: present
+      delegate_to: localhost
+      when: nb_existing | length > 0
+
+    - name: Report a device type mismatch
+      ansible.builtin.debug:
+        msg: >-
+          NetBox has {{ nb_name }} as {{ nb_existing[0].value.device_type.model }};
+          the SLC reports {{ nb_type }}. The device type was not changed.
+      when:
+        - nb_existing | length > 0
+        - nb_existing[0].value.device_type.model != nb_type
+
+    - name: Check who owns the management address in NetBox
+      ansible.builtin.set_fact:
+        nb_ip_owner: >-
+          {{ query('netbox.netbox.nb_lookup', 'ip-addresses',
+                   api_endpoint=netbox_url, token=netbox_token,
+                   validate_certs=netbox_validate_certs,
+                   api_filter='address=' ~ ansible_host)
+             | map(attribute='value.assigned_object.device.name', default='')
+             | list | first | default('') }}
+      delegate_to: localhost
+      when:
+        - netbox_mgmt_prefix_length | string | length > 0
+        - ansible_host is match('^[0-9.]+$')
+
+    - name: Report a management address owned by another device
+      ansible.builtin.debug:
+        msg: >-
+          {{ ansible_host }} is already assigned to {{ nb_ip_owner }} in NetBox;
+          the primary IP of {{ nb_name }} was not changed.
+      when:
+        - nb_ip_owner | default('') | length > 0
+        - nb_ip_owner != nb_name
+
+    - name: Record the management address on eth1
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          address: "{{ ansible_host }}/{{ netbox_mgmt_prefix_length }}"
+          assigned_object:
+            device: "{{ nb_name }}"
+            name: eth1
+          status: active
+        state: present
+      delegate_to: localhost
+      when:
+        - netbox_mgmt_prefix_length | string | length > 0
+        - ansible_host is match('^[0-9.]+$')
+        - nb_ip_owner | default('') in ['', nb_name]
+
+    - name: Set the management address as the primary IPv4 address
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: "{{ nb_name }}"
+          primary_ip4: "{{ ansible_host }}/{{ netbox_mgmt_prefix_length }}"
+        state: present
+      delegate_to: localhost
+      when:
+        - netbox_mgmt_prefix_length | string | length > 0
+        - ansible_host is match('^[0-9.]+$')
+        - nb_ip_owner | default('') in ['', nb_name]
+
+    - name: Write live port names and attached devices to NetBox console server ports
+      netbox.netbox.netbox_console_server_port:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          device: "{{ nb_name }}"
+          name: "{{ 'Port-%02d' | format(item.id | int) }}"
+          type: "{{ 'usb-a' if item.type == 'usb' else 'rj-45' }}"
+          label: "{{ '' if item.name == ('Port-%02d' | format(item.id | int)) else item.name }}"
+          description: "{{ item.md_name | default('') }}"
+        state: present
+      delegate_to: localhost
+      loop: "{{ slc_ports.ports }}"
+      loop_control:
+        label: "{{ item.id }} {{ item.name }}"
+
+- name: Sync the Percepxion-managed SLC and EMG fleet to NetBox
+  hosts: percepxion_platform
+  gather_facts: false
+  tags: [percepxion]
+
+  vars:
+    netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_URL') }}"
+    netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+    netbox_validate_certs: true
+    netbox_site: ""
+    netbox_device_role: ""
+    # Narrow the Percepxion device list, for example "EMG" or a device name prefix.
+    percepxion_search: ""
+    percepxion_device_limit: 500
+    # Map a Percepxion model string to a NetBox device type model when the
+    # default rule does not fit. Default rule: the hardware model plus "S"
+    # (EMG751001 -> EMG751001S). For EMG 8500 the hardware model records which
+    # connectivity bay holds the radio, while the orderable SKU always lists it
+    # first, so EMG851101 (LTE in bay 2) maps to EMG851110S. SLC models reported
+    # by Percepxion do not carry the full SKU; add them here, for example
+    # {"SLC9016": "SLC9016-16E"}.
+    netbox_model_map: {}
+
+  tasks:
+    - name: Check required NetBox settings
+      ansible.builtin.assert:
+        that:
+          - netbox_url | length > 0
+          - netbox_token | length > 0
+          - netbox_site | length > 0
+          - netbox_device_role | length > 0
+        fail_msg: Set netbox_url, netbox_token, netbox_site and netbox_device_role.
+        quiet: true
+
+    - name: List Percepxion devices
+      lantronix.oob.percepxion_devices:
+        search_string: "{{ percepxion_search | default(omit, true) }}"
+        limit: "{{ percepxion_device_limit }}"
+      register: px
+
+    - name: Load Lantronix device types from NetBox
+      ansible.builtin.set_fact:
+        nb_types: >-
+          {{ query('netbox.netbox.nb_lookup', 'device-types',
+                   api_endpoint=netbox_url, token=netbox_token,
+                   validate_certs=netbox_validate_certs,
+                   api_filter='manufacturer=lantronix')
+             | map(attribute='value.model') | list }}
+      delegate_to: localhost
+
+    # Lists are built with expressions and filters (never by rendering text and
+    # parsing it back), so values reported by devices stay data.
+    - name: Build the SLC and EMG device list
+      vars:
+        model: "{{ item.attributes.model | default('') }}"
+        sku: >-
+          {{ ('EMG85' ~ model[5:7] ~ (model[7:9] | list | sort(reverse=true) | join) ~ 'S')
+             if model is match('^EMG85[0-9]{4}$') else (model ~ 'S') }}
+        nb_model: "{{ netbox_model_map.get(model, sku) }}"
+      ansible.builtin.set_fact:
+        px_fleet: >-
+          {{ px_fleet | default([]) + [{
+               'name': item.device_name,
+               'serial': item.serial_num | default('', true),
+               'id': item.device_id,
+               'model': model,
+               'nb_model': nb_model if nb_model in nb_types else ''}] }}
+      loop: "{{ px.devices | selectattr('dev_type', 'equalto', 'ltrx_itm') | list }}"
+      loop_control:
+        label: "{{ item.device_name }}"
+      when: item.device_name is match('^[A-Za-z0-9._-]+$')
+
+    # Names go into NetBox API filters, so only plain hostnames are synced.
+    - name: Record device names NetBox lookups cannot match safely
+      ansible.builtin.set_fact:
+        px_bad_names: >-
+          {{ px.devices | selectattr('dev_type', 'equalto', 'ltrx_itm')
+             | rejectattr('device_name', 'match', '^[A-Za-z0-9._-]+$')
+             | map(attribute='device_name') | list }}
+        px_fleet: "{{ px_fleet | default([]) }}"
+
+    - name: Look up fleet devices in NetBox
+      ansible.builtin.set_fact:
+        nb_existing: >-
+          {{ nb_existing | default([]) +
+             (query('netbox.netbox.nb_lookup', 'devices',
+                    api_endpoint=netbox_url, token=netbox_token,
+                    validate_certs=netbox_validate_certs,
+                    api_filter='name=' ~ item.name)
+              | map(attribute='value') | list) }}
+      delegate_to: localhost
+      loop: "{{ px_fleet }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # An existing NetBox device is only updated when it is a Lantronix device on
+    # the lantronix_itmgos platform (or none) whose serial number is empty or
+    # matches the Percepxion record.
+    - name: Select existing NetBox devices that match their Percepxion record
+      vars:
+        rec: "{{ (nb_existing | default([]) | selectattr('name', 'equalto', item.name) | list + [{}]) | first }}"
+      ansible.builtin.set_fact:
+        px_update: "{{ px_update | default([]) + [item] }}"
+      loop: "{{ px_fleet }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when:
+        - rec | length > 0
+        - rec.device_type.manufacturer.slug == 'lantronix'
+        - rec.site.slug in [netbox_site, netbox_site | lower] or rec.site.name == netbox_site
+        - (rec.platform.slug if rec.platform else '') in ['', 'lantronix_itmgos']
+        - (rec.serial | default('', true)) in ['', item.serial]
+
+    - name: Classify fleet devices against NetBox
+      vars:
+        existing_names: "{{ nb_existing | default([]) | map(attribute='name') | list }}"
+        update_names: "{{ px_update | default([]) | map(attribute='name') | list }}"
+      ansible.builtin.set_fact:
+        px_update: "{{ px_update | default([]) }}"
+        px_new: "{{ px_fleet | rejectattr('name', 'in', existing_names) | list }}"
+        px_conflicts: >-
+          {{ px_fleet | selectattr('name', 'in', existing_names)
+             | rejectattr('name', 'in', update_names) | map(attribute='name') | list }}
+
+    - name: Create missing fleet devices in NetBox
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: "{{ item.name }}"
+          device_type: "lantronix-{{ item.nb_model | lower }}"
+          device_role: "{{ netbox_device_role }}"
+          site: "{{ netbox_site }}"
+          serial: "{{ item.serial }}"
+          platform: lantronix_itmgos
+          status: active
+          custom_fields:
+            percepxion_device_id: "{{ item.id }}"
+        state: present
+      delegate_to: localhost
+      loop: "{{ px_new | selectattr('nb_model') | list }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.nb_model }})"
+
+    - name: Update serial and Percepxion ID on existing fleet devices
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: "{{ netbox_validate_certs }}"
+        data:
+          name: "{{ item.name }}"
+          serial: "{{ item.serial }}"
+          custom_fields:
+            percepxion_device_id: "{{ item.id }}"
+        state: present
+      delegate_to: localhost
+      loop: "{{ px_update }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Report fleet devices without a matching NetBox device type
+      ansible.builtin.debug:
+        msg: >-
+          Not created (no NetBox device type for the Percepxion model):
+          {{ px_new | rejectattr('nb_model') | map(attribute='name') | join(', ') }}.
+          Load the Lantronix device types or add entries to netbox_model_map.
+      when: px_new | rejectattr('nb_model') | list | length > 0
+
+    - name: Report fleet devices whose name belongs to a different NetBox device
+      ansible.builtin.debug:
+        msg: >-
+          Not changed (the NetBox device with this name is not a Lantronix device
+          in netbox_site, or its serial number or platform differs): {{ px_conflicts | join(', ') }}.
+      when: px_conflicts | length > 0
+
+    - name: Report fleet devices with unusable names
+      ansible.builtin.debug:
+        msg: >-
+          Not synced (name contains characters outside A-Z, a-z, 0-9, dot,
+          underscore and hyphen): {{ px_bad_names | join(', ') }}.
+      when: px_bad_names | length > 0
