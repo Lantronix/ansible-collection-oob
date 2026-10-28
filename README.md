@@ -29,6 +29,7 @@ ansible-galaxy collection install lantronix.oob --upgrade
 - Python 3.9 or later
 - Python `requests` library (declared in `requirements.txt`; execution environments built with `ansible-builder` include it automatically)
 - `ansible.netcommon` >= 5.0.0 (installed automatically as a collection dependency)
+- `netbox.netbox` >= 3.21.0 (installed automatically as a collection dependency; its Python requirements are needed only for the NetBox integration playbook)
 
 The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 
@@ -81,6 +82,26 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.oob_firmware_audit` | Checks fleet firmware compliance, optionally triggers upgrades |
 | `lantronix.oob.oob_user_management` | Bulk user management across all SLC devices in a smart group |
 | `lantronix.oob.oob_baseline_config` | Enforces baseline hostname, NTP, and syslog config across SLC fleet |
+
+## NetBox Integration
+
+`playbooks/combo/netbox_sync.yml` keeps NetBox current with your out-of-band estate:
+
+- Creates a `lantronix_itmgos` platform (the slug matches the Netmiko device type for SLC and EMG), a `percepxion_device_id` custom field, and "Open console (SSH)" and "SLC web UI" links on console server ports.
+- Publishes a config context with the `lantronix.oob` connection settings for SLC 9000 device types, so the `netbox.netbox.nb_inventory` plugin can serve NetBox as your inventory for this collection.
+- Records each SLC 9000 in NetBox with its device type and serial number, and writes each serial port's configured name and attached device to the matching console server port (`Port-01`, `Port-02`, and so on).
+- Records every SLC and EMG managed by Percepxion, with its serial number and Percepxion device ID. Existing NetBox devices keep their device type.
+- Updates an existing NetBox device only when it is the same Lantronix unit (matching or empty serial number, `lantronix_itmgos` or no platform, in `netbox_site`). Name collisions with other devices are reported and left unchanged.
+
+The playbook uses the `netbox.netbox` collection (installed automatically as a collection dependency) and its Python requirements on the control node, plus the Lantronix device types from the NetBox community device type library.
+
+```bash
+export NETBOX_URL=https://netbox.example.com NETBOX_TOKEN=<api token>
+ansible-playbook -i inventory.yml playbooks/combo/netbox_sync.yml \
+  -e "netbox_site=dc1 netbox_device_role=console-server netbox_mgmt_prefix_length=24"
+```
+
+Use `--tags setup`, `--tags slc` or `--tags percepxion` to run one part.
 
 ## Quick Start
 

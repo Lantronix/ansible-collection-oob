@@ -4,6 +4,32 @@ Changelog
 
 .. contents:: Topics
 
+v1.3.0
+======
+
+Release Summary
+---------------
+
+NetBox integration: a reference playbook that keeps NetBox current with SLC 9000
+devices, their console ports, and the SLC and EMG fleet managed by Percepxion.
+
+Minor Changes
+-------------
+
+- New ``playbooks/combo/netbox_sync.yml`` reference playbook. Prepares NetBox
+  with a ``lantronix_itmgos`` platform (matches the Netmiko device type), a
+  config context carrying ``lantronix.oob`` connection settings for SLC 9000
+  device types (for use with the ``netbox.netbox.nb_inventory`` plugin), a
+  ``percepxion_device_id`` custom field, and SSH and web UI launch links on
+  console server ports. Syncs SLC 9000 devices (device type derived from the
+  installed I/O modules, serial number, optional primary IP) and writes each
+  serial port's configured name and attached device to the matching NetBox
+  console server port. Records Percepxion-managed SLC and EMG devices with
+  their serial number and Percepxion device ID without changing the device
+  type of existing NetBox records. ``netbox.netbox`` >= 3.21.0 is now a
+  collection dependency; its Python requirements are needed only for this
+  playbook.
+
 v1.2.0
 ======
 
