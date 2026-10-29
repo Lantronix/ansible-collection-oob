@@ -20,7 +20,7 @@ collections:
 To install a specific version, or upgrade to the latest release:
 
 ```bash
-ansible-galaxy collection install lantronix.oob:==1.2.0
+ansible-galaxy collection install lantronix.oob:==1.3.0
 ansible-galaxy collection install lantronix.oob --upgrade
 ```
 
