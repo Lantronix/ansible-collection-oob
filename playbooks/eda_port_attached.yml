@@ -1,0 +1,60 @@
+---
+# eda_port_attached, report a change to the device on an SLC console port
+#
+# What this does:
+#   Called by the percepxion_console_events rulebook with a
+#   percepxion.port.attached_changed event. Prints which device was attached to,
+#   changed on, or removed from the console port. Read-only, runs on localhost.
+#
+# Run (from a rulebook):
+#   run_playbook: {name: lantronix.oob.eda_port_attached}
+#
+# Run (by hand, for testing):
+#   ansible-playbook lantronix.oob.eda_port_attached \
+#     -e '{"ansible_eda": {"event": {"device": {"name": "slc-01"},
+#          "data": {"port": 14, "change": "attached", "state": "Managed",
+#                   "attached_device": {"hostname": "edge-01", "model": "C9300"}, "previous": null}}}}'
+
+- name: Report a console port attachment change
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    eda_event: "{{ ansible_eda.event | default({}) }}"
+    eda_port: "{{ eda_event.data | default({}) }}"
+    eda_now: "{{ eda_port.attached_device | default({}, true) }}"
+    eda_before: "{{ eda_port.previous | default({}, true) }}"
+
+  tasks:
+    - name: Require a port attachment event
+      ansible.builtin.assert:
+        that:
+          - eda_event.device.name is defined
+          - eda_port.port is defined
+          - eda_port.change in ['attached', 'detached', 'changed']
+        fail_msg: "Run this playbook from a rulebook, or pass ansible_eda.event as shown in the header."
+        quiet: true
+
+    - name: Report a new device on the port
+      ansible.builtin.debug:
+        msg: >-
+          {{ eda_event.device.name }} port {{ eda_port.port }}: {{ eda_now.hostname | default('unnamed device', true) }}
+          ({{ eda_now.make | default('') }} {{ eda_now.model | default('') }}, serial {{ eda_now.serial | default('unknown', true) }})
+          attached, state {{ eda_port.state }}
+      when: eda_port.change == 'attached'
+
+    - name: Report a different device on the port
+      ansible.builtin.debug:
+        msg: >-
+          {{ eda_event.device.name }} port {{ eda_port.port }}: was {{ eda_before.hostname | default('unnamed device', true) }}
+          ({{ eda_before.model | default('') }}), now {{ eda_now.hostname | default('unnamed device', true) }}
+          ({{ eda_now.model | default('') }}), state {{ eda_port.state }}
+      when: eda_port.change == 'changed'
+
+    - name: Report the device removed from the port
+      ansible.builtin.debug:
+        msg: >-
+          {{ eda_event.device.name }} port {{ eda_port.port }}: {{ eda_before.hostname | default('unnamed device', true) }}
+          ({{ eda_before.model | default('') }}) no longer detected, state {{ eda_port.state }}
+      when: eda_port.change == 'detached'

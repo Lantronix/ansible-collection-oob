@@ -1,0 +1,51 @@
+---
+# percepxion_console_events, react to Percepxion device and console port changes
+#
+# What this does:
+#   Polls Percepxion with the lantronix.oob.percepxion_events source and:
+#     - runs lantronix.oob.eda_device_offline when a device stops reporting Connected
+#     - runs lantronix.oob.eda_port_attached when a device appears on, changes on,
+#       or leaves an SLC console port
+#   Both playbooks are read-only reports. Replace or extend them with your own
+#   actions (open a ticket, update a CMDB, notify a channel).
+#
+# Run:
+#   export PERCEPXION_USERNAME=... PERCEPXION_PASSWORD=...
+#   ansible-rulebook -r lantronix.oob.percepxion_console_events -i inventory.yml \
+#     --vars rulebook_vars.yml
+#
+# rulebook_vars.yml:
+#   percepxion_host: api.percepxion.ai
+#
+# The inventory must contain the percepxion_platform group that the playbooks use.
+
+- name: Percepxion console events
+  hosts: all
+  sources:
+    - lantronix.oob.percepxion_events:
+        host: "{{ percepxion_host }}"
+        interval: 60
+        watch:
+          - status
+          - ports
+  rules:
+    - name: Device went offline
+      condition: >-
+        event.type == "percepxion.device.status_changed" and event.data.up == false
+        and event.data.previous_status == "Connected"
+      action:
+        run_playbook:
+          name: lantronix.oob.eda_device_offline
+
+    - name: Device came back
+      condition: >-
+        event.type == "percepxion.device.status_changed" and event.data.up == true
+      action:
+        debug:
+          msg: "{{ event.device.name }} is {{ event.data.status }} again"
+
+    - name: Console port attachment changed
+      condition: event.type == "percepxion.port.attached_changed"
+      action:
+        run_playbook:
+          name: lantronix.oob.eda_port_attached

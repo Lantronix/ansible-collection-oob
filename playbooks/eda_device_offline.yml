@@ -1,0 +1,54 @@
+---
+# eda_device_offline, report a device that stopped reporting to Percepxion
+#
+# What this does:
+#   Called by the percepxion_console_events rulebook with a
+#   percepxion.device.status_changed event. Looks the device up in Percepxion
+#   and prints what an operator needs to start triage. Read-only.
+#
+# Run (from a rulebook):
+#   run_playbook: {name: lantronix.oob.eda_device_offline}
+#
+# Run (by hand, for testing):
+#   ansible-playbook -i inventory.yml lantronix.oob.eda_device_offline \
+#     -e '{"ansible_eda": {"event": {"device": {"id": "<device_id>", "name": "<name>"},
+#          "data": {"status": "Disconnected", "previous_status": "Connected"},
+#          "occurred_at": "2026-01-01T00:00:00Z"}}}'
+
+- name: Report a device that went offline in Percepxion
+  hosts: percepxion_platform
+  gather_facts: false
+
+  vars:
+    eda_event: "{{ ansible_eda.event | default({}) }}"
+
+  tasks:
+    - name: Require a device status event
+      ansible.builtin.assert:
+        that:
+          - eda_event.device.name is defined
+          - eda_event.data.status is defined
+        fail_msg: "Run this playbook from a rulebook, or pass ansible_eda.event as shown in the header."
+        quiet: true
+
+    - name: Look up the device in Percepxion
+      lantronix.oob.percepxion_devices:
+        search_string: "{{ eda_event.device.name }}"
+        limit: 10
+      register: offline_lookup
+
+    - name: Select the matching device record
+      ansible.builtin.set_fact:
+        offline_device: >-
+          {{ offline_lookup.devices | default([])
+             | selectattr('device_id', 'equalto', eda_event.device.id | default(''))
+             | first | default({}) }}
+
+    - name: Report the offline device
+      ansible.builtin.debug:
+        msg:
+          - "{{ eda_event.device.name }} ({{ eda_event.device.model | default('') }}) is {{ eda_event.data.status }}"
+          - "Previous status: {{ eda_event.data.previous_status | default('unknown') }}"
+          - "Seen by poll at: {{ eda_event.occurred_at | default('unknown') }}"
+          - "Serial: {{ eda_event.device.serial | default('') }}"
+          - "Percepxion record found: {{ offline_device | length > 0 }}"

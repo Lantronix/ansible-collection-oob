@@ -4,6 +4,29 @@ Changelog
 
 .. contents:: Topics
 
+v1.4.0
+======
+
+Release Summary
+---------------
+
+Event-Driven Ansible: an event source that turns Percepxion device status and
+console port changes into rulebook events, with an example rulebook.
+
+Minor Changes
+-------------
+
+- New ``lantronix.oob.percepxion_events`` Event-Driven Ansible event source.
+  Polls Percepxion and emits ``percepxion.device.status_changed`` when a
+  managed device's connection status changes and
+  ``percepxion.port.attached_changed`` when the device attached to an SLC
+  console port appears, changes, or goes away. Options cover the poll
+  interval, request pacing, device search, which changes to watch, which
+  devices' ports to read, and whether to emit the initial state.
+- New ``lantronix.oob.percepxion_console_events`` rulebook and the read-only
+  ``lantronix.oob.eda_device_offline`` and ``lantronix.oob.eda_port_attached``
+  playbooks it calls.
+
 v1.3.0
 ======
 

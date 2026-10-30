@@ -103,6 +103,41 @@ ansible-playbook -i inventory.yml playbooks/combo/netbox_sync.yml \
 
 Use `--tags setup`, `--tags slc` or `--tags percepxion` to run one part.
 
+## Event-Driven Ansible
+
+The `lantronix.oob.percepxion_events` event source polls Percepxion and emits an event when:
+
+- a managed device's connection status changes (`percepxion.device.status_changed`, with `data.status`, `data.previous_status` and `data.up`)
+- the device attached to an SLC console port appears, changes, or goes away (`percepxion.port.attached_changed`, with `data.port`, `data.change`, `data.state`, `data.attached_device` and `data.previous`)
+
+Each event carries the device's Percepxion ID, name, serial number and model in `event.device`, and a stable `event.id`. The first poll records a baseline and emits nothing unless `emit_initial: true`. Port changes are read from each connected SLC's telemetry, one request per SLC per poll; `port_devices` limits which devices are read.
+
+The collection ships the `lantronix.oob.percepxion_console_events` rulebook, which runs `lantronix.oob.eda_device_offline` when a device goes offline and `lantronix.oob.eda_port_attached` when a console port changes. Both playbooks are read-only reports to extend with your own actions.
+
+```bash
+export PERCEPXION_USERNAME=<user> PERCEPXION_PASSWORD=<password>
+ansible-rulebook -r lantronix.oob.percepxion_console_events -i inventory.yml \
+  --vars rulebook_vars.yml   # percepxion_host: api.percepxion.ai
+```
+
+Or use the source in your own rulebook:
+
+```yaml
+sources:
+  - lantronix.oob.percepxion_events:
+      host: api.percepxion.ai
+      interval: 60
+      watch: [status, ports]
+rules:
+  - name: New device on a console port
+    condition: event.type == "percepxion.port.attached_changed" and event.data.change == "attached"
+    action:
+      debug:
+        msg: "{{ event.device.name }} port {{ event.data.port }}: {{ event.data.attached_device.hostname }}"
+```
+
+The event source needs no Python packages beyond the standard library.
+
 ## Quick Start
 
 ### SLC9000
