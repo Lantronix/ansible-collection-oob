@@ -16,18 +16,3 @@ exclude_paths:
 
 warn_list:
   - no-log-password
-
-# netbox.netbox is a galaxy.yml dependency, but the certification importer lints
-# without installing dependencies. Stubs let syntax-check resolve these modules.
-# Offline, because installing requirements.yml alongside the stubs fails: ansible-galaxy
-# finds the stub netbox.netbox collection, which has no galaxy.yml.
-offline: true
-mock_modules:
-  - netbox.netbox.netbox_config_context
-  - netbox.netbox.netbox_console_server_port
-  - netbox.netbox.netbox_custom_field
-  - netbox.netbox.netbox_custom_link
-  - netbox.netbox.netbox_device
-  - netbox.netbox.netbox_ip_address
-  - netbox.netbox.netbox_manufacturer
-  - netbox.netbox.netbox_platform

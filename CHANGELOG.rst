@@ -10,15 +10,11 @@ v1.4.1
 Release Summary
 ---------------
 
-Maintenance release: lint and code-quality fixes, no behavior changes.
+Maintenance release: code-quality fixes to the Event-Driven Ansible event source, no behavior changes.
 
 Bugfixes
 --------
 
-- ``.ansible-lint`` declares the ``netbox.netbox`` modules that the
-  ``playbooks/combo/netbox_sync.yml`` reference playbook uses, so
-  ``ansible-lint`` syntax checks pass when the ``netbox.netbox`` dependency
-  is not installed.
 - ``lantronix.oob.percepxion_events`` event source: chain the original
   exception when a request fails or returns non-JSON, log transient poll
   failures through Python logging instead of printing them, and add
