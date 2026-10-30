@@ -19,6 +19,9 @@ warn_list:
 
 # netbox.netbox is a galaxy.yml dependency, but the certification importer lints
 # without installing dependencies. Stubs let syntax-check resolve these modules.
+# Offline, because installing requirements.yml alongside the stubs fails: ansible-galaxy
+# finds the stub netbox.netbox collection, which has no galaxy.yml.
+offline: true
 mock_modules:
   - netbox.netbox.netbox_config_context
   - netbox.netbox.netbox_console_server_port
