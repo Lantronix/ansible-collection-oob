@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: oob_coverage_gate
+  author: Lantronix Product Team
+  description: Stops a change when the devices it touches have no ready console path through an SLC, using the console coverage gate in NetBox or Nautobot.
+  company: Lantronix
+  license: Apache-2.0
+  min_ansible_version: "2.16"

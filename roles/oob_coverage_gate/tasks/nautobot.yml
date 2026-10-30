@@ -1,0 +1,87 @@
+---
+- name: Find the Nautobot gate job
+  ansible.builtin.uri:
+    url: "{{ _oob_coverage_gate_base }}/api/extras/jobs/?limit=1000"
+    headers: "{{ _oob_coverage_gate_headers }}"
+    validate_certs: "{{ oob_coverage_gate_validate_certs }}"
+  register: _oob_coverage_gate_jobs
+  check_mode: false
+  failed_when: false
+  no_log: true
+
+- name: Select the Nautobot gate job
+  ansible.builtin.set_fact:
+    _oob_coverage_gate_jobdef: >-
+      {{ (_oob_coverage_gate_jobs.json.results | default([])
+          | selectattr('name', 'equalto', oob_coverage_gate_script | string) | list)
+         + (_oob_coverage_gate_jobs.json.results | default([])
+          | selectattr('id', 'equalto', oob_coverage_gate_script | string) | list) }}
+
+- name: Require the Nautobot gate job
+  ansible.builtin.assert:
+    that:
+      - _oob_coverage_gate_jobs.status | default(0) == 200
+      - _oob_coverage_gate_jobdef | length > 0
+    fail_msg: >-
+      Could not find Nautobot job {{ oob_coverage_gate_script }} (HTTP {{ _oob_coverage_gate_jobs.status | default('none') }}
+      {{ _oob_coverage_gate_jobs.msg | default('') }}). Install and enable the console coverage gate job and check the token's permissions.
+    quiet: true
+
+- name: Start the Nautobot gate job
+  ansible.builtin.uri:
+    url: "{{ _oob_coverage_gate_base }}/api/extras/jobs/{{ _oob_coverage_gate_jobdef[0].id }}/run/"
+    method: POST
+    headers: "{{ _oob_coverage_gate_headers }}"
+    body_format: json
+    body:
+      data: "{{ _oob_coverage_gate_data }}"
+    status_code: [200, 201]
+    validate_certs: "{{ oob_coverage_gate_validate_certs }}"
+  register: _oob_coverage_gate_start
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  no_log: true
+
+- name: Require a started gate job
+  ansible.builtin.assert:
+    that:
+      - _oob_coverage_gate_start.status | default(0) in [200, 201]
+      - _oob_coverage_gate_start.json.job_result.id is defined
+    fail_msg: >-
+      Nautobot did not start the gate job (HTTP {{ _oob_coverage_gate_start.status | default('none') }}
+      {{ _oob_coverage_gate_start.json.detail | default(_oob_coverage_gate_start.msg | default('')) }}).
+    quiet: true
+
+- name: Wait for the Nautobot gate job
+  ansible.builtin.uri:
+    url: "{{ _oob_coverage_gate_base }}/api/extras/job-results/{{ _oob_coverage_gate_start.json.job_result.id }}/"
+    headers: "{{ _oob_coverage_gate_headers }}"
+    validate_certs: "{{ oob_coverage_gate_validate_certs }}"
+  register: _oob_coverage_gate_job
+  until: >-
+    (_oob_coverage_gate_job.json.status.value | default(_oob_coverage_gate_job.json.status | default('')))
+    in ['SUCCESS', 'FAILURE', 'REVOKED']
+  retries: "{{ (oob_coverage_gate_wait_seconds | int / 3) | round(0, 'ceil') | int }}"
+  delay: 3
+  check_mode: false
+  failed_when: false
+  no_log: true
+
+- name: Keep the Nautobot gate output
+  ansible.builtin.set_fact:
+    _oob_coverage_gate_output: >-
+      {{ _oob_coverage_gate_job.json.result if _oob_coverage_gate_job.json.result is string
+         else (_oob_coverage_gate_job.json.result | default('') | to_json) }}
+
+# The gate job reports a failed result as a job FAILURE and still returns the report,
+# so only a missing report is an error here.
+- name: Require a gate report from Nautobot
+  ansible.builtin.assert:
+    that:
+      - _oob_coverage_gate_output is match('\s*\{')
+    fail_msg: >-
+      Nautobot gate job {{ _oob_coverage_gate_start.json.job_result.id }} returned no report
+      (status {{ _oob_coverage_gate_job.json.status.value | default(_oob_coverage_gate_job.json.status | default('unknown')) }}).
+      Check the job result and its console-coverage.json file in Nautobot.
+    quiet: true

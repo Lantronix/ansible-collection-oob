@@ -11,7 +11,9 @@ Release Summary
 ---------------
 
 Event-Driven Ansible: an event source that turns Percepxion device status and
-console port changes into rulebook events, with an example rulebook.
+console port changes into rulebook events, with an example rulebook. A
+console coverage gate role that stops a change when the devices it touches
+have no ready out-of-band console path.
 
 Minor Changes
 -------------
@@ -26,6 +28,11 @@ Minor Changes
 - New ``lantronix.oob.percepxion_console_events`` rulebook and the read-only
   ``lantronix.oob.eda_device_offline`` and ``lantronix.oob.eda_port_attached``
   playbooks it calls.
+- New ``lantronix.oob.oob_coverage_gate`` role. Runs the console coverage
+  gate (NetBox script or Nautobot job) for the hosts in a play and fails the
+  play when any of them has no console cable to a Percepxion-managed SLC
+  port in a ready state, or is not found in the source of truth. Runs once on
+  the control node, changes nothing, and runs in check mode.
 
 v1.3.0
 ======

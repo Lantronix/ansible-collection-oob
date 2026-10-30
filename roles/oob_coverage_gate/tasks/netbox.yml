@@ -1,0 +1,87 @@
+---
+- name: Find the NetBox gate script
+  ansible.builtin.uri:
+    url: "{{ _oob_coverage_gate_base }}/api/extras/scripts/?limit=1000"
+    headers: "{{ _oob_coverage_gate_headers }}"
+    validate_certs: "{{ oob_coverage_gate_validate_certs }}"
+  register: _oob_coverage_gate_scripts
+  check_mode: false
+  failed_when: false
+  no_log: true
+
+- name: Select the NetBox gate script
+  ansible.builtin.set_fact:
+    _oob_coverage_gate_script: >-
+      {{ (_oob_coverage_gate_scripts.json.results | default([])
+          | selectattr('name', 'equalto', oob_coverage_gate_script | string) | list)
+         + (_oob_coverage_gate_scripts.json.results | default([])
+          | selectattr('id', 'equalto', oob_coverage_gate_script | int) | list) }}
+
+- name: Require the NetBox gate script
+  ansible.builtin.assert:
+    that:
+      - _oob_coverage_gate_scripts.status | default(0) == 200
+      - _oob_coverage_gate_script | length > 0
+    fail_msg: >-
+      Could not find NetBox script {{ oob_coverage_gate_script }} (HTTP {{ _oob_coverage_gate_scripts.status | default('none') }}
+      {{ _oob_coverage_gate_scripts.msg | default('') }}). Install the console coverage gate script and check the token's permissions.
+    quiet: true
+
+- name: Start the NetBox gate script
+  ansible.builtin.uri:
+    url: "{{ _oob_coverage_gate_base }}/api/extras/scripts/{{ _oob_coverage_gate_script[0].id }}/"
+    method: POST
+    headers: "{{ _oob_coverage_gate_headers }}"
+    body_format: json
+    body:
+      data: "{{ _oob_coverage_gate_data }}"
+      commit: false
+    status_code: [200, 201]
+    validate_certs: "{{ oob_coverage_gate_validate_certs }}"
+  register: _oob_coverage_gate_start
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  no_log: true
+
+- name: Require a started gate job
+  ansible.builtin.assert:
+    that:
+      - _oob_coverage_gate_start.status | default(0) in [200, 201]
+      - _oob_coverage_gate_start.json.result.id is defined
+    fail_msg: >-
+      NetBox did not start the gate script (HTTP {{ _oob_coverage_gate_start.status | default('none') }}
+      {{ _oob_coverage_gate_start.json.detail | default(_oob_coverage_gate_start.msg | default('')) }}).
+    quiet: true
+
+- name: Wait for the NetBox gate job
+  ansible.builtin.uri:
+    url: "{{ _oob_coverage_gate_base }}/api/extras/scripts/{{ _oob_coverage_gate_script[0].id }}/"
+    headers: "{{ _oob_coverage_gate_headers }}"
+    validate_certs: "{{ oob_coverage_gate_validate_certs }}"
+  register: _oob_coverage_gate_job
+  until: >-
+    _oob_coverage_gate_job.json.result.id | default(0) != _oob_coverage_gate_start.json.result.id
+    or _oob_coverage_gate_job.json.result.status.value | default('') in ['completed', 'errored', 'failed']
+  retries: "{{ (oob_coverage_gate_wait_seconds | int / 3) | round(0, 'ceil') | int }}"
+  delay: 3
+  check_mode: false
+  failed_when: false
+  no_log: true
+
+- name: Require a completed gate job
+  ansible.builtin.assert:
+    that:
+      - _oob_coverage_gate_job.json.result.id | default(0) == _oob_coverage_gate_start.json.result.id
+      - _oob_coverage_gate_job.json.result.status.value | default('') == 'completed'
+      - _oob_coverage_gate_job.json.result.data.output | default('') | length > 0
+    fail_msg: >-
+      NetBox gate job {{ _oob_coverage_gate_start.json.result.id }} did not complete
+      (status {{ _oob_coverage_gate_job.json.result.status.value | default('unknown') }},
+      {{ _oob_coverage_gate_job.json.result.error | default('') }}). If another run of the
+      script started meanwhile, run the play again.
+    quiet: true
+
+- name: Keep the NetBox gate output
+  ansible.builtin.set_fact:
+    _oob_coverage_gate_output: "{{ _oob_coverage_gate_job.json.result.data.output }}"
