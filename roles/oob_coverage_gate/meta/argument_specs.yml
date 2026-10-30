@@ -1,0 +1,75 @@
+---
+argument_specs:
+  main:
+    short_description: Check out-of-band console coverage before a change
+    description:
+      - Runs the console coverage gate (NetBox script or Nautobot job) for the devices
+        in a change and fails the play when any of them has no ready console path
+        through an SLC 9000 port managed by Percepxion.
+      - Runs once per play on the control node.
+    options:
+      oob_coverage_gate_source:
+        description: Source of truth that holds the gate.
+        type: str
+        choices: [netbox, nautobot]
+        default: netbox
+      oob_coverage_gate_url:
+        description: Base URL of NetBox or Nautobot. Defaults to C(NETBOX_URL) or C(NAUTOBOT_URL).
+        type: str
+      oob_coverage_gate_token:
+        description: API token. Defaults to C(NETBOX_TOKEN) or C(NAUTOBOT_TOKEN). Needs view access and permission to run the gate.
+        type: str
+      oob_coverage_gate_script:
+        description: >-
+          NetBox script name or ID (default C(ConsoleCoverageGate)), or Nautobot job
+          name or ID (default C(AOOB console coverage gate)).
+        type: str
+      oob_coverage_gate_devices:
+        description:
+          - Device names to check, as named in the source of truth. Defaults to the hosts in the play.
+          - An empty list checks every active device in the other filters.
+        type: list
+        elements: str
+      oob_coverage_gate_site:
+        description: Limit to one NetBox site (ID or slug) or Nautobot location (ID).
+        type: str
+        default: ""
+      oob_coverage_gate_roles:
+        description: Limit to device roles (NetBox ID or slug, Nautobot ID).
+        type: list
+        elements: str
+        default: []
+      oob_coverage_gate_tags:
+        description: Limit to tags (NetBox ID or slug, Nautobot ID).
+        type: list
+        elements: str
+        default: []
+      oob_coverage_gate_ready_states:
+        description: Percepxion port states that count as a ready console path.
+        type: list
+        elements: str
+        default: [Managed, Identified]
+      oob_coverage_gate_include_console_servers:
+        description: Also grade the SLCs' own console cables.
+        type: bool
+        default: false
+      oob_coverage_gate_require_all_devices:
+        description: Fail when a device in O(oob_coverage_gate_devices) is missing from the report (unknown, not active, or not visible to the token).
+        type: bool
+        default: true
+      oob_coverage_gate_min_in_scope:
+        description: Fail when fewer devices than this are in scope.
+        type: int
+        default: 1
+      oob_coverage_gate_fail:
+        description: Fail the play when the gate does not pass. Set to false to only report and set C(oob_coverage_gate_report).
+        type: bool
+        default: true
+      oob_coverage_gate_validate_certs:
+        description: Verify the server's TLS certificate.
+        type: bool
+        default: true
+      oob_coverage_gate_wait_seconds:
+        description: How long to wait for the gate run to finish.
+        type: int
+        default: 120

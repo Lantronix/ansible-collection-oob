@@ -1,0 +1,18 @@
+---
+oob_coverage_gate_source: netbox
+oob_coverage_gate_url: "{{ lookup('ansible.builtin.env', 'NETBOX_URL' if oob_coverage_gate_source == 'netbox' else 'NAUTOBOT_URL') }}"
+oob_coverage_gate_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN' if oob_coverage_gate_source == 'netbox' else 'NAUTOBOT_TOKEN') }}"
+oob_coverage_gate_script: "{{ 'ConsoleCoverageGate' if oob_coverage_gate_source == 'netbox' else 'AOOB console coverage gate' }}"
+oob_coverage_gate_devices: "{{ ansible_play_hosts }}"
+oob_coverage_gate_site: ""
+oob_coverage_gate_roles: []
+oob_coverage_gate_tags: []
+oob_coverage_gate_ready_states:
+  - Managed
+  - Identified
+oob_coverage_gate_include_console_servers: false
+oob_coverage_gate_require_all_devices: true
+oob_coverage_gate_min_in_scope: 1
+oob_coverage_gate_fail: true
+oob_coverage_gate_validate_certs: true
+oob_coverage_gate_wait_seconds: 120

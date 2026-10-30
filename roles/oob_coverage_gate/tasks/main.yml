@@ -1,0 +1,85 @@
+---
+- name: Check console coverage on the control node
+  run_once: true
+  delegate_to: localhost
+  # A gate failure stops the play for every host in it, not only the one the gate ran on.
+  any_errors_fatal: true
+  block:
+    - name: Require a URL and token for the source of truth
+      ansible.builtin.assert:
+        that:
+          - oob_coverage_gate_url | length > 0
+          - oob_coverage_gate_token | length > 0
+        fail_msg: >-
+          Set oob_coverage_gate_url and oob_coverage_gate_token, or the
+          {{ 'NETBOX_URL and NETBOX_TOKEN' if oob_coverage_gate_source == 'netbox' else 'NAUTOBOT_URL and NAUTOBOT_TOKEN' }}
+          environment variables.
+        quiet: true
+
+    - name: Build the gate request headers
+      ansible.builtin.set_fact:
+        _oob_coverage_gate_headers:
+          Accept: application/json
+          Authorization: >-
+            {{ 'Bearer' if oob_coverage_gate_source == 'netbox' and oob_coverage_gate_token is match('nbt_') else 'Token' }} {{ oob_coverage_gate_token }}
+      no_log: true
+
+    - name: Build the gate request
+      ansible.builtin.set_fact:
+        _oob_coverage_gate_base: "{{ oob_coverage_gate_url | regex_replace('/+$', '') }}"
+        _oob_coverage_gate_devices: "{{ oob_coverage_gate_devices | map('string') | list }}"
+        _oob_coverage_gate_data: >-
+          {{ {'devices': oob_coverage_gate_devices | join(', '),
+              'ready_states': oob_coverage_gate_ready_states | join(', '),
+              'include_console_servers': oob_coverage_gate_include_console_servers | bool}
+             | combine({('site' if oob_coverage_gate_source == 'netbox' else 'location'): oob_coverage_gate_site}
+                       if oob_coverage_gate_site | length > 0 else {})
+             | combine({'roles': oob_coverage_gate_roles} if oob_coverage_gate_roles | length > 0 else {})
+             | combine({'tags': oob_coverage_gate_tags} if oob_coverage_gate_tags | length > 0 else {}) }}
+
+    - name: Run the gate
+      ansible.builtin.include_tasks: "{{ oob_coverage_gate_source }}.yml"
+
+    - name: Read the coverage report
+      ansible.builtin.set_fact:
+        oob_coverage_gate_report: "{{ _oob_coverage_gate_output | from_json }}"
+
+    - name: Require a coverage report
+      ansible.builtin.assert:
+        that:
+          - oob_coverage_gate_report.schema | default('') == 'aoob.console-coverage/v1'
+        fail_msg: "The gate returned something other than an aoob.console-coverage/v1 report."
+        quiet: true
+
+    - name: Compare the report with the requested devices
+      ansible.builtin.set_fact:
+        # not_found is reported by newer gate versions; the name comparison covers older ones.
+        oob_coverage_gate_missing: >-
+          {{ (oob_coverage_gate_report.not_found | default([]) | map('string') | list)
+             | union(_oob_coverage_gate_devices | difference(oob_coverage_gate_report.devices | map(attribute='device') | list)) }}
+        oob_coverage_gate_uncovered: >-
+          {{ oob_coverage_gate_report.devices | rejectattr('covered') | list }}
+
+    - name: Report console coverage
+      ansible.builtin.debug:
+        msg: >-
+          {{ ['Console coverage: ' ~ oob_coverage_gate_report.result ~ ', '
+              ~ oob_coverage_gate_report.summary.covered ~ ' of '
+              ~ oob_coverage_gate_report.summary.in_scope ~ ' device(s) covered']
+             + (oob_coverage_gate_uncovered | map(attribute='device')
+                | zip(oob_coverage_gate_uncovered | map(attribute='reasons') | map('join', ', '))
+                | map('join', ': ') | map('regex_replace', '^', 'not covered: ') | list)
+             + (oob_coverage_gate_missing | map('regex_replace', '^', 'not found or not visible: ') | list) }}
+
+    - name: Stop the change when console coverage is incomplete
+      ansible.builtin.assert:
+        that:
+          - oob_coverage_gate_report.result == 'pass'
+          - oob_coverage_gate_report.summary.in_scope | int >= oob_coverage_gate_min_in_scope | int
+          - not (oob_coverage_gate_require_all_devices | bool) or oob_coverage_gate_missing | length == 0
+        fail_msg: >-
+          Console coverage gate failed: {{ oob_coverage_gate_uncovered | length }} device(s) without a ready
+          console path, {{ oob_coverage_gate_missing | length }} not found, {{ oob_coverage_gate_report.summary.in_scope }}
+          in scope (minimum {{ oob_coverage_gate_min_in_scope }}). See the report above.
+        quiet: true
+      when: oob_coverage_gate_fail | bool
