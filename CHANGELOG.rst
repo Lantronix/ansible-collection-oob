@@ -4,6 +4,22 @@ Changelog
 
 .. contents:: Topics
 
+v1.4.1
+======
+
+Release Summary
+---------------
+
+Maintenance release: code-quality fixes to the Event-Driven Ansible event source, no behavior changes.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.percepxion_events`` event source: chain the original
+  exception when a request fails or returns non-JSON, log transient poll
+  failures through Python logging instead of printing them, and add
+  docstrings and type hints. Rulebook options and events are unchanged.
+
 v1.4.0
 ======
 

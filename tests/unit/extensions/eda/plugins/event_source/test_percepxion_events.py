@@ -312,7 +312,7 @@ def test_main_puts_events_on_queue(monkeypatch):
     calls = []
 
     class StubPoller(object):
-        def poll(self, watch, port_devices, emit_initial):
+        def poll(self, watch, port_devices, *, emit_initial):
             calls.append(emit_initial)
             return [{"id": "rly-1"}] if len(calls) == 1 else []
 
@@ -336,7 +336,7 @@ def test_main_survives_transient_error(monkeypatch):
     calls = []
 
     class StubPoller(object):
-        def poll(self, watch, port_devices, emit_initial):
+        def poll(self, watch, port_devices, *, emit_initial):
             calls.append(emit_initial)
             if len(calls) == 1:
                 raise pe.PercepxionError("POST /v3/device/search returned HTTP 503")
@@ -359,7 +359,7 @@ def test_main_survives_transient_error(monkeypatch):
 
 def test_main_stops_on_auth_error(monkeypatch):
     class StubPoller(object):
-        def poll(self, *args):
+        def poll(self, *args, **kwargs):
             raise pe.PercepxionAuthError("Percepxion login rejected (HTTP 401)")
 
     monkeypatch.setattr(pe, "build_poller", lambda args: StubPoller())
