@@ -314,7 +314,7 @@ def test_main_puts_events_on_queue(monkeypatch):
     class StubPoller(object):
         def poll(self, watch, port_devices, *, emit_initial):
             calls.append(emit_initial)
-            return [{"id": "rly-1"}] if len(calls) == 1 else []
+            return [{"id": "rly-1", "data": {"attached_device": {"hostname": "{{ lookup('pipe', 'id') }}"}}}] if len(calls) == 1 else []
 
     class Stop(Exception):
         pass
@@ -328,7 +328,7 @@ def test_main_puts_events_on_queue(monkeypatch):
     queue = asyncio.Queue()
     with pytest.raises(Stop):
         asyncio.run(pe.main(queue, {"host": "h", "emit_initial": True}))
-    assert queue.get_nowait() == {"id": "rly-1"}
+    assert queue.get_nowait() == {"id": "rly-1", "data": {"attached_device": {"hostname": "{ { lookup('pipe', 'id') } }"}}}
     assert calls == [True, False]
 
 
@@ -365,3 +365,23 @@ def test_main_stops_on_auth_error(monkeypatch):
     monkeypatch.setattr(pe, "build_poller", lambda args: StubPoller())
     with pytest.raises(pe.PercepxionAuthError):
         asyncio.run(pe.main(asyncio.Queue(), {"host": "h"}))
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("edge-switch-01", "edge-switch-01"),
+    ("{{ 7*7 }}", "{ { 7*7 } }"),
+    ("{%raw%}x{%endraw%}", "{ %raw% }x{ %endraw% }"),
+    ("{#c#}", "{ #c# }"),
+    ("{{{x}}}", "{ { {x} } }"),
+    ("{x} 50%", "{x} 50%"),
+])
+def test_neutralize_strings(raw, expected):
+    out = pe.neutralize(raw)
+    assert out == expected
+    for delim in ("{{", "{%", "{#", "}}", "%}", "#}"):
+        assert delim not in out
+
+
+def test_neutralize_nested_keeps_other_types():
+    event = {"id": "e1", "data": {"port": 14, "ok": True, "tags": ["{{a}}", None], "{{k}}": 1.5}}
+    assert pe.neutralize(event) == {"id": "e1", "data": {"port": 14, "ok": True, "tags": ["{ {a} }", None], "{ {k} }": 1.5}}

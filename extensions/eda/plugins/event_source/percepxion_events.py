@@ -109,6 +109,11 @@ notes:
   - Each event carries a stable C(id). The same change seen twice, for example
     across a restart, can produce a second event; deduplicate on C(id) or design
     the triggered playbook to be idempotent.
+  - Text in an event can come from a console-attached device, for example a
+    hostname read from its console output. Jinja delimiters in event strings
+    (C({{), C({%), C({#) and their closing pairs) are broken up with a space
+    before the event is emitted, so a triggered playbook cannot be made to
+    evaluate a template that a device supplied.
 """
 
 EXAMPLES = r"""
@@ -154,6 +159,24 @@ _DP_KEEP = frozenset(
     ),
 )
 LOGGER = logging.getLogger(__name__)
+
+# Event data reaches playbooks as extra vars, which Ansible templates. Breaking up
+# these delimiters keeps device-supplied text inert.
+_JINJA_DELIMITERS = re.compile(r"([{][{%#])|([}%#][}])")
+
+
+def neutralize(value: object) -> object:
+    """Return value with Jinja delimiters in every string broken up by a space."""
+    if isinstance(value, str):
+        # Repeat until stable: one pass leaves overlapping runs such as "{{{" partly joined.
+        while _JINJA_DELIMITERS.search(value):
+            value = _JINJA_DELIMITERS.sub(lambda m: m.group(0)[0] + " " + m.group(0)[1], value)
+        return value
+    if isinstance(value, dict):
+        return {neutralize(k): neutralize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [neutralize(v) for v in value]
+    return value
 
 
 class PercepxionError(Exception):
@@ -610,7 +633,7 @@ async def main(queue: asyncio.Queue, args: dict) -> None:
         else:
             emit_initial = False
         for event in events:
-            await queue.put(event)
+            await queue.put(neutralize(event))
         await asyncio.sleep(max(interval - (time.monotonic() - started), 1))
 
 

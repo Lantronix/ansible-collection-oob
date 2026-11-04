@@ -4,6 +4,24 @@ Changelog
 
 .. contents:: Topics
 
+v1.4.2
+======
+
+Release Summary
+---------------
+
+Security release for the Event-Driven Ansible event source.
+
+Security Fixes
+--------------
+
+- ``lantronix.oob.percepxion_events`` event source: break up Jinja delimiters
+  (``{{``, ``{%``, ``{#`` and their closing pairs) in every string of an
+  emitted event. Event data reaches triggered playbooks as extra vars, which
+  Ansible templates, and some fields (for example the hostname of a
+  console-attached device) come from text the device itself supplies.
+  Upgrade if your rulebooks pass Percepxion events to playbooks.
+
 v1.4.1
 ======
 
