@@ -101,6 +101,14 @@ def test_parse_port_states_reads_only_dp_info():
     assert "running_config" not in states[14]
 
 
+def test_parse_port_states_disconnected_port_is_not_attached():
+    group = dp_group(14, True, status="Disconnected")
+    states = pe.parse_port_states({"status_record": [group]})
+    assert states[14]["state"] == "Disconnected"
+    assert states[14]["attached"] is False
+    assert pe.attached_block(states[14]) is None
+
+
 def test_parse_port_states_tolerates_junk():
     assert pe.parse_port_states(None) == {}
     assert pe.parse_port_states({"status_record": ["x", {"name": None}]}) == {}

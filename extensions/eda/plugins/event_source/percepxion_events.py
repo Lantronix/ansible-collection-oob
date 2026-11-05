@@ -272,7 +272,12 @@ def parse_port_states(raw: object) -> dict[int, dict]:
             key = str(item.get("name") or "").rsplit("/", 1)[-1]
             if key in _DP_KEEP:
                 values[key] = str(item.get("value") or "").strip()
-        attached = values.get("managed_device", "").lower() == "yes"
+        # The SLC keeps a managed device record after its cable is pulled, so a Disconnected
+        # port has nothing attached whatever managed_device says.
+        attached = (
+            values.get("managed_device", "").lower() == "yes"
+            and values.get("status", "").lower() != "disconnected"
+        )
         state = {"state": values.get("status", ""), "attached": attached}
         if attached:
             make, _sep, os_name = values.get("md_type", "").strip().partition(" ")
