@@ -4,6 +4,23 @@ Changelog
 
 .. contents:: Topics
 
+v1.4.3
+======
+
+Release Summary
+---------------
+
+Bugfix release for the Event-Driven Ansible event source.
+
+Bugfixes
+--------
+
+- ``lantronix.oob.percepxion_events`` event source: a console port whose status
+  is Disconnected now reports nothing attached, even while the SLC still keeps
+  its managed device record. Pulling a console cable now emits
+  ``percepxion.port.attached_changed`` with ``change: detached``, and
+  reconnecting it emits ``change: attached``.
+
 v1.4.2
 ======
 
