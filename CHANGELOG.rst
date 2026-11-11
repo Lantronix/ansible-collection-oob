@@ -34,6 +34,11 @@ Cliconf
 
 - ``lantronix.oob.slc`` - CLI interface for Lantronix SLC and EMG console managers over SSH.
 
+Inventory
+~~~~~~~~~
+
+- ``lantronix.oob.percepxion`` - Build an inventory of Lantronix devices from Percepxion, grouped by console manager family.
+
 Terminal
 ~~~~~~~~
 

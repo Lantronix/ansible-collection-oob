@@ -220,6 +220,23 @@ Both plugins handle login, token management, and error translation automatically
 
 For SSH CLI access, the collection also includes terminal and cliconf plugins named **`lantronix.oob.slc`** for SLC 8000, SLC9000 and EMG console managers. Use them with `ansible_connection: ansible.netcommon.network_cli` and `ansible_network_os: lantronix.oob.slc`, for example with `ansible.netcommon.cli_command`. Commands apply immediately on the console manager, and output paging must be off for the account Ansible uses (the factory default).
 
+## Inventory From Percepxion
+
+The `lantronix.oob.percepxion` inventory plugin builds hosts from the devices your Percepxion account can see. Each host gets its management address as `ansible_host` and its Percepxion details (`percepxion_device_id`, `percepxion_model`, `percepxion_family`, `percepxion_firmware`, `percepxion_status`) as variables. Console managers are grouped in `percepxion_console_managers` and by family (`percepxion_slc8000`, `percepxion_slc9000`, `percepxion_emg`).
+
+```yaml
+# inventory/fleet.percepxion.yml
+plugin: lantronix.oob.percepxion
+api_host: api.percepxion.ai
+families: [slc8000, slc9000, emg]
+connected_only: true
+compose:
+  ansible_network_os: "'lantronix.oob.slc'"
+  ansible_connection: "'ansible.netcommon.network_cli'"
+```
+
+Set `LANTRONIX_PERCEPXION_USERNAME` and `LANTRONIX_PERCEPXION_PASSWORD` in the environment, and supply SSH credentials for the console managers through group or host variables (Ansible Vault recommended).
+
 ## Percepxion Project and Tenant Scoping
 
 The Percepxion API supports multi-project and multi-tenant deployments. Set these as inventory connection variables, all Percepxion modules inherit them automatically:

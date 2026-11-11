@@ -42,6 +42,9 @@ notes:
     today, so the module reports those devices as failed and suggests I(absent_method=revoke).
   - The module needs each device to return CLI output to Percepxion. A device whose job finishes
     without output is reported as failed about a minute later, since its groups cannot be read.
+  - In testing, SLC 9000 firmware 9.8 returns CLI output to Percepxion. SLC 8000 firmware 9.7.0.6 and
+    EMG firmware 9.7.0.2 run CLI jobs but return no output, so use M(lantronix.oob.slc_groups) over
+    SSH for those console managers.
   - A device that does not report within I(job_timeout) is listed in C(timed_out). Its job stays
     queued in Percepxion and can still run when the device reconnects. Run the module again later
     to confirm the final state.
