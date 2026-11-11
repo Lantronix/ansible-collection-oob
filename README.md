@@ -56,6 +56,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.slc_firmware` | Check firmware version, trigger upgrades |
 | `lantronix.oob.slc_config` | Backup, compare, batch commands, save config |
 | `lantronix.oob.slc_managed_devices` | Query devices connected via serial ports |
+| `lantronix.oob.slc_groups` | Keep custom user groups (ports and rights for directory-mapped access) identical on SLC 8000, SLC9000 and EMG console managers over SSH, including delete |
 
 ### Percepxion Fleet Modules
 

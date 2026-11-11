@@ -239,20 +239,7 @@ MAX_POLL_ERRORS = 5
 # Seconds to keep waiting for CLI output after a device's job reports a final state.
 RESULT_GRACE = 60
 TERMINAL_STATES = ("completed", "failed", "failure", "error", "cancelled", "canceled", "expired", "timeout")
-GROUP_SPEC = dict(
-    name=dict(type="str", required=True),
-    rights=dict(type="list", elements="str"),
-    data_ports=dict(type="str"),
-    listen_ports=dict(type="str"),
-    clear_ports=dict(type="str"),
-    power_outlets=dict(type="str"),
-    escape_sequence=dict(type="str"),
-    break_sequence=dict(type="str"),
-    custom_menu=dict(type="str"),
-    display_menu=dict(type="bool"),
-    allow_dialback=dict(type="bool"),
-    dialback_number=dict(type="str"),
-)
+GROUP_SPEC = sg.GROUP_SPEC
 
 
 def _make_client(connection, module):

@@ -23,6 +23,23 @@ ATTRIBUTES = (
     ("dialback_number", "dialbacknumber", "Dial-back Number", "text"),
 )
 
+# Argument spec for one entry of a module's groups option, shared by every
+# module that manages custom groups so the options stay identical.
+GROUP_SPEC = dict(
+    name=dict(type="str", required=True),
+    rights=dict(type="list", elements="str"),
+    data_ports=dict(type="str"),
+    listen_ports=dict(type="str"),
+    clear_ports=dict(type="str"),
+    power_outlets=dict(type="str"),
+    escape_sequence=dict(type="str"),
+    break_sequence=dict(type="str"),
+    custom_menu=dict(type="str"),
+    display_menu=dict(type="bool"),
+    allow_dialback=dict(type="bool"),
+    dialback_number=dict(type="str"),
+)
+
 PORT_TOKEN = re.compile(r"^(\d+)(?:-(\d+))?$")
 NAME_LINE = re.compile(r"^\s*Name:\s*(\S.*?)\s*$")
 FIELD_LINE = re.compile(r"^\s*([A-Za-z][A-Za-z \-]*?):\s*(.*?)\s*$")

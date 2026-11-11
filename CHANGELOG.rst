@@ -21,6 +21,10 @@ New Modules
   out rights a model does not support, verifies the result, and revokes a group
   by removing its rights and renaming it. Waits for slow sites with a
   configurable per-step timeout.
+- ``lantronix.oob.slc_groups`` - Same group management over an SSH CLI session to
+  SLC 8000, SLC9000 and EMG console managers, using the new ``lantronix.oob.slc``
+  connection plugins. Takes the same ``groups`` definition, deletes groups
+  directly, and runs in seconds per console manager.
 
 New Plugins
 -----------
