@@ -11,5 +11,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install ansible-core requests
-      - run: ansible-galaxy collection install ansible.netcommon
+      - run: ansible-galaxy collection install ansible.netcommon -p .
       - run: cd ansible_collections/lantronix/oob && ansible-test sanity --python 3.11

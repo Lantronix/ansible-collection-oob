@@ -17,7 +17,9 @@ concurrency:
 jobs:
   call:
     uses: ansible-collections/partner-certification-checker/.github/workflows/certification-reusable.yml@v6.0.0 # zizmor: ignore[unpinned-uses]
-    # Our collection requires ansible.netcommon >= 5.0.0 (ansible-core >= 2.14)
+    # The slc terminal and cliconf plugins import ansible.netcommon.
+    with:
+      collection-deps: "ansible.netcommon"
     # with:
     #   ansible-core-version: '2.17.0'
     #   automation-hub: true
