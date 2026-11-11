@@ -4,6 +4,30 @@ Changelog
 
 .. contents:: Topics
 
+v1.5.0
+======
+
+Release Summary
+---------------
+
+Adds fleet management of SLC custom user groups through Percepxion.
+
+New Modules
+-----------
+
+- ``lantronix.oob.percepxion_slc_groups`` - Keep custom user groups identical
+  on SLC console managers across the fleet through Percepxion. Sets ports and
+  exact rights per group, works out what ``ALL`` means on each model, leaves
+  out rights a model does not support, verifies the result, and revokes a group
+  by removing its rights and renaming it. Waits for slow sites with a
+  configurable per-step timeout.
+
+Minor Changes
+-------------
+
+- Percepxion API client: requests can take a timeout, and connection errors are
+  reported as module failures instead of tracebacks.
+
 v1.4.3
 ======
 
