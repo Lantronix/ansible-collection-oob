@@ -6,7 +6,10 @@ The role runs the console coverage gate (the NetBox script `ConsoleCoverageGate`
 
 ## Requirements
 
-- The console coverage gate installed in NetBox (as a custom script) or Nautobot (as a job, enabled).
+- The console coverage gate in your source of truth:
+  - NetBox: the `ConsoleCoverageGate` script from the [netbox-lantronix](https://github.com/Lantronix/netbox-lantronix) plugin, 0.7.0 or later, uploaded under Customization > Scripts.
+  - Nautobot: the `AOOB console coverage gate` job from the [nautobot-app-ssot-lantronix](https://github.com/Lantronix/nautobot-app-ssot-lantronix) app, 0.5.0 or later, enabled under Jobs.
+- Each device's console port cabled, in NetBox or Nautobot, to the SLC console server port that reaches it.
 - An API token that can view the devices and run the script or job.
 - Device names in the play that match the source of truth, or set `oob_coverage_gate_devices`.
 
