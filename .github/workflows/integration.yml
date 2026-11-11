@@ -26,6 +26,8 @@ jobs:
           python-version: '3.11'
       - name: Install ansible-core
         run: pip install ansible-core
+      - name: Install collection dependencies
+        run: ansible-galaxy collection install ansible.netcommon -p .
       - name: Run sanity tests
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test sanity --python 3.11
@@ -43,6 +45,8 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install ansible-core requests pytest pytest-xdist
+      - name: Install collection dependencies
+        run: ansible-galaxy collection install ansible.netcommon -p .
       - name: Run unit tests
         working-directory: ansible_collections/lantronix/oob
         run: ansible-test units --python 3.11
