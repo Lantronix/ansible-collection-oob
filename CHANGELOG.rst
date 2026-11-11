@@ -10,7 +10,7 @@ v1.5.0
 Release Summary
 ---------------
 
-Adds fleet management of SLC custom user groups through Percepxion.
+Adds fleet management of SLC custom user groups through Percepxion, and SSH CLI access to SLC 8000, SLC9000 and EMG console managers.
 
 New Modules
 -----------
@@ -21,6 +21,19 @@ New Modules
   out rights a model does not support, verifies the result, and revokes a group
   by removing its rights and renaming it. Waits for slow sites with a
   configurable per-step timeout.
+
+New Plugins
+-----------
+
+Cliconf
+~~~~~~~
+
+- ``lantronix.oob.slc`` - CLI interface for Lantronix SLC and EMG console managers over SSH.
+
+Terminal
+~~~~~~~~
+
+- ``lantronix.oob.slc`` - Prompt and error detection for Lantronix SLC and EMG console managers over SSH.
 
 Minor Changes
 -------------

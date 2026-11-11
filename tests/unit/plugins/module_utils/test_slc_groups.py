@@ -53,6 +53,7 @@ def test_port_counts_both_layouts():
     assert sg.parse_port_count(DEVICEPORT_SLC8) == 32
     assert sg.parse_port_count(DEVICEPORT_SLC9) == 16
     assert sg.parse_usb_count(SYSCONFIG) == 2
+    assert sg.parse_usb_count("Model: EMG751000\nNumber of External USB Ports: 1\n") == 1
 
 
 def test_port_set_all_and_ranges():

@@ -29,7 +29,7 @@ FIELD_LINE = re.compile(r"^\s*([A-Za-z][A-Za-z \-]*?):\s*(.*?)\s*$")
 RIGHTS_ALLOWED = re.compile(r"Rights Allowed:\s*(\S.*?)\s*$", re.M)
 RIGHTS_DENIED = re.compile(r"Rights Denied:\s*(\S.*?)\s*$", re.M)
 DEVICEPORT_NUMBER = re.compile(r"(?:^|\s)(\d{1,3})\s?-\s")
-USB_COUNT = re.compile(r"Number of USB Ports:\s*(\d+)")
+USB_COUNT = re.compile(r"Number of (?:External )?USB Ports:\s*(\d+)")
 SUCCESS_TEXT = "successfully updated"
 
 

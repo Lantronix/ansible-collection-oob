@@ -29,6 +29,7 @@ ansible-galaxy collection install lantronix.oob --upgrade
 - Python 3.9 or later
 - Python `requests` library (declared in `requirements.txt`; execution environments built with `ansible-builder` include it automatically)
 - `ansible.netcommon` >= 5.0.0 (installed automatically as a collection dependency)
+- For SSH CLI access to SLC and EMG console managers (`lantronix.oob.slc`): the `paramiko` or `ansible-pylibssh` Python library on the controller, as for any `ansible.netcommon.network_cli` connection
 - `netbox.netbox` >= 3.21.0 (installed automatically as a collection dependency; its Python requirements are needed only for the NetBox integration playbook)
 
 The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
@@ -39,6 +40,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 |---|---|---|
 | SLC9000 (firmware R8+) | `lantronix.oob.slc9` | REST API v2 (OpenAPI 3.1.0) |
 | Percepxion 6.12+ | `lantronix.oob.percepxion` | OpenAPI 3.0.1 |
+| SLC 8000, SLC9000, EMG (SSH CLI) | `lantronix.oob.slc` (with `ansible.netcommon.network_cli`) | CLI over SSH |
 
 ## Modules
 
@@ -214,6 +216,8 @@ This collection includes two httpapi connection plugins:
 - **`lantronix.oob.percepxion`**, authenticates to Percepxion API with Bearer token and CSRF token handling
 
 Both plugins handle login, token management, and error translation automatically. You do not call them directly; set `ansible_network_os` in your inventory.
+
+For SSH CLI access, the collection also includes terminal and cliconf plugins named **`lantronix.oob.slc`** for SLC 8000, SLC9000 and EMG console managers. Use them with `ansible_connection: ansible.netcommon.network_cli` and `ansible_network_os: lantronix.oob.slc`, for example with `ansible.netcommon.cli_command`. Commands apply immediately on the console manager, and output paging must be off for the account Ansible uses (the factory default).
 
 ## Percepxion Project and Tenant Scoping
 
