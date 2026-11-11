@@ -24,3 +24,7 @@ plugins/modules/percepxion_telemetry.py validate-modules:missing-gplv3-license
 tests/integration/clear_slc_sessions.py shebang
 plugins/modules/percepxion_event_rules.py validate-modules:missing-gplv3-license
 plugins/modules/percepxion_device_tags.py validate-modules:missing-gplv3-license
+plugins/modules/percepxion_slc_groups.py validate-modules:missing-gplv3-license
+plugins/cliconf/slc.py validate-modules:missing-gplv3-license
+plugins/modules/slc_groups.py validate-modules:missing-gplv3-license
+plugins/inventory/percepxion.py validate-modules:missing-gplv3-license

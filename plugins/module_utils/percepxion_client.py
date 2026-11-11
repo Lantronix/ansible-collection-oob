@@ -25,10 +25,12 @@ class PercepxionClient:
     Pass tenant_id only when authenticating as a Project Admin.
     """
 
-    def __init__(self, host, token, csrf_token, project_tag=None, tenant_id=None, verify_ssl=True):
+    def __init__(self, host, token, csrf_token, project_tag=None, tenant_id=None, verify_ssl=True,
+                 timeout=None):
         self.host = host
         self.project_tag = project_tag
         self.tenant_id = tenant_id
+        self.timeout = timeout
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
@@ -53,38 +55,53 @@ class PercepxionClient:
 
     def _get(self, path):
         try:
-            resp = self.session.get(self._url(path))
+            kwargs = {"timeout": self.timeout} if self.timeout else {}
+            resp = self.session.get(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json()
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
+        except requests.RequestException as exc:
+            raise AnsibleLantronixError("request to {0} failed: {1}".format(path, exc))
 
     def _post(self, path, data=None):
         try:
             kwargs = {"json": data} if data is not None else {}
+            if self.timeout:
+                kwargs["timeout"] = self.timeout
             resp = self.session.post(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
+        except requests.RequestException as exc:
+            raise AnsibleLantronixError("request to {0} failed: {1}".format(path, exc))
 
     def _put(self, path, data=None):
         try:
             kwargs = {"json": data} if data is not None else {}
+            if self.timeout:
+                kwargs["timeout"] = self.timeout
             resp = self.session.put(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
+        except requests.RequestException as exc:
+            raise AnsibleLantronixError("request to {0} failed: {1}".format(path, exc))
 
     def _delete(self, path, data=None):
         try:
             kwargs = {"json": data} if data is not None else {}
+            if self.timeout:
+                kwargs["timeout"] = self.timeout
             resp = self.session.delete(self._url(path), **kwargs)
             resp.raise_for_status()
             return resp.json() if resp.content else {}
         except requests.HTTPError as exc:
             raise AnsibleLantronixError(api_error_message(exc))
+        except requests.RequestException as exc:
+            raise AnsibleLantronixError("request to {0} failed: {1}".format(path, exc))
 
     # --- Devices ---
 
@@ -207,6 +224,80 @@ class PercepxionClient:
 
     def notify_job(self, payload):
         return self._post("/v1/job/notify", self._scope(payload))
+
+    # --- CLI command jobs (shapes verified live 2026-11-10) ---
+
+    def create_cli_job(self, device_ids, command, name, description=""):
+        """POST /v1/job/jobgroup/create with type command / subtype cli.
+
+        Sends one CLI command to every device in device_ids. Returns the job
+        group id. Status arrives asynchronously; read results with
+        search_cli_results once each device has reported.
+        """
+        payload = {
+            "name": name,
+            "description": description,
+            "enable": True,
+            "type": "command",
+            "subtype": "cli",
+            "op_code": "execute",
+            "operation": command,
+            "device_id": list(device_ids),
+        }
+        if self.tenant_id:
+            payload["tenant_id"] = self.tenant_id
+        resp = self._post("/v1/job/jobgroup/create", payload)
+        jobs = resp.get("job") or []
+        job_group_id = (jobs[0].get("job_group_id") if jobs else None) or resp.get("id") or resp.get("job_group_id")
+        if not job_group_id:
+            raise AnsibleLantronixError("CLI job was not created: {0}".format(resp))
+        return job_group_id
+
+    def get_job_group(self, job_group_id):
+        """POST /v1/job/jobgroup/get. Returns the job group record (status, devices)."""
+        payload = {"job_group_id": job_group_id}
+        if self.tenant_id:
+            payload["tenant_id"] = self.tenant_id
+        return self._post("/v1/job/jobgroup/get", payload)
+
+    def search_job_states(self, job_group_id):
+        """POST /v1/job/job/search. Returns {device_id: state} for each job in the group."""
+        payload = {"job_group_id": job_group_id, "offset": 0, "limit": 1000}
+        if self.tenant_id:
+            payload["tenant_id"] = self.tenant_id
+        resp = self._post("/v1/job/job/search", payload)
+        return dict((job.get("device_id"), job.get("state") or job.get("status") or "")
+                    for job in resp.get("job") or [] if job.get("device_id"))
+
+    def search_cli_results(self, job_group_id, device_ids):
+        """POST /v1/telemetry/result/search with type clicmd.
+
+        Returns {device_id: {"error": str, "results": str}} for every device
+        that has reported a result for the job group.
+        """
+        payload = {
+            "type": "clicmd",
+            "job_group_id": [job_group_id],
+            "device_id": list(device_ids),
+            "offset": 0,
+            "limit": max(len(device_ids), 1),
+        }
+        if self.tenant_id:
+            payload["tenant_id"] = self.tenant_id
+        resp = self._post("/v1/telemetry/result/search", payload)
+        found = {}
+        for measurement in resp.get("measurements") or []:
+            columns = measurement.get("columns") or []
+            idx = {name: pos for pos, name in enumerate(columns)}
+            for row in measurement.get("rows") or []:
+                device = row[idx["Device ID"]] if "Device ID" in idx else measurement.get("device_id")
+                if not device or device in found:
+                    continue
+                found[device] = {
+                    "error": row[idx["Error"]] if "Error" in idx else "",
+                    "results": row[idx["Results"]] if "Results" in idx else "",
+                }
+        return found
 
     # --- Audit Logs ---
 

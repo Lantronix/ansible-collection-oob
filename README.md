@@ -29,6 +29,7 @@ ansible-galaxy collection install lantronix.oob --upgrade
 - Python 3.9 or later
 - Python `requests` library (declared in `requirements.txt`; execution environments built with `ansible-builder` include it automatically)
 - `ansible.netcommon` >= 5.0.0 (installed automatically as a collection dependency)
+- For SSH CLI access to SLC and EMG console managers (`lantronix.oob.slc`): the `paramiko` or `ansible-pylibssh` Python library on the controller, as for any `ansible.netcommon.network_cli` connection
 - `netbox.netbox` >= 3.21.0 (installed automatically as a collection dependency; its Python requirements are needed only for the NetBox integration playbook)
 
 The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
@@ -39,6 +40,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 |---|---|---|
 | SLC9000 (firmware R8+) | `lantronix.oob.slc9` | REST API v2 (OpenAPI 3.1.0) |
 | Percepxion 6.12+ | `lantronix.oob.percepxion` | OpenAPI 3.0.1 |
+| SLC 8000, SLC9000, EMG (SSH CLI) | `lantronix.oob.slc` (with `ansible.netcommon.network_cli`) | CLI over SSH |
 
 ## Modules
 
@@ -54,6 +56,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.slc_firmware` | Check firmware version, trigger upgrades |
 | `lantronix.oob.slc_config` | Backup, compare, batch commands, save config |
 | `lantronix.oob.slc_managed_devices` | Query devices connected via serial ports |
+| `lantronix.oob.slc_groups` | Keep custom user groups (ports and rights for directory-mapped access) identical on SLC 8000, SLC9000 and EMG console managers over SSH, including delete |
 
 ### Percepxion Fleet Modules
 
@@ -72,6 +75,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.percepxion_event_rules` | Create, update, delete event rules and email/SMS notification actions |
 | `lantronix.oob.percepxion_device_tags` | Create device tags and assign or unassign them to devices |
 | `lantronix.oob.percepxion_users` | Create, delete, suspend, and resume user accounts; bulk suspend/resume by username or email, allowlist lockdown mode |
+| `lantronix.oob.percepxion_slc_groups` | Keep custom user groups (ports and rights for directory-mapped access) identical on SLC console managers across the fleet, through Percepxion |
 | `lantronix.oob.percepxion_aoob_session` | *(Deprecated, removed in 2.0.0)* Connect/disconnect endpoints are device-token authenticated, not reachable with user credentials. Use the Percepxion web interface. |
 
 ## Example Roles
@@ -83,6 +87,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.oob_user_management` | Bulk user management across all SLC devices in a smart group |
 | `lantronix.oob.oob_baseline_config` | Enforces baseline hostname, NTP, and syslog config across SLC fleet |
 | `lantronix.oob.oob_coverage_gate` | Stops a change when the devices it touches have no ready console path through an SLC (NetBox or Nautobot console coverage gate) |
+| `lantronix.oob.oob_slc_groups` | Keeps directory-mapped custom user groups identical on SLC and EMG console managers, over SSH or through Percepxion, chosen per host |
 
 ## NetBox Integration
 
@@ -213,6 +218,25 @@ This collection includes two httpapi connection plugins:
 - **`lantronix.oob.percepxion`**, authenticates to Percepxion API with Bearer token and CSRF token handling
 
 Both plugins handle login, token management, and error translation automatically. You do not call them directly; set `ansible_network_os` in your inventory.
+
+For SSH CLI access, the collection also includes terminal and cliconf plugins named **`lantronix.oob.slc`** for SLC 8000, SLC9000 and EMG console managers. Use them with `ansible_connection: ansible.netcommon.network_cli` and `ansible_network_os: lantronix.oob.slc`, for example with `ansible.netcommon.cli_command`. Commands apply immediately on the console manager, and output paging must be off for the account Ansible uses (the factory default).
+
+## Inventory From Percepxion
+
+The `lantronix.oob.percepxion` inventory plugin builds hosts from the devices your Percepxion account can see. Each host gets its management address as `ansible_host` and its Percepxion details (`percepxion_device_id`, `percepxion_model`, `percepxion_family`, `percepxion_firmware`, `percepxion_status`) as variables. Console managers are grouped in `percepxion_console_managers` and by family (`percepxion_slc8000`, `percepxion_slc9000`, `percepxion_emg`).
+
+```yaml
+# inventory/fleet.percepxion.yml
+plugin: lantronix.oob.percepxion
+api_host: api.percepxion.ai
+families: [slc8000, slc9000, emg]
+connected_only: true
+compose:
+  ansible_network_os: "'lantronix.oob.slc'"
+  ansible_connection: "'ansible.netcommon.network_cli'"
+```
+
+Set `LANTRONIX_PERCEPXION_USERNAME` and `LANTRONIX_PERCEPXION_PASSWORD` in the environment, and supply SSH credentials for the console managers through group or host variables (Ansible Vault recommended).
 
 ## Percepxion Project and Tenant Scoping
 

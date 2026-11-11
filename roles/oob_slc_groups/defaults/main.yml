@@ -1,0 +1,9 @@
+---
+oob_slc_groups_definitions: []
+oob_slc_groups_state: present
+oob_slc_groups_transport: ssh
+oob_slc_groups_absent_method: delete
+oob_slc_groups_percepxion_absent_method: revoke
+oob_slc_groups_percepxion_host: ""
+oob_slc_groups_percepxion_job_timeout: 900
+oob_slc_groups_verify: true

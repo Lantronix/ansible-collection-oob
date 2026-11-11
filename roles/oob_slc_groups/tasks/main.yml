@@ -1,0 +1,39 @@
+---
+- name: Manage groups over SSH
+  lantronix.oob.slc_groups:
+    groups: "{{ oob_slc_groups_definitions }}"
+    state: "{{ oob_slc_groups_state }}"
+    absent_method: "{{ oob_slc_groups_absent_method }}"
+    verify: "{{ oob_slc_groups_verify }}"
+  register: oob_slc_groups_ssh_result
+  when: oob_slc_groups_transport == 'ssh'
+
+- name: Manage groups through Percepxion
+  run_once: true
+  vars:
+    _oob_slc_groups_px_hosts: >-
+      {{ ansible_play_hosts | map('extract', hostvars) | selectattr('oob_slc_groups_transport', 'defined')
+         | selectattr('oob_slc_groups_transport', 'equalto', 'percepxion') | list }}
+  block:
+    - name: Require a Percepxion host and device IDs
+      ansible.builtin.assert:
+        that:
+          - oob_slc_groups_percepxion_host | length > 0
+          - _oob_slc_groups_px_hosts | rejectattr('percepxion_device_id', 'defined') | list | length == 0
+        fail_msg: >-
+          Hosts using the Percepxion transport need oob_slc_groups_percepxion_host set and a
+          percepxion_device_id for each host (the lantronix.oob.percepxion inventory plugin sets it).
+        quiet: true
+      when: _oob_slc_groups_px_hosts | length > 0
+
+    - name: Apply groups to Percepxion-managed hosts
+      lantronix.oob.percepxion_slc_groups:
+        device_ids: "{{ _oob_slc_groups_px_hosts | map(attribute='percepxion_device_id') | list }}"
+        groups: "{{ oob_slc_groups_definitions }}"
+        state: "{{ oob_slc_groups_state }}"
+        absent_method: "{{ oob_slc_groups_percepxion_absent_method }}"
+        verify: "{{ oob_slc_groups_verify }}"
+        job_timeout: "{{ oob_slc_groups_percepxion_job_timeout }}"
+      delegate_to: "{{ oob_slc_groups_percepxion_host }}"
+      register: oob_slc_groups_percepxion_result
+      when: _oob_slc_groups_px_hosts | length > 0
