@@ -73,7 +73,10 @@ options:
     elements: str
     default: [ipaddress, eth1_ipv4address, eth2_ipv4address]
   hostname_source:
-    description: Device field used as the inventory host name.
+    description:
+      - Device field used as the inventory host name.
+      - A name that is already in the inventory, or that Ansible reserves for the controller such as
+        C(localhost), gets C(_<device_id>) appended.
     type: str
     default: device_name
     choices: [device_name, device_id]
@@ -147,6 +150,11 @@ def device_address(attributes, keys):
             if candidate:
                 return candidate
     return None
+
+
+# Names Ansible treats as the controller. A device named like this must not
+# become the target of tasks meant to run locally.
+RESERVED_HOST_NAMES = frozenset(("localhost", "localhost.localdomain", "127.0.0.1"))
 
 
 def safe_host_name(value):
@@ -236,7 +244,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 safe_host_name(device.get("device_id"))
             if not name:
                 continue
-            if name in self.inventory.hosts:
+            if name.lower() in RESERVED_HOST_NAMES or name in self.inventory.hosts:
                 name = "{0}_{1}".format(name, safe_host_name(device.get("device_id")))
             # Values come from Percepxion, where users can edit names; never template them.
             variables = dict((key, wrap_var(value)) for key, value in variables.items())

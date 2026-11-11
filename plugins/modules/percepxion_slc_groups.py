@@ -35,9 +35,11 @@ notes:
   - C(ALL) for a port option is compared against each device's full port list, so a group that
     already covers every port reports no change.
   - Removal with I(absent_method=revoke) removes every right from the group and renames it with
-    I(revoked_prefix), so the directory group no longer matches it. Users of that directory group then
-    get the default remote-user access configured on the device, the same result as deleting the
-    group. The renamed group stays on the device with no rights.
+    I(revoked_prefix), so the directory group no longer matches it. Users of that directory group
+    then get the default remote-user access configured on the device, the same result as deleting
+    the group. The renamed group keeps no rights and has dial-back turned off. Its port and power
+    outlet lists stay, because the CLI cannot empty them. They grant nothing unless a directory
+    group with the new name exists, so choose a I(revoked_prefix) that no directory group uses.
   - Removal with I(absent_method=delete) deletes the group. Percepxion CLI jobs refuse this command
     today, so the module reports those devices as failed and suggests I(absent_method=revoke).
   - The module needs each device to return CLI output to Percepxion. A device whose job finishes

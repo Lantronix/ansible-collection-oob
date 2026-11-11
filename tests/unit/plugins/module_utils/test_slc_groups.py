@@ -123,6 +123,15 @@ def test_plan_absent_revoke_without_rights_only_renames():
     assert plan["commands"] == ["set groups rename OOB-Admin newname revoked-OOB-Admin"]
 
 
+def test_plan_absent_revoke_turns_off_dialback():
+    current = {"oob-cb": {"name": "OOB-CB", "rights": ["sv"], "allow_dialback": True}}
+    plan = sg.plan_absent("OOB-CB", current, "revoke", "revoked-")
+    assert plan["commands"] == [
+        "set groups edit OOB-CB permissions -sv allowdialback disable",
+        "set groups rename OOB-CB newname revoked-OOB-CB",
+    ]
+
+
 def test_plan_absent_missing_and_delete():
     current = sg.parse_show_groups(SHOW_GROUPS)
     assert sg.plan_absent("nope", current, "revoke", "revoked-")["action"] == "none"

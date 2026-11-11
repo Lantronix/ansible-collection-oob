@@ -167,3 +167,10 @@ def test_name_falls_back_to_device_id():
     plugin = _plugin()
     plugin._populate([dict(SLC8, device_name="{{}}")])
     assert list(plugin.inventory.hosts) == ["DEV-SLC8"]
+
+
+@pytest.mark.parametrize("reserved", ["localhost", "LocalHost", "127.0.0.1"])
+def test_controller_names_never_used(reserved):
+    plugin = _plugin()
+    plugin._populate([dict(SLC8, device_name=reserved)])
+    assert list(plugin.inventory.hosts) == ["{0}_DEV-SLC8".format(reserved)]

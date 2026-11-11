@@ -263,8 +263,9 @@ def tombstone_name(name, prefix, current):
 def plan_absent(name, current, method, prefix):
     """Plan removal of one group on one device.
 
-    revoke: remove every right, then rename so the directory group no longer
-    matches. delete: remove the group outright.
+    revoke: remove every right and turn off dial-back, then rename so the
+    directory group no longer matches. Port and outlet lists stay, because the
+    CLI cannot empty them. delete: remove the group outright.
     """
     existing = current.get(name.lower())
     if existing is None:
@@ -272,9 +273,13 @@ def plan_absent(name, current, method, prefix):
     if method == "delete":
         return {"action": "delete", "commands": ["set groups delete {0}".format(existing["name"])], "renamed_to": None}
     commands = []
+    edits = []
     if existing.get("rights"):
-        commands.append("set groups edit {0} permissions {1}".format(
-            existing["name"], ",".join("-" + r for r in sorted(existing["rights"]))))
+        edits.append("permissions " + ",".join("-" + r for r in sorted(existing["rights"])))
+    if existing.get("allow_dialback"):
+        edits.append("allowdialback disable")
+    if edits:
+        commands.append("set groups edit {0} {1}".format(existing["name"], " ".join(edits)))
     new_name = tombstone_name(name, prefix, current)
     if new_name is None:
         return {"action": "error", "commands": [], "renamed_to": None}

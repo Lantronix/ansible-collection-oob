@@ -88,7 +88,10 @@ options:
       - How to remove a group when I(state=absent).
       - C(delete) deletes the group.
       - C(revoke) removes all rights and renames the group with I(revoked_prefix) so no directory
-        group matches it, leaving it on the console manager.
+        group matches it, leaving it on the console manager. The renamed group keeps no rights and
+        has dial-back turned off. Its port and power outlet lists stay, because the CLI cannot empty
+        them. They grant nothing unless a directory group with the new name exists, so choose a
+        I(revoked_prefix) that no directory group uses.
     type: str
     default: delete
     choices: [delete, revoke]
