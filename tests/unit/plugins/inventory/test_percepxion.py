@@ -6,6 +6,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from ansible.inventory.data import InventoryData
+from ansible.parsing.dataloader import DataLoader
+from ansible.template import Templar
+
+try:  # ansible-core 2.19+ renders only templates marked as trusted
+    from ansible.template import trust_as_template
+except ImportError:
+    def trust_as_template(value):
+        return value
 from ansible_collections.lantronix.oob.plugins.inventory import percepxion as inv
 
 SLC8 = {
@@ -122,3 +130,37 @@ def test_verify_file_requires_suffix(tmp_path):
     plugin = inv.InventoryModule()
     assert plugin.verify_file(str(good))
     assert not plugin.verify_file(str(bad))
+
+
+def test_api_values_are_never_templated():
+    evil = dict(SLC8, device_name="{{ lookup('pipe', 'id') }}",
+                attributes=dict(SLC8["attributes"], firmware_ver="{{ 7 * 7 }}"))
+    plugin = _plugin()
+    plugin._populate([evil])
+    (name,) = plugin.inventory.hosts
+    assert "{" not in name and "'" not in name and " " not in name
+    host_vars = plugin.inventory.get_host(name).vars
+    templar = Templar(loader=DataLoader(), variables=host_vars)
+    assert templar.template(trust_as_template("{{ percepxion_device_name }}")) == "{{ lookup('pipe', 'id') }}"
+    assert templar.template(trust_as_template("{{ percepxion_firmware }}")) == "{{ 7 * 7 }}"
+
+
+def test_invalid_address_not_used():
+    keys = ["ipaddress", "eth1_ipv4address"]
+    assert inv.device_address({"ipaddress": "bad host;rm", "eth1_ipv4address": "192.0.2.9"}, keys) == "192.0.2.9"
+    assert inv.device_address({"ipaddress": "{{ x }}"}, keys) is None
+    assert inv.device_address({"ipaddress": "slc.example.com"}, keys) == "slc.example.com"
+    assert inv.device_address({"ipaddress": "2001:db8::1/64"}, keys) == "2001:db8::1"
+
+
+def test_duplicate_names_made_unique():
+    other = dict(SLC9, device_name="slc8032-site1")
+    plugin = _plugin()
+    plugin._populate([SLC8, other])
+    assert sorted(plugin.inventory.hosts) == ["slc8032-site1", "slc8032-site1_DEV-SLC9"]
+
+
+def test_name_falls_back_to_device_id():
+    plugin = _plugin()
+    plugin._populate([dict(SLC8, device_name="{{}}")])
+    assert list(plugin.inventory.hosts) == ["DEV-SLC8"]

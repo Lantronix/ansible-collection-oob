@@ -15,6 +15,9 @@ description:
     a group per family (C(percepxion_slc8000), C(percepxion_slc9000), C(percepxion_emg)), ready for
     modules such as M(lantronix.oob.slc_groups) over SSH or M(lantronix.oob.percepxion_slc_groups).
   - Uses a YAML configuration file that ends in C(percepxion.yml) or C(percepxion.yaml).
+  - Device names and attributes from Percepxion are marked unsafe, so Ansible never evaluates them as templates.
+    Host names keep only letters, digits, dots, dashes and underscores, and C(ansible_host) is set only to a valid
+    IP address or DNS name.
 extends_documentation_fragment:
   - ansible.builtin.constructed
   - ansible.builtin.inventory_cache
@@ -98,6 +101,7 @@ keyed_groups:
     prefix: firmware
 """
 
+import ipaddress
 import json
 import re
 
@@ -105,6 +109,7 @@ from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.module_utils.common.text.converters import to_native
 from ansible.module_utils.urls import open_url
 from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, Constructable
+from ansible.utils.unsafe_proxy import wrap_var
 
 CONSOLE_MANAGER_TYPE = "ltrx_itm"
 FAMILY_PATTERNS = (
@@ -113,6 +118,8 @@ FAMILY_PATTERNS = (
     ("emg", re.compile(r"^EMG", re.I)),
 )
 MAX_PAGES = 500
+UNSAFE_NAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+DNS_NAME = re.compile(r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
 
 
 def device_family(model):
@@ -122,12 +129,28 @@ def device_family(model):
     return "other"
 
 
+def valid_address(value):
+    """True for an IP address or a DNS host name; anything else is not used as ansible_host."""
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return bool(DNS_NAME.match(value))
+
+
 def device_address(attributes, keys):
     for key in keys:
         value = (attributes or {}).get(key)
         if value:
-            return str(value).split("/", maxsplit=1)[0]
+            candidate = str(value).split("/", maxsplit=1)[0].strip()
+            if valid_address(candidate):
+                return candidate
     return None
+
+
+def safe_host_name(value):
+    """Inventory host name limited to letters, digits, dot, dash and underscore."""
+    return UNSAFE_NAME_CHARS.sub("_", str(value or "")).strip("._-")
 
 
 def host_vars(device, address_keys):
@@ -208,9 +231,14 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 continue
             if connected_only and str(variables["percepxion_status"]).lower() != "connected":
                 continue
-            name = device.get(self.get_option("hostname_source")) or device.get("device_id")
+            name = safe_host_name(device.get(self.get_option("hostname_source"))) or \
+                safe_host_name(device.get("device_id"))
             if not name:
                 continue
+            if name in self.inventory.hosts:
+                name = "{0}_{1}".format(name, safe_host_name(device.get("device_id")))
+            # Values come from Percepxion, where users can edit names; never template them.
+            variables = dict((key, wrap_var(value)) for key, value in variables.items())
             self.inventory.add_host(name)
             for key, value in variables.items():
                 self.inventory.set_variable(name, key, value)
