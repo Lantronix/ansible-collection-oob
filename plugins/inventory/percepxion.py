@@ -129,21 +129,22 @@ def device_family(model):
     return "other"
 
 
-def valid_address(value):
-    """True for an IP address or a DNS host name; anything else is not used as ansible_host."""
+def safe_address(value):
+    """Canonical IP address or DNS host name, or None. IPv6 zone IDs are rejected."""
+    if "%" in value:
+        return None
     try:
-        ipaddress.ip_address(value)
-        return True
+        return str(ipaddress.ip_address(value))
     except ValueError:
-        return bool(DNS_NAME.match(value))
+        return value if DNS_NAME.match(value) else None
 
 
 def device_address(attributes, keys):
     for key in keys:
         value = (attributes or {}).get(key)
         if value:
-            candidate = str(value).split("/", maxsplit=1)[0].strip()
-            if valid_address(candidate):
+            candidate = safe_address(str(value).split("/", maxsplit=1)[0].strip())
+            if candidate:
                 return candidate
     return None
 

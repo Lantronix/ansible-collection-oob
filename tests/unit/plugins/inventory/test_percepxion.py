@@ -151,6 +151,9 @@ def test_invalid_address_not_used():
     assert inv.device_address({"ipaddress": "{{ x }}"}, keys) is None
     assert inv.device_address({"ipaddress": "slc.example.com"}, keys) == "slc.example.com"
     assert inv.device_address({"ipaddress": "2001:db8::1/64"}, keys) == "2001:db8::1"
+    assert inv.device_address({"ipaddress": "fe80::1%eth0;rm -rf /"}, keys) is None
+    assert inv.device_address({"ipaddress": "fe80::1%eth0"}, keys) is None
+    assert inv.device_address({"ipaddress": "2001:DB8:0::1"}, keys) == "2001:db8::1"
 
 
 def test_duplicate_names_made_unique():
