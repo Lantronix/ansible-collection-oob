@@ -4,6 +4,24 @@ Changelog
 
 .. contents:: Topics
 
+v1.5.1
+======
+
+Release Summary
+---------------
+
+Documentation release for the console coverage gate role.
+
+Minor Changes
+-------------
+
+- ``lantronix.oob.oob_coverage_gate`` role: the README now says where the
+  console coverage gate comes from. It ships as the ``ConsoleCoverageGate``
+  script in the netbox-lantronix NetBox plugin (0.7.0 and later) and as the
+  ``AOOB console coverage gate`` job in the nautobot-app-ssot-lantronix
+  Nautobot app (0.5.0 and later). It also lists the console cabling the gate
+  reads.
+
 v1.5.0
 ======
 
