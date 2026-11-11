@@ -44,6 +44,11 @@ Terminal
 
 - ``lantronix.oob.slc`` - Prompt and error detection for Lantronix SLC and EMG console managers over SSH.
 
+New Roles
+---------
+
+- ``lantronix.oob.oob_slc_groups`` - Keep custom user groups identical on SLC and EMG console managers, choosing SSH or Percepxion per host.
+
 Minor Changes
 -------------
 

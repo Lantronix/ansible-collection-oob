@@ -87,6 +87,7 @@ The minimum supported `ansible-core` version is declared in `meta/runtime.yml`.
 | `lantronix.oob.oob_user_management` | Bulk user management across all SLC devices in a smart group |
 | `lantronix.oob.oob_baseline_config` | Enforces baseline hostname, NTP, and syslog config across SLC fleet |
 | `lantronix.oob.oob_coverage_gate` | Stops a change when the devices it touches have no ready console path through an SLC (NetBox or Nautobot console coverage gate) |
+| `lantronix.oob.oob_slc_groups` | Keeps directory-mapped custom user groups identical on SLC and EMG console managers, over SSH or through Percepxion, chosen per host |
 
 ## NetBox Integration
 

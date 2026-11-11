@@ -1,0 +1,55 @@
+---
+argument_specs:
+  main:
+    short_description: Keep custom user groups identical on SLC and EMG console managers
+    description:
+      - Applies one list of custom user groups to every console manager in the play.
+      - Hosts with I(oob_slc_groups_transport=ssh) are changed directly over SSH with
+        M(lantronix.oob.slc_groups). Set C(ansible_connection=ansible.netcommon.network_cli) and
+        C(ansible_network_os=lantronix.oob.slc) for them.
+      - Hosts with I(oob_slc_groups_transport=percepxion) are changed together in one
+        M(lantronix.oob.percepxion_slc_groups) run through the Percepxion host named in
+        I(oob_slc_groups_percepxion_host). They need C(percepxion_device_id), which the
+        C(lantronix.oob.percepxion) inventory plugin sets.
+      - "Run the play with C(gather_facts: false)."
+    options:
+      oob_slc_groups_definitions:
+        description: Group definitions, in the same form as the C(groups) option of M(lantronix.oob.slc_groups).
+        type: list
+        elements: dict
+        required: true
+      oob_slc_groups_state:
+        description: Whether the groups should exist.
+        type: str
+        choices: [present, absent]
+        default: present
+      oob_slc_groups_transport:
+        description:
+          - How to reach this host. Set per host or per group.
+          - C(ssh) is faster and supports every model. C(percepxion) needs no SSH path but needs
+            firmware that returns CLI output to Percepxion.
+        type: str
+        choices: [ssh, percepxion]
+        default: ssh
+      oob_slc_groups_absent_method:
+        description: Removal method over SSH.
+        type: str
+        choices: [delete, revoke]
+        default: delete
+      oob_slc_groups_percepxion_absent_method:
+        description: Removal method through Percepxion. Percepxion CLI jobs refuse group deletes today.
+        type: str
+        choices: [delete, revoke]
+        default: revoke
+      oob_slc_groups_percepxion_host:
+        description: Inventory host name of the Percepxion API host. Required when any host uses the Percepxion transport.
+        type: str
+        default: ""
+      oob_slc_groups_percepxion_job_timeout:
+        description: Seconds to wait for every device in each Percepxion job step.
+        type: int
+        default: 900
+      oob_slc_groups_verify:
+        description: Read the groups again after changes and fail on any difference.
+        type: bool
+        default: true

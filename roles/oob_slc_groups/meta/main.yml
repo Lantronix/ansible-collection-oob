@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: oob_slc_groups
+  author: Lantronix Product Team
+  description: Keeps directory-mapped custom user groups identical on SLC and EMG console managers, over SSH or through Percepxion.
+  company: Lantronix
+  license: Apache-2.0
+  min_ansible_version: "2.16"
