@@ -1,0 +1,134 @@
+---
+# eda_cable_sync, sync the console server an event names into NetBox and Nautobot
+#
+# What this does:
+#   Called by the percepxion_cable_sync rulebook with a Percepxion port or device
+#   event. Asks NetBox (netbox-lantronix 0.10.0 or later) to sync only that console
+#   server, so its console port facts and console cables follow the SLC within
+#   seconds. Starts the Percepxion to Nautobot job in Nautobot
+#   (nautobot-app-ssot-lantronix), unless one is already queued or running.
+#   Configure either target or both; an unset URL skips that target.
+#
+# Settings (extra vars, or the environment variables in brackets):
+#   cable_sync_netbox_url        NetBox URL [NETBOX_URL]
+#   cable_sync_netbox_token      API token of a user with the sync permission on the
+#                                Percepxion source [NETBOX_TOKEN]
+#   cable_sync_netbox_source_id  ID of the Percepxion source in NetBox
+#                                [NETBOX_LANTRONIX_SOURCE_ID]
+#   cable_sync_nautobot_url      Nautobot URL [NAUTOBOT_URL]
+#   cable_sync_nautobot_token    API token of a user who may run the job [NAUTOBOT_TOKEN]
+#   cable_sync_validate_certs    verify TLS certificates (default true)
+#
+# Run (from a rulebook):
+#   run_playbook: {name: lantronix.oob.eda_cable_sync}
+#
+# Run (by hand, for testing):
+#   ansible-playbook lantronix.oob.eda_cable_sync \
+#     -e '{"ansible_eda": {"event": {"type": "percepxion.port.attached_changed",
+#          "device": {"id": "00204A0000000000000000000000ABCD", "name": "slc-01"}}}}'
+
+- name: Sync the console server an event names
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    eda_event: "{{ ansible_eda.event | default({}) }}"
+    cable_sync_device_id: "{{ eda_event.device.id | default('') }}"
+    cable_sync_netbox_url: "{{ lookup('ansible.builtin.env', 'NETBOX_URL') | regex_replace('/+$', '') }}"
+    cable_sync_netbox_token: "{{ lookup('ansible.builtin.env', 'NETBOX_TOKEN') }}"
+    cable_sync_netbox_source_id: "{{ lookup('ansible.builtin.env', 'NETBOX_LANTRONIX_SOURCE_ID') }}"
+    cable_sync_nautobot_url: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_URL') | regex_replace('/+$', '') }}"
+    cable_sync_nautobot_token: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_TOKEN') }}"
+    cable_sync_validate_certs: true
+    cable_sync_nautobot_job: Percepxion to Nautobot
+
+  tasks:
+    - name: Require a Percepxion device or port event
+      ansible.builtin.assert:
+        that:
+          - eda_event.type | default('') is match('percepxion\.(port|device)\.')
+          # The ID goes into an API request, so it must look like a Percepxion device ID.
+          - cable_sync_device_id is match('^[A-Za-z0-9_-]{1,64}$')
+          - cable_sync_netbox_url | length > 0 or cable_sync_nautobot_url | length > 0
+          - cable_sync_netbox_url | length == 0 or cable_sync_netbox_source_id | int > 0
+        fail_msg: >-
+          Run this playbook from a rulebook with a Percepxion device or port event, and set
+          cable_sync_netbox_url or cable_sync_nautobot_url (see the header).
+        quiet: true
+
+    - name: Ask NetBox to sync this console server
+      ansible.builtin.uri:
+        url: "{{ cable_sync_netbox_url }}/api/plugins/lantronix/sources/{{ cable_sync_netbox_source_id | int }}/sync/"
+        method: POST
+        headers:
+          # NetBox 4.5 and later issue v2 tokens (nbt_...), sent as Bearer.
+          Authorization: >-
+            {{ 'Bearer' if cable_sync_netbox_token is match('nbt_') else 'Token' }} {{ cable_sync_netbox_token }}
+          Accept: application/json
+        body_format: json
+        body:
+          device_ids:
+            - "{{ cable_sync_device_id }}"
+        status_code: 202
+        validate_certs: "{{ cable_sync_validate_certs }}"
+      register: cable_sync_netbox
+      no_log: true
+      when: cable_sync_netbox_url | length > 0
+
+    - name: Report the NetBox request
+      ansible.builtin.debug:
+        msg: >-
+          NetBox: focused sync of {{ eda_event.device.name | default(cable_sync_device_id) }}
+          {{ 'queued' if cable_sync_netbox.json.new_job | default(false) else 'joined the sync already waiting' }}
+      when: cable_sync_netbox is not skipped
+
+    - name: Find the Nautobot job and any run already waiting
+      when: cable_sync_nautobot_url | length > 0
+      block:
+        - name: Look up the job
+          ansible.builtin.uri:
+            url: "{{ cable_sync_nautobot_url }}/api/extras/jobs/?name={{ cable_sync_nautobot_job | urlencode }}"
+            headers: &cable_sync_nautobot_headers
+              Authorization: "Token {{ cable_sync_nautobot_token }}"
+              Accept: application/json
+            validate_certs: "{{ cable_sync_validate_certs }}"
+          register: cable_sync_nautobot_jobs
+          no_log: true
+
+        - name: Require the job
+          ansible.builtin.assert:
+            that: cable_sync_nautobot_jobs.json.results | length == 1
+            fail_msg: "Nautobot has no job named {{ cable_sync_nautobot_job }}; install and enable nautobot-app-ssot-lantronix."
+            quiet: true
+
+        - name: Count runs queued or running
+          ansible.builtin.uri:
+            url: >-
+              {{ cable_sync_nautobot_url }}/api/extras/job-results/?job_model={{
+              cable_sync_nautobot_jobs.json.results[0].id }}&status=PENDING&status=STARTED&limit=1
+            headers: *cable_sync_nautobot_headers
+            validate_certs: "{{ cable_sync_validate_certs }}"
+          register: cable_sync_nautobot_active
+          no_log: true
+
+        - name: Start the Nautobot sync
+          ansible.builtin.uri:
+            url: "{{ cable_sync_nautobot_url }}/api/extras/jobs/{{ cable_sync_nautobot_jobs.json.results[0].id }}/run/"
+            method: POST
+            headers: *cable_sync_nautobot_headers
+            body_format: json
+            body:
+              data:
+                dryrun: false
+            status_code: [200, 201]
+            validate_certs: "{{ cable_sync_validate_certs }}"
+          register: cable_sync_nautobot_run
+          no_log: true
+          when: cable_sync_nautobot_active.json.count | int == 0
+
+        - name: Report the Nautobot request
+          ansible.builtin.debug:
+            msg: >-
+              Nautobot: {{ 'started ' ~ cable_sync_nautobot_job if cable_sync_nautobot_run is not skipped
+              else cable_sync_nautobot_job ~ ' is already queued or running; it picks up this change' }}

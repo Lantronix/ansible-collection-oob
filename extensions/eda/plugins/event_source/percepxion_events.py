@@ -31,8 +31,9 @@ author:
   - Lantronix Product Team (@lantronix)
 description:
   - An Event-Driven Ansible event source that polls the Percepxion REST API and
-    emits an event when a managed device's connection status changes or when the
-    device attached to an SLC console port changes.
+    emits an event when a managed device's connection status changes, when the
+    device attached to an SLC console port changes, or when a console port's
+    discovery state changes.
   - Events use the Percepxion webhook envelope (C(spec_version) 1), so a rulebook
     that matches on C(event.type) and C(event.data) keeps working if the events
     later arrive by webhook instead.
@@ -86,9 +87,16 @@ options:
       - Which changes to emit.
       - C(status) emits C(percepxion.device.status_changed).
       - C(ports) emits C(percepxion.port.attached_changed).
+      - C(states) emits C(percepxion.port.state_changed) when a console port's
+        discovery state changes, for example from C(Authenticating) to C(Managed)
+        or C(Quarantine). Entering the short C(Identifying) state is not reported,
+        and neither is a return from it to the same C(Unidentified) or C(Unknown)
+        state, since discovery retries those. A port that also has an attachment
+        change in the same poll gets only the C(percepxion.port.attached_changed)
+        event.
     type: list
     elements: str
-    choices: [status, ports]
+    choices: [status, ports, states]
     default: [status, ports]
   port_devices:
     description:
@@ -144,6 +152,9 @@ SPEC_VERSION = "1"
 SOURCE = "lantronix.oob.percepxion_events"
 STATUS_EVENT = "percepxion.device.status_changed"
 PORT_EVENT = "percepxion.port.attached_changed"
+STATE_EVENT = "percepxion.port.state_changed"
+TRANSIENT_STATE = "Identifying"
+RETRY_LOOP_STATES = frozenset(("Unidentified", "Unknown"))
 USER_AGENT = "lantronix.oob-percepxion_events/1"
 TIMEOUT = 30
 MIN_INTERVAL = 30
@@ -314,6 +325,65 @@ def port_change(prev: dict | None, cur: dict | None) -> str | None:
     return None
 
 
+def state_changed(prev_state: str, cur_state: str, settled: str) -> bool:
+    """Return whether a discovery state change is worth an event.
+
+    ``settled`` is the port's last state other than Identifying. Entering Identifying is not
+    reported, since it is short and the next state reports it. Leaving it is, unless discovery
+    only went back to the same Unidentified or Unknown state it retries from.
+    """
+    if cur_state in {prev_state, TRANSIENT_STATE}:
+        return False
+    return not (
+        prev_state == TRANSIENT_STATE and cur_state == settled and cur_state in RETRY_LOOP_STATES
+    )
+
+
+def state_events(
+    dev: dict,
+    previous: dict[int, dict] | None,
+    current: dict[int, dict],
+    settled: dict[int, str],
+    occurred_at: str,
+    *,
+    tenant_id: str | None,
+    skip_ports: Collection[int] = (),
+) -> list[dict]:
+    """Compare one device's port discovery states to the last poll; nothing on the first."""
+    events = []
+    if previous is None:
+        return events
+    did = str(dev.get("device_id") or "")
+    for port in sorted(current):
+        if port in skip_ports or port not in previous:
+            continue
+        before = str(previous[port].get("state") or "")
+        now = str(current[port].get("state") or "")
+        if not state_changed(before, now, settled.get(port, before)):
+            continue
+        data = {
+            "port": port,
+            "state": now,
+            "previous_state": before,
+            "attached_device": attached_block(current[port]),
+        }
+        eid = event_id(STATE_EVENT, did, port, before, now, occurred_at)
+        events.append(
+            envelope(STATE_EVENT, dev, data, occurred_at=occurred_at, tenant_id=tenant_id, eid=eid),
+        )
+    return events
+
+
+def settle(settled: dict[int, str], current: dict[int, dict]) -> dict[int, str]:
+    """Return each port's last state other than Identifying, after this poll."""
+    out = dict(settled)
+    for port, state in current.items():
+        now = str(state.get("state") or "")
+        if now and now != TRANSIENT_STATE:
+            out[port] = now
+    return out
+
+
 def status_events(
     previous: dict[str, str] | None,
     devices: list[dict],
@@ -435,6 +505,7 @@ class PercepxionPoller:
         self._last_call = None
         self.statuses = None
         self.ports = {}
+        self.settled = {}
 
     def __repr__(self) -> str:
         """Show the API base only, never credentials."""
@@ -567,7 +638,7 @@ class PercepxionPoller:
             for d in devices
             if d.get("device_id")
         }
-        if "ports" in watch:
+        if "ports" in watch or "states" in watch:
             for dev in devices:
                 if not wants_ports(dev, port_devices):
                     continue
@@ -580,14 +651,39 @@ class PercepxionPoller:
                     continue
                 if not current:
                     continue
-                # A device first seen after the first poll is baselined quietly.
-                events.extend(
-                    port_events(
-                        dev, self.ports.get(did), current, occurred_at, self.tenant_id,
-                        emit_initial=emit_initial and first,
-                    ),
-                )
+                events.extend(self._port_poll_events(dev, current, occurred_at, watch, first=first,
+                                                     emit_initial=emit_initial))
                 self.ports[did] = current
+                self.settled[did] = settle(self.settled.get(did, {}), current)
+        return events
+
+    def _port_poll_events(
+        self,
+        dev: dict,
+        current: dict[int, dict],
+        occurred_at: str,
+        watch: Collection[str],
+        *,
+        first: bool,
+        emit_initial: bool,
+    ) -> list[dict]:
+        """Return one device's attachment and state events for this poll."""
+        did = str(dev["device_id"])
+        previous = self.ports.get(did)
+        events = []
+        if "ports" in watch:
+            # A device first seen after the first poll is baselined quietly.
+            events = port_events(
+                dev, previous, current, occurred_at, self.tenant_id,
+                emit_initial=emit_initial and first,
+            )
+        if "states" in watch:
+            events.extend(
+                state_events(
+                    dev, previous, current, self.settled.get(did, {}), occurred_at,
+                    tenant_id=self.tenant_id, skip_ports={e["data"]["port"] for e in events},
+                ),
+            )
         return events
 
 

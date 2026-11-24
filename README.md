@@ -115,6 +115,7 @@ The `lantronix.oob.percepxion_events` event source polls Percepxion and emits an
 
 - a managed device's connection status changes (`percepxion.device.status_changed`, with `data.status`, `data.previous_status` and `data.up`)
 - the device attached to an SLC console port appears, changes, or goes away (`percepxion.port.attached_changed`, with `data.port`, `data.change`, `data.state`, `data.attached_device` and `data.previous`)
+- an SLC console port's discovery state changes, for example from `Managed` to `Disconnected` when a cable is pulled (`percepxion.port.state_changed`, with `data.port`, `data.state`, `data.previous_state` and `data.attached_device`). Watch `states` to get these. The source skips the brief `Identifying` step and a port that retries into the state it already had, and a port with an attached-device change in the same poll gets only that event.
 
 Each event carries the device's Percepxion ID, name, serial number and model in `event.device`, and a stable `event.id`. The first poll records a baseline and emits nothing unless `emit_initial: true`. Port changes are read from each connected SLC's telemetry, one request per SLC per poll; `port_devices` limits which devices are read.
 
@@ -126,6 +127,25 @@ ansible-rulebook -r lantronix.oob.percepxion_console_events -i inventory.yml \
   --vars rulebook_vars.yml   # percepxion_host: api.percepxion.ai
 ```
 
+### Keep NetBox and Nautobot console cables current
+
+The `lantronix.oob.percepxion_cable_sync` rulebook watches device status, attached devices and port states. When an SLC reports a change, it runs `lantronix.oob.eda_cable_sync` for that SLC, which:
+
+- asks NetBox to sync only that console server (netbox-lantronix 0.10.0 or later, `POST /api/plugins/lantronix/sources/<id>/sync/`)
+- starts the `Percepxion to Nautobot` job in Nautobot (nautobot-app-ssot-lantronix), unless a run is already queued or running
+
+Changes on one SLC within 30 seconds of each other trigger one run. Set the NetBox variables, the Nautobot variables, or both:
+
+```bash
+export PERCEPXION_USERNAME=<user> PERCEPXION_PASSWORD=<password>
+export NETBOX_URL=https://netbox.example.com NETBOX_TOKEN=<token> NETBOX_LANTRONIX_SOURCE_ID=1
+export NAUTOBOT_URL=https://nautobot.example.com NAUTOBOT_TOKEN=<token>
+ansible-rulebook -r lantronix.oob.percepxion_cable_sync -i inventory.yml \
+  --vars rulebook_vars.yml   # percepxion_host: api.percepxion.ai
+```
+
+The NetBox token needs permission to sync the Percepxion source. The Nautobot token needs permission to run the job. In Ansible Automation Platform, pass the same values as extra variables (`cable_sync_netbox_url`, `cable_sync_netbox_token`, `cable_sync_netbox_source_id`, `cable_sync_nautobot_url`, `cable_sync_nautobot_token`) from a credential.
+
 Or use the source in your own rulebook:
 
 ```yaml
@@ -133,7 +153,7 @@ sources:
   - lantronix.oob.percepxion_events:
       host: api.percepxion.ai
       interval: 60
-      watch: [status, ports]
+      watch: [status, ports, states]
 rules:
   - name: New device on a console port
     condition: event.type == "percepxion.port.attached_changed" and event.data.change == "attached"
