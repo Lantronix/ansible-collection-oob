@@ -393,3 +393,94 @@ def test_neutralize_strings(raw, expected):
 def test_neutralize_nested_keeps_other_types():
     event = {"id": "e1", "data": {"port": 14, "ok": True, "tags": ["{{a}}", None], "{{k}}": 1.5}}
     assert pe.neutralize(event) == {"id": "e1", "data": {"port": 14, "ok": True, "tags": ["{ {a} }", None], "{ {k} }": 1.5}}
+
+
+@pytest.mark.parametrize("prev,cur,settled,expected", [
+    ("Authenticating", "Managed", "Authenticating", True),
+    ("Managed", "Quarantine", "Managed", True),
+    ("Managed", "Identifying", "Managed", False),
+    ("Identifying", "Managed", "Disconnected", True),
+    ("Identifying", "Unidentified", "Unidentified", False),
+    ("Identifying", "Unknown", "Unknown", False),
+    ("Identifying", "Unidentified", "Managed", True),
+    ("Managed", "Managed", "Managed", False),
+])
+def test_state_changed(prev, cur, settled, expected):
+    assert pe.state_changed(prev, cur, settled) is expected
+
+
+def test_state_events_payload_matches_the_webhook_contract():
+    prev = pe.parse_port_states(view(dp_group(14, True, status="Authenticating")))
+    cur = pe.parse_port_states(view(dp_group(14, True, status="Managed", hostname="edge-01")))
+    events = pe.state_events(device(), prev, cur, {14: "Authenticating"}, "2026-11-24T00:00:00Z", tenant_id=None)
+    assert len(events) == 1
+    event = events[0]
+    assert event["type"] == "percepxion.port.state_changed"
+    assert event["tenant_id"] == TENANT and event["device"]["id"] == "dev-1"
+    assert event["data"]["port"] == 14
+    assert event["data"]["state"] == "Managed" and event["data"]["previous_state"] == "Authenticating"
+    assert event["data"]["attached_device"]["hostname"] == "edge-01"
+
+
+def test_state_events_baseline_and_skipped_ports():
+    cur = pe.parse_port_states(view(dp_group(14, True, status="Quarantine")))
+    prev = pe.parse_port_states(view(dp_group(14, True, status="Managed")))
+    assert pe.state_events(device(), None, cur, {}, "t", tenant_id=None) == []
+    assert pe.state_events(device(), prev, cur, {}, "t", tenant_id=None, skip_ports={14}) == []
+
+
+def test_settle_ignores_identifying():
+    cur = pe.parse_port_states(view(dp_group(1, False, status="Identifying"), dp_group(2, True, status="Managed")))
+    assert pe.settle({1: "Unidentified"}, cur) == {1: "Unidentified", 2: "Managed"}
+
+
+def test_poll_states_watch():
+    api = FakeApi({
+        "/v2/user/login": [LOGIN],
+        "/v3/device/search": [{"search_results": [device()]}],
+        "/v1/telemetry/stat/view": [
+            view(dp_group(14, False, status="Unidentified")),
+            view(dp_group(14, False, status="Identifying")),
+            view(dp_group(14, False, status="Unidentified")),
+            view(dp_group(14, True, status="Authenticating")),
+            view(dp_group(14, True, status="Quarantine")),
+        ],
+    })
+    p = poller(api)
+    assert p.poll({"states"}) == []  # baseline
+    assert p.poll({"states"}) == []  # entering Identifying
+    assert p.poll({"states"}) == []  # back to the same retry state
+    assert p.poll({"states"})[0]["data"]["state"] == "Authenticating"
+    events = p.poll({"states"})
+    assert [(e["type"], e["data"]["previous_state"], e["data"]["state"]) for e in events] == [
+        ("percepxion.port.state_changed", "Authenticating", "Quarantine"),
+    ]
+
+
+def test_poll_attach_change_wins_over_state_change():
+    api = FakeApi({
+        "/v2/user/login": [LOGIN],
+        "/v3/device/search": [{"search_results": [device()]}],
+        "/v1/telemetry/stat/view": [
+            view(dp_group(14, False, status="Disconnected")),
+            view(dp_group(14, True, status="Managed")),
+        ],
+    })
+    p = poller(api)
+    assert p.poll({"ports", "states"}) == []
+    events = p.poll({"ports", "states"})
+    assert [e["type"] for e in events] == ["percepxion.port.attached_changed"]
+
+
+def test_ports_watch_alone_emits_no_state_events():
+    api = FakeApi({
+        "/v2/user/login": [LOGIN],
+        "/v3/device/search": [{"search_results": [device()]}],
+        "/v1/telemetry/stat/view": [
+            view(dp_group(14, True, status="Managed")),
+            view(dp_group(14, True, status="Quarantine")),
+        ],
+    })
+    p = poller(api)
+    assert p.poll({"ports"}) == []
+    assert p.poll({"ports"}) == []

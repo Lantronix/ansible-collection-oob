@@ -1,0 +1,47 @@
+---
+# percepxion_cable_sync, keep NetBox and Nautobot console cables current
+#
+# What this does:
+#   Polls Percepxion with the lantronix.oob.percepxion_events source. When a device
+#   on an SLC console port appears, changes or leaves, when a port's discovery state
+#   changes, or when an SLC's connection status changes, it runs
+#   lantronix.oob.eda_cable_sync for that SLC. That playbook asks NetBox to sync
+#   only that console server and starts the Nautobot sync job.
+#
+#   Events for the same SLC within 30 seconds of each other trigger one run, after
+#   the 30 seconds, so a burst of changes becomes one sync of the latest state.
+#
+# Run:
+#   export PERCEPXION_USERNAME=... PERCEPXION_PASSWORD=...
+#   export NETBOX_URL=https://netbox.example.com NETBOX_TOKEN=... NETBOX_LANTRONIX_SOURCE_ID=1
+#   export NAUTOBOT_URL=https://nautobot.example.com NAUTOBOT_TOKEN=...
+#   ansible-rulebook -r lantronix.oob.percepxion_cable_sync -i inventory.yml \
+#     --vars rulebook_vars.yml
+#
+# rulebook_vars.yml:
+#   percepxion_host: api.percepxion.ai
+#
+# Set only the NetBox or only the Nautobot variables to sync one of them.
+
+- name: Percepxion cable sync
+  hosts: all
+  sources:
+    - lantronix.oob.percepxion_events:
+        host: "{{ percepxion_host }}"
+        interval: 60
+        watch:
+          - status
+          - ports
+          - states
+  rules:
+    - name: Sync the console server that changed
+      condition: >-
+        event.type in ["percepxion.port.attached_changed", "percepxion.port.state_changed",
+        "percepxion.device.status_changed"]
+      throttle:
+        once_after: 30 seconds
+        group_by_attributes:
+          - event.device.id
+      action:
+        run_playbook:
+          name: lantronix.oob.eda_cable_sync

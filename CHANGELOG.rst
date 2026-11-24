@@ -4,6 +4,32 @@ Changelog
 
 .. contents:: Topics
 
+v1.6.0
+======
+
+Release Summary
+---------------
+
+Keeps NetBox and Nautobot console cables current from Percepxion events.
+
+Minor Changes
+-------------
+
+- ``lantronix.oob.percepxion_events`` event source: new ``states`` watch emits
+  ``percepxion.port.state_changed`` when an SLC console port's discovery state
+  changes, with ``data.port``, ``data.state``, ``data.previous_state`` and
+  ``data.attached_device``. Entering the short ``Identifying`` state is not
+  reported, and neither is a return from it to the same ``Unidentified`` or
+  ``Unknown`` state. A port with an attached-device change in the same poll
+  gets only the ``percepxion.port.attached_changed`` event.
+- New ``lantronix.oob.percepxion_cable_sync`` rulebook and
+  ``lantronix.oob.eda_cable_sync`` playbook. When an SLC's status, attached
+  devices or port states change, the playbook asks NetBox to sync only that
+  console server (netbox-lantronix 0.10.0 or later) and starts the
+  ``Percepxion to Nautobot`` job in Nautobot (nautobot-app-ssot-lantronix)
+  unless a run is already queued or running. Changes on one SLC within 30
+  seconds trigger one run.
+
 v1.5.1
 ======
 
